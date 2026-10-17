@@ -1,0 +1,2218 @@
+@import "tailwindcss";
+
+/* One place for every colour. Dark is the default; light is the same app with these values swapped. */
+:root {
+  color-scheme: dark;
+  --c-bg: #0e0e0e;
+  --c-bg-sunken: #121212;
+  --c-surface: #171717;
+  --c-surface-2: #1c1c1b;
+  --c-surface-3: #202020;
+  --c-surface-hover: #262625;
+  --c-raised: #1f1f1e;
+  --c-raised-2: #2a2a29;
+  --c-raised-3: #2d2d2c;
+  --c-raised-4: #303030;
+  --c-ink: #141414;
+  --c-warm-1: #1c1c1b;
+  --c-warm-2: #1f1f1e;
+  --c-line: #cfcfca;
+  --c-line-2: #cfcfca;
+  --c-line-3: #cfcfca;
+  --c-line-4: #cfcfca;
+  --c-line-5: #636361;
+  --c-line-warm: #5a5a58;
+  --c-line-warm-2: #6a6a67;
+  --c-text: #f3f3f0;
+  --c-text-2: #eeeeeb;
+  --c-text-3: #dddddb;
+  --c-muted: #b4b4af;
+  --c-muted-2: #b0b0ab;
+  --c-muted-3: #aeaea9;
+  --c-muted-4: #b0b0ab;
+  --c-muted-5: #a4a49f;
+  --c-muted-6: #9a9a95;
+  --c-on-accent: #0e0e0e;
+  --c-heat: #f3f3f0;
+  --c-heat-text: #f3f3f0;
+  --c-heat-2: #f3f3f0;
+  --c-heat-3: #d4d4d0;
+  --c-heat-4: #c8c8c4;
+  --c-heat-5: #f3f3f0;
+  --c-heat-6: #8a8a86;
+  --c-on-heat: #0e0e0e;
+  --c-heat-bg: #232322;
+  --c-heat-bg-2: #262625;
+  --c-heat-bg-3: #2e2e2d;
+  --c-invert-bg: #f3f3f0;
+  --c-invert-text: #121212;
+  --c-danger: #f3f3f0;
+  --c-danger-2: #e4e4e0;
+  --c-danger-3: #e4e4e0;
+  --c-danger-bg: #1f1f1e;
+  --c-danger-bg-2: #1f1f1e;
+  --c-danger-bg-3: #232322;
+  --c-danger-bg-4: #262625;
+  --c-danger-line: #5a5a58;
+  --c-danger-line-2: #6a6a67;
+  --c-danger-line-3: #f3f3f0;
+  --c-ok: #f3f3f0;
+  --c-ok-bg: #1f1f1e;
+  --c-ok-line: #555553;
+  --c-warning: #d8d8d4;
+  --c-warning-bg: #1f1f1e;
+  --c-warning-line: #555553;
+  --c-gold: #e4e4e0;
+  --c-gold-2: #c8c8c4;
+  --c-gold-bg: #232322;
+  --c-good: #f3f3f0;
+  --c-good-2: #c8c8c4;
+  --c-good-bg: #232322;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --c-bg: #f4f4f1;
+  --c-bg-sunken: #ecece8;
+  --c-surface: #fafaf8;
+  --c-surface-2: #f0f0ec;
+  --c-surface-3: #ebebe7;
+  --c-surface-hover: #e8e8e4;
+  --c-raised: #e5e5e1;
+  --c-raised-2: #dcdcd7;
+  --c-raised-3: #dcdcd7;
+  --c-raised-4: #d6d6d1;
+  --c-ink: #fafaf8;
+  --c-warm-1: #f0f0ec;
+  --c-warm-2: #ebebe7;
+  --c-line: #121212;
+  --c-line-2: #121212;
+  --c-line-3: #121212;
+  --c-line-4: #121212;
+  --c-line-5: #aeaea8;
+  --c-line-warm: #bbbbb5;
+  --c-line-warm-2: #a8a8a2;
+  --c-text: #121212;
+  --c-text-2: #1c1c1b;
+  --c-text-3: #262625;
+  --c-muted: #5c5c57;
+  --c-muted-2: #5c5c57;
+  --c-muted-3: #5f5f5a;
+  --c-muted-4: #5c5c57;
+  --c-muted-5: #62625d;
+  --c-muted-6: #686863;
+  --c-on-accent: #f4f4f1;
+  --c-heat: #121212;
+  --c-heat-text: #121212;
+  --c-heat-2: #121212;
+  --c-heat-3: #3a3a38;
+  --c-heat-4: #4a4a47;
+  --c-heat-5: #121212;
+  --c-heat-6: #6a6a66;
+  --c-on-heat: #f4f4f1;
+  --c-heat-bg: #e9e9e5;
+  --c-heat-bg-2: #e5e5e1;
+  --c-heat-bg-3: #dededa;
+  --c-invert-bg: #121212;
+  --c-invert-text: #f4f4f1;
+  --c-danger: #121212;
+  --c-danger-2: #1c1c1b;
+  --c-danger-3: #1c1c1b;
+  --c-danger-bg: #e9e9e5;
+  --c-danger-bg-2: #e9e9e5;
+  --c-danger-bg-3: #e5e5e1;
+  --c-danger-bg-4: #e1e1dd;
+  --c-danger-line: #b0b0aa;
+  --c-danger-line-2: #9a9a94;
+  --c-danger-line-3: #121212;
+  --c-ok: #121212;
+  --c-ok-bg: #e9e9e5;
+  --c-ok-line: #b0b0aa;
+  --c-warning: #2c2c2a;
+  --c-warning-bg: #e9e9e5;
+  --c-warning-line: #b0b0aa;
+  --c-gold: #1c1c1b;
+  --c-gold-2: #3a3a38;
+  --c-gold-bg: #e1e1dd;
+  --c-good: #121212;
+  --c-good-2: #3a3a38;
+  --c-good-bg: #e1e1dd;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --c-bg: #f4f4f1;
+    --c-bg-sunken: #ecece8;
+    --c-surface: #fafaf8;
+    --c-surface-2: #f0f0ec;
+    --c-surface-3: #ebebe7;
+    --c-surface-hover: #e8e8e4;
+    --c-raised: #e5e5e1;
+    --c-raised-2: #dcdcd7;
+    --c-raised-3: #dcdcd7;
+    --c-raised-4: #d6d6d1;
+    --c-ink: #fafaf8;
+    --c-warm-1: #f0f0ec;
+    --c-warm-2: #ebebe7;
+    --c-line: #121212;
+    --c-line-2: #121212;
+    --c-line-3: #121212;
+    --c-line-4: #121212;
+    --c-line-5: #aeaea8;
+    --c-line-warm: #bbbbb5;
+    --c-line-warm-2: #a8a8a2;
+    --c-text: #121212;
+    --c-text-2: #1c1c1b;
+    --c-text-3: #262625;
+    --c-muted: #5c5c57;
+    --c-muted-2: #5c5c57;
+    --c-muted-3: #5f5f5a;
+    --c-muted-4: #5c5c57;
+    --c-muted-5: #62625d;
+    --c-muted-6: #686863;
+    --c-on-accent: #f4f4f1;
+    --c-heat: #121212;
+    --c-heat-text: #121212;
+    --c-heat-2: #121212;
+    --c-heat-3: #3a3a38;
+    --c-heat-4: #4a4a47;
+    --c-heat-5: #121212;
+    --c-heat-6: #6a6a66;
+    --c-on-heat: #f4f4f1;
+    --c-heat-bg: #e9e9e5;
+    --c-heat-bg-2: #e5e5e1;
+    --c-heat-bg-3: #dededa;
+    --c-invert-bg: #121212;
+    --c-invert-text: #f4f4f1;
+    --c-danger: #121212;
+    --c-danger-2: #1c1c1b;
+    --c-danger-3: #1c1c1b;
+    --c-danger-bg: #e9e9e5;
+    --c-danger-bg-2: #e9e9e5;
+    --c-danger-bg-3: #e5e5e1;
+    --c-danger-bg-4: #e1e1dd;
+    --c-danger-line: #b0b0aa;
+    --c-danger-line-2: #9a9a94;
+    --c-danger-line-3: #121212;
+  --c-ok: #121212;
+  --c-ok-bg: #e9e9e5;
+  --c-ok-line: #b0b0aa;
+    --c-warning: #2c2c2a;
+    --c-warning-bg: #e9e9e5;
+    --c-warning-line: #b0b0aa;
+    --c-gold: #1c1c1b;
+    --c-gold-2: #3a3a38;
+    --c-gold-bg: #e1e1dd;
+    --c-good: #121212;
+    --c-good-2: #3a3a38;
+    --c-good-bg: #e1e1dd;
+  }
+}
+
+/* A <legend> normally straddles the fieldset border. Floating it drops it
+   inside the box as ordinary content. */
+.allergy-picker > legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin: 0 0 6px;
+}
+.allergy-picker::after { content: ""; display: table; clear: both; }
+
+
+/* Allergy results. Most items land in "no listed match", so these cards have
+   to be dense: a tight row rather than a big padded panel with a photo
+   floating in it. */
+div.grid:has(> .allergy-card) { gap: 8px; }
+@media (min-width: 768px) {
+  div.grid:has(> .allergy-card) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.allergy-card { padding: 12px; border-radius: 12px; }
+.allergy-head { display: flex; align-items: center; gap: 12px; }
+.allergy-thumb {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  object-fit: cover;
+}
+.allergy-head h4 { font-size: 15px; line-height: 1.3; }
+.allergy-head p { margin-top: 3px; }
+.allergy-reasons {
+  margin-top: 10px;
+  padding-left: 18px;
+  font-size: var(--text-xs);
+  line-height: 1.55;
+}
+.allergy-reasons li + li { margin-top: 5px; }
+.allergy-more { margin-top: 10px; }
+.allergy-more > summary { font-size: var(--text-xs); }
+
+@theme {
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-plex-mono), "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --text-xs: .75rem;
+  --text-xs--line-height: 1.5;
+  --text-sm: .875rem;
+  --text-sm--line-height: 1.6;
+  --text-base: .875rem;
+  --text-base--line-height: 1.6;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.4;
+  --text-xl: 1.125rem;
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 1.3;
+  --color-heat: var(--c-heat);
+  --color-surface: var(--c-surface);
+  --color-raised: var(--c-raised);
+  --color-line: var(--c-line);
+  --color-muted: var(--c-muted);
+  --color-warning-bg: var(--c-warning-bg);
+  --color-warning-line: var(--c-warning-line);
+  --color-warning-text: var(--c-warning);
+  --color-ink: var(--c-ink);
+}
+:root {
+  color: var(--c-text);
+  background: var(--c-bg);
+  color-scheme: dark;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-size: var(--text-base);
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a {
+  touch-action: manipulation;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--c-heat);
+  outline-offset: 0;
+}
+input,
+textarea,
+select {
+  width: 100%;
+  background: var(--c-bg-sunken);
+  border: 1px solid var(--c-line-5);
+  border-radius: 10px;
+  /* 16px text stays: anything smaller makes iOS zoom the page when a field is tapped. */
+  padding: 9px 14px;
+  color: var(--c-text);
+  min-width: 0;
+}
+textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+label {
+  display: block;
+  font-size:var(--text-base);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--c-heat);
+  color: var(--c-on-heat);
+  font-weight: 600;
+  min-height: 36px;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+@media (hover: hover) and (pointer: fine) { 
+.btn:hover {
+  background: var(--c-heat-3);
+}
+}
+.btn.secondary {
+  color: var(--c-text);
+  background: var(--c-surface);
+  border-color: var(--c-line-5);
+}
+@media (hover: hover) and (pointer: fine) { 
+.btn.secondary:hover {
+  background: var(--c-raised-2);
+}
+}
+.eyebrow {
+  font-size:var(--text-xs);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.panel {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: 18px;
+}
+.field {
+  margin-bottom: 20px;
+}
+/* A fieldset will not shrink below its widest child unless told to, so one long menu item
+   name pushed the whole Assign form — inputs included — past the edge of its card. */
+fieldset {
+  min-width: 0;
+}
+.assign-picker, .assign-option {
+  max-width: 100%;
+}
+.assign-option > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Safari on iOS sizes a date field to the longest date it could ever hold and centres it,
+   ignoring the width we set, so the field ran past the edge of its card on a phone. */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-width: 0;
+  margin: 0;
+}
+input[type="date"]::-webkit-datetime-edit {
+  min-width: 0;
+  padding: 0;
+}
+.muted {
+  color: var(--c-muted);
+}
+h1,
+h2,
+h3,
+p {
+  overflow-wrap: anywhere;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .enter {
+    animation: enter 0.3s ease-out;
+  }
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(7px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+input::placeholder, textarea::placeholder { color: var(--c-muted-6); opacity: 1; }
+input[type="checkbox"] { accent-color: var(--c-heat); }
+::selection { background: var(--c-heat); color: var(--c-on-heat); }
+
+.nav-item { display:flex; align-items:center; gap:12px; width:100%; border-radius:10px; padding:13px 12px; text-align:left; font-size:var(--text-base); font-weight:600; color:var(--c-muted); }
+@media (hover: hover) and (pointer: fine) { .nav-item:hover, .category-nav:hover { background:var(--c-raised); color:var(--c-text); } }
+.nav-item.active { background:var(--c-raised); color:var(--c-heat-text); }
+.category-nav { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; border-radius:8px; padding:10px 12px; text-align:left; font-size:var(--text-base); }
+.category-nav.active { background:var(--c-raised); box-shadow:inset 3px 0 var(--c-heat); }
+@media (hover: hover) and (pointer: fine) { .category-card:hover { border-color:var(--c-heat); background:var(--c-surface-3); } }
+
+/* Two even columns: text-width chips left a different ragged edge on every row. */
+.allergy-choices { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+@media (min-width: 640px) { .allergy-choices { grid-template-columns:repeat(3, 1fr); } }
+/* Filled, not outlined: an outline on cream reads as a label, not something you press. */
+.allergy-choice { display:flex; align-items:center; justify-content:center; width:100%;
+  border: 1px solid transparent; background: var(--c-raised); border-radius: 999px;
+  padding: 9px 14px; min-height: 44px; font-size:var(--text-base); line-height:1.25; text-align: center; }
+@media (hover: hover) and (pointer: fine) { .allergy-choice:hover { border-color: var(--c-line-5); } }
+.allergy-choice.selected { background: var(--c-heat); color: var(--c-on-heat); border-color: var(--c-heat); font-weight: 600; }
+
+.compact-item > summary::-webkit-details-marker { display: none; }
+@media (hover: hover) and (pointer: fine) { .compact-item > summary:hover { background: var(--c-surface-3); } }
+.compact-item > summary:focus-visible { outline: 2px solid var(--c-heat); outline-offset: -3px; }
+.compact-item[open] .compact-chevron { transform: rotate(180deg); }
+
+.study-reminder { border:1px solid var(--c-line-warm); border-radius:18px; background:linear-gradient(120deg,var(--c-warm-2),var(--c-surface)); }
+.library-switch { display:flex; gap:6px; padding:0; border-radius:999px; }
+.library-switch button { flex:1; padding:7px 10px; min-height:36px; border-radius:999px; color:var(--c-muted); font-size:var(--text-sm); font-weight:600; }
+.library-switch button[aria-pressed="true"] { background:var(--c-heat); color:#fff; }
+/* About Kero Bar collapses to the same height as a switch button. */
+.about-kero { padding:0; border-radius:11px; }
+.about-kero > summary { display:flex; align-items:center; padding:7px 12px; min-height:36px; font-size:var(--text-sm); }
+.about-kero > p { padding:0 12px 11px; }
+.category-tabs { display:flex; gap:7px; max-width:100%; overflow-x:auto; padding-bottom:10px; scrollbar-width:thin; scrollbar-color:var(--c-line-5) transparent; }
+.category-tabs button { flex-shrink:0; border:1px solid var(--c-line-3); border-radius:999px; padding:5px 12px; min-height:32px; color:var(--c-muted); font-size:var(--text-xs); }
+.category-tabs button[aria-pressed="true"] { background:var(--c-invert-bg); color:var(--c-invert-text); border-color:var(--c-invert-bg); }
+.category-tabs .tab-count { opacity:.62; font-variant-numeric:tabular-nums; }
+@media (hover: hover) and (pointer: fine) { .category-tabs button:hover { border-color:var(--c-heat); } }
+.category-tabs button:focus-visible,.library-switch button:focus-visible { outline:2px solid var(--c-heat); outline-offset:2px; }
+/* Not taken lives in the results header, beside Refresh, so it never eats the category strip. */
+.results-actions { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.not-taken-chip { flex-shrink:0; border:1px solid var(--c-line-3); border-radius:999px; padding:5px 11px; color:var(--c-muted); font-size:var(--text-xs); }
+.not-taken-chip[aria-pressed="true"] { background:var(--c-invert-bg); color:var(--c-invert-text); border-color:var(--c-invert-bg); }
+@media (hover: hover) and (pointer: fine) { .not-taken-chip:hover { border-color:var(--c-heat); } }
+.icon-chip { display:flex; align-items:center; justify-content:center; width:30px; height:30px; flex-shrink:0; border:1px solid var(--c-line-3); border-radius:999px; color:var(--c-muted); }
+@media (hover: hover) and (pointer: fine) { .icon-chip:hover { border-color:var(--c-heat); color:var(--c-heat-text); } }
+.icon-chip:disabled { opacity:.5; }
+.icon-chip:focus-visible { outline:2px solid var(--c-heat); outline-offset:2px; }
+/* The download chip while it is building a sheet. A PDF takes a second or two to
+   make on a phone, which is long enough that the button has to say it heard you. */
+.chip-spinner { width:14px; height:14px; border-radius:50%; border:2px solid var(--c-line-3); border-top-color:var(--c-heat); animation:chip-spin .7s linear infinite; }
+@keyframes chip-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .chip-spinner { animation:none; } }
+.check-row { display:flex; align-items:flex-start; gap:9px; color:var(--c-muted); font-size:var(--text-sm); line-height:1.5; }
+.check-row input { width:17px; height:17px; flex-shrink:0; margin-top:2px; accent-color:var(--c-heat-5); }
+/* The verdict travels with the card: the group heading scrolls away, this does not. */
+.allergy-card { position:relative; padding-left:17px; }
+.allergy-card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:5px;
+  border-radius:12px 0 0 12px; background:var(--c-line-5); }
+.allergy-card.is-avoid::before { background:var(--c-danger); }
+.allergy-card.is-cross-contact::before { background:var(--c-gold); }
+.allergy-card.is-unknown::before { background:var(--c-warning); }
+.allergy-card.is-no-match::before { background:var(--c-good); }
+.allergy-mark { flex:none; width:20px; height:20px; border-radius:999px; display:flex;
+  align-items:center; justify-content:center; font-size:11px; font-weight:700; line-height:1;
+  color:var(--c-on-accent); }
+.allergy-mark.is-avoid { background:var(--c-danger); }
+.allergy-mark.is-cross-contact { background:var(--c-gold); }
+.allergy-mark.is-unknown { background:var(--c-warning); }
+.allergy-mark.is-no-match { background:var(--c-good); }
+/* Why a dish is in this group, without opening it. */
+.allergy-codes { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+.allergen-reviewed { margin-top:10px; color:var(--c-good-2); font-size:var(--text-xs); letter-spacing:.03em; }
+.account-name-row { display:flex; align-items:center; gap:8px; }
+.account-name-row input { flex:1; min-width:0; }
+/* Team tab: long lists live behind a count, so one person fits on one screen. */
+.team-fold { border:1px solid var(--color-line); border-radius:12px; }
+.team-fold > summary { display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; list-style:none; padding:10px 14px; min-height:40px; font-weight:600; }
+.team-fold > summary::-webkit-details-marker { display:none; }
+.team-fold > summary::after { content:"+"; color:var(--color-muted); font-weight:400; }
+.team-fold[open] > summary::after { content:"\2013"; }
+@media (hover: hover) and (pointer: fine) { .team-fold > summary:hover { color:var(--c-heat-text); } }
+.team-fold-body { padding:0 14px 14px; }
+.team-fold .space-y-2 > .compact-menu-row { min-height:0; padding:6px 11px; border-radius:9px; }
+.posted-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+/* Verdict words and score chips follow the theme instead of one fixed shade. */
+.verdict-good { color:var(--c-good); }
+.verdict-bad { color:var(--c-danger); }
+/* The banner after a save or a mistake. Follows the theme instead of being always dark. */
+.notice { margin-bottom:1.25rem; border:1px solid; border-radius:12px; padding:1rem; font-size:var(--text-sm); }
+.notice.bad { background:var(--c-danger-bg); border-color:var(--c-danger-line); color:var(--c-danger); }
+.notice.good { background:var(--c-ok-bg); border-color:var(--c-ok-line); color:var(--c-ok); }
+.verdict-warn { color:var(--c-warning); }
+.score-good { background:var(--c-good-bg); color:var(--c-good); }
+.score-mid { background:var(--c-gold-bg); color:var(--c-gold); }
+.score-low { background:var(--c-danger-bg); color:var(--c-danger); }
+/* The sign-in panel stays dark in both themes, so the white type on it always reads. */
+.brand-aside { background:#141414; }
+/* Words to know: chips on the dish, and a bubble that explains one without leaving the card. */
+.word-chips { display:flex; flex-wrap:wrap; gap:7px; }
+/* inline-flex, so a chip with an icon in it keeps the icon beside the word rather than
+   stacking it above -- a button is not a flex container on its own. */
+.word-chip { display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;
+  border:1px solid var(--c-line-3); border-radius:999px; padding:5px 12px; min-height:32px; color:var(--c-text); font-size:var(--text-xs); }
+@media (hover: hover) and (pointer: fine) { .word-chip:hover { border-color:var(--c-heat); } }
+.word-chip[aria-pressed="true"] { background:var(--c-heat-bg); border-color:var(--c-heat); color:var(--c-heat-text); }
+/* A chip you cannot hand out, because you do not hold that area yourself.
+   Dashed rather than merely faded: this is a rule, not a page still loading. */
+.word-chip:disabled { cursor:default; opacity:.45; border-style:dashed; }
+.word-bubble { position:relative; margin-top:14px; padding:12px 14px; border:1px solid var(--c-line-3); border-radius:14px; background:var(--c-raised); font-size:var(--text-sm); line-height:1.55; }
+.word-bubble::before { content:""; position:absolute; top:-7px; left:24px; width:12px; height:12px; background:var(--c-raised); border-left:1px solid var(--c-line-3); border-top:1px solid var(--c-line-3); transform:rotate(45deg); }
+.word-say { font-family:var(--font-mono); font-size:var(--text-xs); letter-spacing:.04em; color:var(--c-heat-text); }
+/* A guide card shows the first few lines only; the rest is one tap away on the guide itself,
+   so every card in a row is the same height however long the wording underneath is. */
+.guide-blurb { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
+.word-note { font-size:var(--text-xs); color:var(--c-warning); }
+/* The number beside a step in a standard. It borrows the look of .word-say but not its
+   meaning -- that one is a pronunciation. Its own class, so changing one cannot move the other. */
+/* On while a manager is previewing as a server. Full width, quiet but impossible to miss,
+   and the whole bar is the way out -- nobody should have to hunt for the exit from a mode. */
+.preview-bar { display:flex; align-items:center; justify-content:center; gap:9px; width:100%;
+  padding:8px 14px; min-height:38px; background:var(--c-heat-bg-2); color:var(--c-danger-2);
+  font-size:var(--text-xs); letter-spacing:.02em; border-bottom:1px solid var(--c-heat); }
+.preview-bar-exit { font-weight:600; text-decoration:underline; text-underline-offset:3px; }
+@media (hover: hover) and (pointer: fine) { .preview-bar:hover { background:var(--c-heat-bg-3); } }
+.step-number { min-width:1.4rem; font-family:var(--font-mono); font-size:var(--text-xs); letter-spacing:.04em; color:var(--c-heat); }
+
+/* Tonight’s 86 board, wherever a dish appears. */
+.shift-flag { display:inline-block; margin-top:4px; padding:2px 8px; border-radius:999px; background:var(--c-heat-bg-2); color:var(--c-danger-2); font-family:var(--font-mono); font-size:var(--text-xs); letter-spacing:.04em; }
+.shift-flag.out { background:var(--c-heat-bg-3); color:var(--c-danger); font-weight:600; }
+
+/* The pre-shift board a server reads mid-service. Same pills a dish card already
+   uses for 86’d, grown to something a finger can land on while walking. */
+.board-focus { display:flex; flex-wrap:wrap; gap:7px; }
+.board-focus button { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--c-line-3);
+  border-radius:999px; padding:8px 14px; min-height:40px; font-size:var(--text-sm); font-weight:600; color:var(--c-text); }
+@media (hover: hover) and (pointer: fine) { .board-focus button:hover { border-color:var(--c-heat); } }
+/* Label in a left gutter rather than on its own line: one status is usually one pill,
+   and a whole row to introduce it costs more than it says. It also lines the pills up
+   in a column, which is what makes a ten-item Friday scannable. */
+.board-group { display:flex; align-items:flex-start; gap:10px; margin-bottom:7px; }
+.board-group > h3 { flex:none; width:88px; padding-top:13px; margin-bottom:0; }
+.board-group > div { flex:1; min-width:0; }
+.board-pills { display:flex; flex-wrap:wrap; gap:7px; }
+.board-pill { display:inline-flex; align-items:center; max-width:100%; min-height:40px; padding:8px 13px;
+  border-radius:999px; background:var(--c-heat-bg-2); color:var(--c-danger-2); font-family:var(--font-mono);
+  font-size:var(--text-xs); letter-spacing:.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.board-pill.out { background:var(--c-heat-bg-3); color:var(--c-danger); font-weight:600; }
+.board-pill.low { background:var(--c-gold-bg); color:var(--c-gold); }
+/* The dish was deleted after it went on the board. Nothing to open. */
+.board-pill:disabled { background:var(--c-raised); color:var(--c-text-3); font-style:italic; cursor:default; opacity:1; }
+.board-pill .dot { opacity:.55; margin:0 5px; }
+.board-pill .detail { font-weight:400; opacity:.85; overflow:hidden; text-overflow:ellipsis; }
+.not-taken-chip:focus-visible { outline:2px solid var(--c-heat); outline-offset:2px; }
+.compact-item { border-radius:12px; }
+
+.employee-avatar { display:flex; align-items:center; justify-content:center; width:36px; height:36px; flex-shrink:0; background:var(--c-heat-5); color:var(--c-on-heat); border-radius:50%; font-size:var(--text-xs); font-weight:700; }
+.score-pill { background:var(--c-heat-bg); color:var(--c-heat-text); border-radius:999px; padding:7px 10px; font-size:var(--text-xs); }
+.compact-menu-row { display:flex; align-items:center; gap:12px; padding:10px; min-height:72px; border-radius:10px; }
+@media (hover: hover) and (pointer: fine) { .compact-menu-row:hover { background:var(--c-surface-hover); border-color:var(--c-line-warm-2); } }
+.compact-menu-row:focus-visible { outline:2px solid var(--c-heat); outline-offset:2px; }
+.mobile-bottom-nav { display:none; }
+.item-detail article>img { aspect-ratio:1/1; }
+.item-detail article>div { padding:20px; }
+@media(max-width:767px) {
+ .app-header { position:sticky; top:0; z-index:30; }
+ .workspace-main { padding-bottom:24px; }
+ .mobile-bottom-nav { position:fixed; bottom:0; inset-inline:0; z-index:40; display:grid; grid-template-columns:repeat(5,1fr); border-top:1px solid var(--c-line); background:var(--c-surface); padding:8px 8px calc(8px + env(safe-area-inset-bottom)); }
+ .mobile-bottom-nav button { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; min-height:48px; color:var(--c-muted-5); font-size:var(--text-xs); }
+ .mobile-bottom-nav button[aria-current="page"] { color:var(--c-heat-text); }
+ .library-switch button { font-size:var(--text-xs); }
+}
+
+.menu-badges { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:4px; max-width:108px; flex-shrink:0; }
+.menu-badge { border-radius:4px; padding:4px; background:var(--c-danger-bg-4); color:var(--c-danger-3); font-size:var(--text-xs); letter-spacing:.03em; font-weight:700; }
+.menu-badge.cc { background:var(--c-gold-bg); color:var(--c-gold); }
+.menu-badge.unknown { background:var(--c-raised-3); color:var(--c-text-3); }
+.menu-badge.ok { background:var(--c-good-bg); color:var(--c-good); }
+.quiz-steps { display:flex; gap:4px; }
+.quiz-steps span { height:3px; flex:1; background:var(--c-raised-4); border-radius:2px; }
+.quiz-steps span.correct,.quiz-steps span.current { background:var(--c-good); }
+.quiz-steps span.incorrect { background:var(--c-heat-4); }
+.quiz-option { display:flex; align-items:center; gap:12px; width:100%; min-height:48px; border:1px solid var(--c-line-2); border-radius:10px; padding:12px; color:var(--c-text-2); text-align:left; font-size:var(--text-base); line-height:1.5; background:var(--c-surface); }
+.quiz-option:disabled { opacity:1; cursor:default; }
+.quiz-option.checking { border-color:var(--c-heat); }
+@media (hover: hover) and (pointer: fine) { .quiz-option:hover:not(:disabled) { border-color:var(--c-heat); } }
+.quiz-option.correct { background:var(--c-good-bg); border-color:var(--c-good); }
+.quiz-option.incorrect { background:var(--c-danger-bg-3); border-color:var(--c-heat-4); }
+.answer-letter { display:flex; align-items:center; justify-content:center; width:22px; height:24px; flex-shrink:0; border:1px solid var(--c-line-4); border-radius:5px; font-size:var(--text-xs); color:var(--c-muted-4); }
+.correct .answer-letter { background:var(--c-good); border-color:var(--c-good); color:var(--c-on-accent); }
+.incorrect .answer-letter { background:var(--c-heat-6); border-color:var(--c-heat-6); color:var(--c-on-accent); }
+.quiz-explanation { padding:14px; border-radius:10px; background:var(--c-warm-1); color:var(--c-muted-2); font-size:var(--text-base); line-height:1.6; }
+.quiz-option:focus-visible { outline:2px solid var(--c-heat); outline-offset:3px; }
+
+/* Readable, compact dish detail reference card. */
+.dish-facts{border-top:1px solid var(--color-line);margin-top:1.25rem;padding-top:1rem;display:grid;gap:.7rem}
+.dish-facts>div{display:grid;grid-template-columns:minmax(0,1fr);gap:.3rem}
+.dish-facts dt,.dish-allergens h3,.sauce-breakdown>h3{font-family:var(--font-mono);font-size:var(--text-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--color-muted);line-height:1.5}
+.dish-facts dd{font-size:var(--text-base);line-height:1.65;white-space:pre-line;overflow-wrap:anywhere}
+.dish-facts .dish-observation{color:var(--c-heat-text);font-weight:500}
+.dish-allergens{margin-top:1.1rem;border:1px solid var(--c-danger-line-3);border-radius:.7rem;background:var(--c-danger-bg-2);padding:.9rem;color:var(--c-danger)}
+.dish-allergens h3{color:var(--c-danger);font-weight:600}
+.dish-allergens ul{display:flex;flex-wrap:wrap;gap:.4rem .9rem;margin-top:.65rem;font-family:var(--font-mono);font-size:var(--text-xs);line-height:1.7}
+.dish-allergens li{overflow-wrap:anywhere}.dish-allergens .cross-contact{color:var(--c-gold-2)}
+.dish-allergen-help{margin-top:.8rem;color:var(--c-muted-3);font-size:var(--text-xs);line-height:1.6}
+.sauce-breakdown{border-top:1px solid var(--color-line);margin-top:1.1rem;padding-top:.9rem}
+.sauce-recipe{border-top:1px dashed var(--color-line);padding:.75rem 0}.sauce-breakdown>h3{margin-bottom:.4rem}
+.sauce-recipe h4{font-size:var(--text-base);font-weight:600;margin-bottom:.2rem}
+.sauce-recipe p{font-size:var(--text-base);line-height:1.65;color:var(--color-muted);white-space:pre-line;overflow-wrap:anywhere}
+.recipe-source{color:var(--color-muted);font-size:var(--text-xs);line-height:1.6;margin-top:.5rem}
+
+/* Shared hierarchy: 12px metadata, 14px reading text, 18px sections, 24px titles. */
+h1,h2,h3,h4 { font-family:var(--font-sans); font-weight:600; text-wrap:pretty; }
+p,dd,li { text-wrap:pretty; }
+input,textarea,select { font-family:var(--font-sans); font-size:1rem; line-height:1.5; }
+.btn,.nav-item,.category-nav,.allergy-choice,.library-switch button,.category-tabs button,.quiz-option,.quiz-explanation { font-family:var(--font-sans); font-size:var(--text-base); line-height:1.6; }
+.dish-facts dt,.dish-allergens h3,.sauce-breakdown>h3,.recipe-source { font-family:var(--font-mono); font-size:var(--text-xs); font-weight:500; letter-spacing:.06em; }
+.dish-facts dd,.dish-allergen-help,.sauce-recipe p,.sauce-recipe h4 { font-size:var(--text-base); line-height:1.6; }
+.dish-allergens ul { font-family:var(--font-sans); font-size:var(--text-base); line-height:1.6; }
+.dish-allergens li strong,.menu-badge,.answer-letter { font-family:var(--font-mono); font-size:var(--text-xs); font-weight:600; }
+.dish-facts,.sauce-breakdown { margin-top:1.25rem; padding-top:1rem; }
+.dish-facts { gap:1rem; }.dish-facts dd { margin:0; }.sauce-recipe { padding:1rem 0; }
+.item-detail article>div { padding:20px; }.item-detail h2 { line-height:1.3; }
+.menu-badges { max-width:116px; }.menu-badge { padding:3px 4px; }
+
+/* Capitalization is presentation only; manager inputs and stored recipes retain their text. */
+/* Names read as typed. Uppercase belongs to the small mono labels, where it still scans. */
+.grid > .compact-menu-row > span:first-of-type > span:last-child { text-transform: uppercase; }
+
+/* Horizontal drags on a card are ours to read as a swipe; vertical scrolling and pinch
+   stay with the browser, which is what keeps reading a long card feeling normal. */
+.item-detail { touch-action: pan-y pinch-zoom; }
+.card-navigation { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:12px; margin:16px 0; }
+.card-navigation .btn { padding:10px 12px; font-size:var(--text-base); }
+.card-navigation .btn:disabled { opacity:.35; cursor:default; }
+.card-navigation>span { white-space:nowrap; text-align:center; }
+.card-navigation .btn:first-child { justify-self:start; }
+.card-navigation .btn:last-child { justify-self:end; }
+@media(max-width:360px) { .card-navigation .btn { padding:10px 8px; gap:4px; } }
+
+.item-detail .quiz-cta { min-height:40px; padding:8px 14px; font-size:var(--text-base); line-height:1.5; }
+.item-detail>.quiz-cta { display:flex; width:fit-content; max-width:100%; margin-inline:auto; text-align:center; }
+
+.card-navigation .btn { width:44px; height:44px; min-height:44px; padding:0; justify-content:center; }
+
+
+/* Compact search field shared by the food and cocktail libraries. */
+#content-search {
+  height: 40px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-color: var(--c-line-3);
+  font-size: 14px;
+  line-height: 22px;
+}
+#content-search::placeholder { font-size: 14px; color: var(--c-muted-6); }
+/* Keep mobile text entry from triggering browser zoom. */
+@media (max-width: 767px) {
+  #content-search:focus { font-size: 16px; }
+}
+/* ─────────────────────────────────────────────────────────────────────
+   HEAT · photo-first content library
+   Scoped to the library grid only. .compact-menu-row is also used by the
+   Team roster, "Needs reinforcing" and "Not opened yet" lists, which must
+   stay as plain rows — so every rule below is anchored to `.grid >`.
+   ───────────────────────────────────────────────────────────────────── */
+
+/* The library list becomes a grid of cards.
+   align-items: stretch is what makes cards in the same row flush. */
+div.grid:has(> .compact-menu-row) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+@media (min-width: 640px) {
+  div.grid:has(> .compact-menu-row) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  div.grid:has(> .compact-menu-row) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 1440px) {
+  div.grid:has(> .compact-menu-row) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+/* Each library row becomes a card: the plate on top, the words underneath. */
+.grid > .compact-menu-row {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  min-height: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* The 48px thumbnail becomes a photo you can recognise at arm's length. */
+.grid > .compact-menu-row > img {
+  width: 100%;
+  height: 100px;
+  border-radius: 0;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+/* The fallback icon, for an item with no photo yet. */
+.grid > .compact-menu-row > svg {
+  width: 100%;
+  height: 100px;
+  padding: 0;
+  background: var(--c-bg-sunken);
+  color: var(--c-line-5);
+  flex-shrink: 0;
+}
+
+/* Name, then the category / price line. */
+.grid > .compact-menu-row > span:first-of-type {
+  flex-grow: 0;
+  padding: 8px 10px 0;
+}
+.grid > .compact-menu-row > span:first-of-type > span:last-child {
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The quiz score moves onto the photo, top right, so it stops adding a
+   line to some cards and not others. Matched on its aria-label because
+   CardQuizScore carries no class of its own. */
+.grid > .compact-menu-row [aria-label^="Your last quiz score"] {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+}
+
+/* Allergen codes pinned to the bottom edge of every card. margin-top:auto
+   keeps them level across a row when one name wraps and another does not.
+   align-items:center puts the "+4" on the same centre line as the codes. */
+.grid > .compact-menu-row > .menu-badges {
+  justify-content: flex-start;
+  align-items: center;
+  max-width: none;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  margin-top: auto;
+  padding: 7px 10px 9px;
+  line-height: 1;
+}
+
+/* A dish photo that leaves room for the name and the allergens on a phone. */
+.item-detail article > img {
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+/* Team lists: a row holding only a label does not need the 72px height that
+   the library rows needed for their thumbnail. Rows with an avatar (the
+   roster) keep it. */
+.space-y-2 > .compact-menu-row:not(:has(.employee-avatar)) {
+  min-height: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+}
+
+/* Assign study: a tick list instead of a Command-click multi-select. */
+.assign-picker {
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--c-bg-sunken);
+  border: 1px solid var(--c-line-5);
+  border-radius: 10px;
+  padding: 6px;
+}
+.assign-picker-heading {
+  position: sticky;
+  top: -6px;
+  z-index: 1;
+  margin: 0;
+  padding: 8px 8px 6px;
+  background: var(--c-bg-sunken);
+}
+.assign-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: var(--text-base);
+  font-weight: 400;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) { .assign-option:hover { background: var(--c-surface-2); } }
+.assign-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+/* Manager-only actions at the foot of a dish card. Separated from the
+   guest-facing QUIZ ME button, full 44px touch targets, and Delete marked
+   as destructive without shouting. */
+.card-admin {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-line);
+}
+.card-admin-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Four buttons across one row on a phone: Edit quiz, Edit dish, Download, Delete.
+   The minimum is 72px rather than 0 so that on a phone too narrow for four (under
+   about 345px) they wrap to two rows instead of squeezing the labels off the end. */
+.card-admin-actions > .btn {
+  flex: 1 1 0;
+  min-width: 72px;
+  min-height: 44px;
+  padding: 10px 6px;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+/* The delete confirmation panel takes the full width instead of one column. */
+.card-admin-actions > section { flex-basis: 100%; }
+.card-admin-danger { color: var(--c-danger); border-color: var(--c-danger-line); }
+@media (hover: hover) and (pointer: fine) { .card-admin-danger:hover { background: var(--c-danger-bg); border-color: var(--c-danger-line-2); } }
+
+/* Words screen (manager): one row per word, actions wrap under on phones. */
+.word-row { display:flex; flex-wrap:wrap; align-items:flex-start; gap:12px; padding:14px 16px; border-radius:10px; }
+.word-row.is-hidden { opacity:.6; }
+.word-deleted { margin-top:16px; padding:14px 16px; border-radius:10px; }
+.word-deleted summary { cursor:pointer; }
+.word-deleted .word-row { padding:8px 0; align-items:center; }
+.word-kind { margin-left:6px; padding:2px 8px; border-radius:999px; border:1px solid var(--c-line-2); font-family:var(--font-mono); font-size:10px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; color:var(--c-muted); vertical-align:middle; }
+.word-kind.edited, .word-kind.yours { color:var(--c-heat-text); border-color:var(--c-heat); }
+.word-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.word-actions .btn { min-height:36px; padding:6px 11px; font-size:var(--text-xs); }
+@media (max-width: 767px) {
+  .word-row > :first-child { flex:0 0 100%; overflow-wrap:anywhere; }
+  .word-row > .word-actions { width:100%; }
+}
+
+
+/* Phones: the menu opens right under the header wherever you are on the page,
+   instead of at the very top of it. It scrolls on its own if it is taller than the screen. */
+@media (max-width: 767px) {
+  .mobile-drawer { position:fixed; left:0; right:0; top:var(--header-h, 64px); bottom:0; z-index:25; overflow-y:auto; overscroll-behavior:contain; box-shadow:0 18px 40px rgb(0 0 0 / .35); }
+}
+
+/* Appearance switch in the sidebar: three equal buttons that always fit, no scroll bar. */
+.theme-choice .category-tabs { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:4px; overflow:visible; padding-bottom:0; }
+.theme-choice .category-tabs button { flex-shrink:1; min-width:0; padding:4px 0; min-height:30px; text-align:center; }
+
+/* Progress bars: ember fill on a soft track in both themes (Safari ignores accent-color). */
+progress { -webkit-appearance:none; appearance:none; border:0; border-radius:999px; overflow:hidden; background:var(--c-line-2); color:var(--c-heat); }
+progress::-webkit-progress-bar { background:var(--c-line-2); border-radius:999px; }
+progress::-webkit-progress-value { background:var(--c-heat); border-radius:999px; }
+progress::-moz-progress-bar { background:var(--c-heat); border-radius:999px; }
+
+/* HEAT logo assets: follow the existing explicit/system theme selectors. */
+.heat-logo { display:inline-block; width:112px; height:42px; flex-shrink:0; vertical-align:middle; }
+.heat-logo img { display:block; width:100%; height:100%; object-fit:contain; }
+.heat-logo .heat-logo-on-light { display:none; }
+:root[data-theme="light"] .heat-logo-on-dark { display:none; }
+:root[data-theme="light"] .heat-logo-on-light { display:block; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .heat-logo-on-dark { display:none; }
+  :root:not([data-theme="dark"]) .heat-logo-on-light { display:block; }
+}
+/* The existing sign-in brand panel has a fixed dark background in every theme. */
+:root .brand-aside .heat-logo-on-dark { display:block; }
+:root .brand-aside .heat-logo-on-light { display:none; }
+.heat-icon { display:block; width:28px; height:28px; object-fit:contain; }
+/* The header mark is a black SVG; dark mode (the default) flips it to white. */
+.heat-icon { filter: invert(1); }
+:root[data-theme="light"] .heat-icon { filter: none; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .heat-icon { filter: none; }
+}
+
+/* Use a readable coral shade for small text in each theme. */
+.text-heat { color: var(--c-heat-text); }
+
+/* Cream lettering and inherited icons on coral buttons in light mode. */
+:root[data-theme="light"] .btn:not(.secondary),
+:root[data-theme="light"] .library-switch button[aria-pressed="true"],
+:root[data-theme="light"] button.allergy-choice.selected {
+  color: #f4f4f1;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .btn:not(.secondary),
+  :root:not([data-theme="dark"]) .library-switch button[aria-pressed="true"],
+  :root:not([data-theme="dark"]) button.allergy-choice.selected {
+    color: #f4f4f1;
+  }
+}
+
+/* White lettering on coral buttons in dark mode. */
+:root[data-theme="dark"] .btn:not(.secondary),
+:root[data-theme="dark"] button.allergy-choice.selected {
+  color: #0e0e0e;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .btn:not(.secondary),
+  :root:not([data-theme="light"]) button.allergy-choice.selected {
+    color: #0e0e0e;
+  }
+}
+
+/* Blend the light header with the cream page background. */
+:root[data-theme="light"] .app-header { background:var(--c-bg); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .app-header { background:var(--c-bg); }
+}
+
+/* Lighter cream category buttons, with the existing dark selected state. */
+:root[data-theme="light"] .category-tabs button[aria-pressed="false"] { background:var(--c-surface); color:var(--c-text); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .category-tabs button[aria-pressed="false"] { background:var(--c-surface); color:var(--c-text); }
+}
+
+/* A phone has no pointer to move away, so a hover style would stay stuck on the last thing
+   touched. Hover lives above, behind a real-pointer query; touch gets a press shade instead. */
+@media (hover: none) {
+  /* A press shade must never repaint something that is already chosen: it would wipe the
+     coral fill and leave the coral border and lettering behind, which reads as a broken chip. */
+  .category-tabs button:not([aria-pressed="true"]):active, .not-taken-chip:active, .word-chip:not([aria-pressed="true"]):active, .icon-chip:active { background:var(--c-raised); }
+  .compact-menu-row:active, .assign-option:active, .allergy-choice:not(.selected):active, .nav-item:active, .category-nav:active, .category-card:active { background:var(--c-surface-hover); }
+  /* Chosen things darken instead, keeping their own colour. */
+  .allergy-choice.selected:active, .category-tabs button[aria-pressed="true"]:active, .word-chip[aria-pressed="true"]:active { filter:brightness(.94); }
+  .quiz-option:active:not(:disabled) { background:var(--c-surface-2); }
+  .btn:active { filter:brightness(.94); }
+}
+
+/* ---- Monochrome look -------------------------------------------------------
+   Colour is gone; meaning is carried by fill, outline, symbol and words.
+   Dark tile = needs attention. Dashed outline = cross-contact / low.
+   Hatched or struck-through = wrong. Everything below overrides the
+   colour tokens above for the places that used hue to tell states apart. */
+.allergy-card.is-avoid::before, .allergy-mark.is-avoid { background: var(--c-text); }
+.allergy-card.is-cross-contact::before { background: color-mix(in srgb, var(--c-text) 55%, var(--c-bg)); }
+.allergy-mark.is-cross-contact { background: color-mix(in srgb, var(--c-text) 68%, var(--c-bg)); }
+.allergy-card.is-unknown::before { background: color-mix(in srgb, var(--c-text) 30%, var(--c-bg)); }
+.allergy-mark.is-unknown { background: color-mix(in srgb, var(--c-text) 48%, var(--c-bg)); }
+.allergy-card.is-no-match::before { background: color-mix(in srgb, var(--c-text) 12%, var(--c-bg)); }
+.allergy-mark.is-no-match { background: var(--c-text); }
+.allergy-mark { color: var(--c-bg); }
+/* Done check on the study list, and any progress bar: ink, not green or orange. */
+.quiz-chip.done { background: var(--c-text); color: var(--c-bg); }
+progress { accent-color: var(--c-text); }
+.menu-badge.cc { border: 1px dashed var(--c-text); }
+.board-pill.out, .shift-flag.out, .score-low { background: var(--c-text); color: var(--c-bg); }
+.board-pill.low { border: 1px dashed var(--c-text); }
+.quiz-steps span.current { background: color-mix(in srgb, var(--c-text) 40%, var(--c-bg)); }
+.quiz-steps span.incorrect { background: repeating-linear-gradient(45deg, var(--c-text) 0 2px, transparent 2px 4px); box-shadow: inset 0 0 0 1px var(--c-text); }
+.quiz-option.correct { border-width: 2px; border-color: var(--c-text); }
+.quiz-option.incorrect { border-style: dashed; border-color: var(--c-text); text-decoration: line-through; }
+.incorrect .answer-letter { background: transparent; border-color: var(--c-text); color: var(--c-text); }
+/* Selected tab in the library (Food / Cocktails / Wine & Sake): lettering follows the fill. */
+.library-switch button[aria-pressed="true"] { color: var(--c-on-heat); }
+/* Status stripe on allergy cards removed: the mark on the right already says the status. */
+.allergy-card.allergy-card::before { display: none; }
+.allergy-card.allergy-card { padding-left: 12px; }
+/* "Not posted yet" badge on the pre-shift card: round like the buttons. */
+.posted-head .menu-badge { border-radius: 999px; padding: 4px 12px; }
+/* "Not posted yet" label: a pill like the other buttons and chips. */
+.menu-badge.cc.shrink-0 { border-radius: 999px; padding: 5px 12px; }
+/* Every button-like control is round: allergy code tags, quiz answer letters, menu rows. */
+.menu-badge { border-radius: 999px; padding: 4px 9px; }
+.answer-letter { border-radius: 50%; }
+.nav-item { border-radius: 999px; }
+/* Everything is round. Single-line fields and controls are full pills; multi-line cards and panels get a large radius so text never fights the curve. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, #content-search { border-radius: 999px; padding-inline: 18px; }
+textarea { border-radius: 20px; }
+.assign-option { border-radius: 999px; }
+.quiz-option { border-radius: 28px; }
+.panel, .study-reminder, .allergy-card, .team-fold, .notice, .word-bubble, .compact-item, .about-kero { border-radius: 24px; }
+.compact-menu-row, .grid > .compact-menu-row, .team-fold .space-y-2 > .compact-menu-row, .space-y-2 > .compact-menu-row:not(:has(.employee-avatar)) { border-radius: 24px; }
+.quiz-explanation, .assign-picker, .word-row, .word-deleted, .dish-allergens { border-radius: 20px; }
+/* Header search: a full-screen layer with a pill field and a list of matches. */
+.menu-search { position: fixed; inset: 0; z-index: 60; overflow-y: auto; overscroll-behavior: contain; background: var(--c-bg); color: var(--c-text); }
+.menu-search-bar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--c-bg); border-bottom: 1px solid var(--c-line); }
+.menu-search-field { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
+.menu-search-field input { width: 100%; min-height: 46px; }
+.menu-search-lens { position: absolute; left: 16px; pointer-events: none; color: var(--c-muted); }
+.menu-search-clear { position: absolute; right: 10px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--c-raised); color: var(--c-text); }
+.menu-search-cancel { padding: 10px 6px; font-weight: 600; color: var(--c-text); }
+.menu-search-hint { padding: 18px 20px; font-size: var(--text-sm); }
+.menu-search-count { padding: 16px 20px 8px; }
+.menu-search-results { margin: 0 16px 24px; border: 1.5px solid var(--c-line); border-radius: 24px; overflow: hidden; background: var(--c-surface); }
+.menu-search-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; text-align: left; color: var(--c-text); }
+.menu-search-row + .menu-search-row { border-top: 1px solid color-mix(in srgb, var(--c-line) 35%, transparent); }
+.menu-search-thumb { width: 46px; height: 46px; flex: none; border-radius: 12px; object-fit: cover; background: var(--c-raised); }
+/* Library switch (Food / Cocktails / Wine & Sake): a solid track with the chosen option as a light pill inside it. */
+:root:root:root:root .library-switch { background: var(--c-text); padding: 5px; gap: 4px; border-radius: 999px; }
+:root:root:root:root .library-switch button { background: transparent; color: var(--c-bg); }
+:root:root:root:root .library-switch button[aria-pressed="true"] { background: var(--c-bg); color: var(--c-text); }
+/* A chosen chip is a solid black pill (white in dark mode), like the allergy buttons: access chips on the Team screen, and Words to know. */
+.word-chip[aria-pressed="true"] { background: var(--c-text); border-color: var(--c-text); color: var(--c-bg); }
+
+/* Manager pickers: type-to-find dish names (Assign study, Focus items, 86 board). */
+.dish-picker-field { position: relative; display: flex; align-items: center; margin-bottom: 10px; }
+.dish-picker-field input { width: 100%; min-height: 46px; }
+.dish-picker-lens { position: absolute; left: 16px; pointer-events: none; color: var(--c-muted); }
+.dish-picker-results { margin-top: 8px; border: 1.5px solid var(--c-line); border-radius: 22px; overflow: hidden; background: var(--c-surface); }
+.dish-picker-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 16px; text-align: left; color: var(--c-text); }
+.dish-picker-row + .dish-picker-row { border-top: 1px solid color-mix(in srgb, var(--c-line) 35%, transparent); }
+.dish-picker-row:disabled { opacity: .6; cursor: default; }
+.dish-picker-more, .dish-picker-empty { padding: 10px 16px; font-size: var(--text-sm); }
+.dish-picker-field + .dish-picker-results { margin-top: -2px; }
+.dish-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.dish-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--c-text); color: var(--c-bg); border-radius: 999px; padding: 6px 10px 6px 14px; font-size: 13px; font-weight: 600; }
+
+/* Quiz score tag on dish cards: fully round like every other tag. */
+.score-good, .score-mid, .score-low { border-radius: 999px; padding: 4px 11px; }
+
+/* Status colors: cobalt = passed / done, orange = needs attention. Used only for status, nowhere else. */
+:root { --c-pass: #4ade80; --c-pass-bg: #0f2e1b; --c-fail: #ff4d3d; --c-fail-bg: #3d1411; }
+:root[data-theme="light"] { --c-pass: #17803f; --c-pass-bg: #d9f0e1; --c-fail: #d42a1c; --c-fail-bg: #fbdcd8; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --c-pass: #17803f; --c-pass-bg: #d9f0e1; --c-fail: #d42a1c; --c-fail-bg: #fbdcd8; } }
+:root .score-good { background: var(--c-pass-bg); color: var(--c-pass); border: 1.5px solid var(--c-pass); }
+:root .score-good::before { content: "\2713\00a0"; }
+:root .score-mid { background: var(--c-fail-bg); color: var(--c-fail); border: 1.5px solid var(--c-fail); }
+:root .score-low { background: var(--c-fail); color: var(--c-bg); border: 1.5px solid var(--c-fail); }
+:root .quiz-chip.done { background: var(--c-pass); color: var(--c-bg); border-radius: 999px; }
+:root .board-pill.out, :root .shift-flag.out { background: var(--c-fail); color: var(--c-bg); }
+:root .menu-badge.ok { background: var(--c-pass-bg); color: var(--c-pass); border: 1.5px solid var(--c-pass); }
+:root .team-fold-body li .menu-badge.cc { background: var(--c-fail-bg); color: var(--c-fail); border: 1.5px solid var(--c-fail); }
+
+/* Quiz answers: only the letter circle takes the color. */
+:root .quiz-option.correct .answer-letter { background: var(--c-pass); border-color: var(--c-pass); color: var(--c-bg); }
+:root .quiz-option.incorrect .answer-letter { background: var(--c-fail); border-color: var(--c-fail); color: var(--c-bg); }
+
+/* Wrong answer: strike through the words only, never the letter circle. */
+:root .quiz-option.incorrect { text-decoration: none; }
+:root .quiz-option.incorrect > span:not(.answer-letter):not(.sr-only) { text-decoration: line-through; }
+/* Home: the "your manager asked you to study" card, tighter. */
+[aria-label="Study assignments"].panel { padding: 14px 16px; margin-bottom: 20px; }
+[aria-label="Study assignments"] h2 { font-size: 1rem; line-height: 1.3; }
+[aria-label="Study assignments"] ul { margin-top: 10px; }
+[aria-label="Study assignments"] .compact-menu-row { min-height: 46px; padding: 8px 14px; }
+
+/* Home (employee): tighter cards, same content. */
+.study-reminder { padding: 16px 18px; }
+.study-reminder h2 { margin-top: 6px; font-size: 1.1rem; line-height: 1.3; }
+.study-reminder p.muted { margin-top: 6px; }
+.study-reminder .btn { margin-top: 12px; }
+[aria-label="Study summary"] { margin-block: 16px; gap: 8px; }
+[aria-label="Study summary"] > .panel { padding: 10px 14px; }
+[aria-label="Study summary"] > .panel > p:first-child { font-size: 1.35rem; line-height: 1.2; }
+[aria-label="Study summary"] > .panel > p + p { margin-top: 2px; }
+.grid > section.panel:has(> progress) { padding: 12px 16px; }
+.grid > section.panel:has(> progress) > progress { margin-top: 8px; }
+.grid > section.panel:has(> progress) > p { margin-top: 6px; }
+
+/* Home: the Edit name pencil is a round outlined button. */
+.name-edit { display: grid; place-items: center; width: 38px; height: 38px; border: 1.5px solid var(--c-text); border-radius: 50%; color: var(--c-text); background: transparent; }
+
+/* Still to study: three equal segments, name on top, count underneath. */
+:root .study-switch button { flex: 1 1 0; min-width: 0; white-space: nowrap; line-height: 1.25; padding-block: 8px; }
+.study-switch-count { font-size: 11px; font-weight: 600; opacity: .75; }
+
+/* The HEAT mark in the header is a plain button that goes Home. */
+:root .header-home { display: inline-flex; align-items: center; min-height: 0; min-width: 0; padding: 4px; margin: -4px; background: transparent; border: 0; border-radius: 12px; color: inherit; cursor: pointer; }
+
+/* Progress and Review: same tighter cards as Home. */
+.my-6[aria-label="Your learning progress"] { padding: 14px 16px; margin-block: 16px; }
+.my-6[aria-label="Your learning progress"] > h2 { font-size: 1rem; line-height: 1.3; }
+.my-6[aria-label="Your learning progress"] > p { margin-top: 6px; font-size: .8125rem; line-height: 1.45; }
+.my-6[aria-label="Your learning progress"] > div { margin-top: 12px; gap: 12px; }
+.my-6[aria-label="Your learning progress"] progress { margin-top: 6px; }
+.my-6[aria-label="Your learning progress"] > div > div > p { margin-top: 4px; }
+.review-empty { padding: 14px 16px; }
+.review-empty p.muted { margin-top: 4px; }
+.review-empty .btn { margin-top: 10px; }
+
+
+/* "How this is counted" button and the sign-out confirmation */
+.count-info { margin-top: 10px; }
+.count-info-btn { display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 1.5px solid var(--c-line-5); background: var(--c-surface); color: var(--c-text); cursor: pointer; }
+.count-info-i { font: italic 700 .8rem/1 Georgia, serif; }
+.count-info-text { margin-top: 8px; padding: 10px 14px; border: 1px solid var(--c-line-5); border-radius: 16px; background: var(--c-surface-2); color: var(--c-muted); font-size: .75rem; line-height: 1.5; }
+.confirm-scrim { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .55); }
+.confirm-card { width: 100%; max-width: 320px; padding: 18px; background: var(--c-surface); border: 1.5px solid var(--c-line); border-radius: 24px; }
+.confirm-card h2 { font-size: 1.0625rem; font-weight: 700; line-height: 1.3; }
+.confirm-card p { margin-top: 4px; font-size: .8125rem; line-height: 1.45; }
+.confirm-actions { display: flex; gap: 8px; margin-top: 16px; }
+.confirm-actions .btn { flex: 1 1 0; min-height: 36px; padding: 6px 10px; font-size: .8125rem; }
+
+
+/* Standards list: tighter rows */
+:root .sop-row { padding: 9px 14px; gap: 0; }
+.sop-row .font-semibold { font-size: .9375rem; line-height: 1.3; }
+.sop-row .text-sm { margin-top: 2px; font-size: .8125rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sop-row .text-xs { margin-top: 3px; }
+
+
+/* Home: one even gap between blocks */
+:root [aria-label="Study summary"] { margin-block: 0 12px; }
+:root [aria-label="Study assignments"].panel { margin-bottom: 14px; }
+
+
+/* Progress bars: a visible empty track, so a half-done bar looks half-done in both themes */
+:root progress { background: color-mix(in srgb, var(--c-text) 14%, transparent); }
+:root progress::-webkit-progress-bar { background: color-mix(in srgb, var(--c-text) 14%, transparent); }
+
+
+/* Text boxes: one clean ring when focused (was a gray border with a black ring outside it) */
+:root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus-visible,
+:root textarea:focus-visible,
+:root select:focus-visible { border-color: var(--c-heat); outline: 1px solid var(--c-heat); outline-offset: -1px; }
+
+
+/* Pre-shift board chips: Focus (green) and 86'd (red) share one size and the score-badge look:
+   light fill, same-colour outline and text. */
+:root .board-focus button { min-height: 36px; padding: 6px 13px; gap: 6px; background: var(--c-pass-bg); color: var(--c-pass); border: 1.5px solid var(--c-pass); font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: .04em; font-weight: 600; }
+:root .board-focus button:hover { border-color: var(--c-pass); }
+:root .board-focus button .text-heat { color: var(--c-pass); }
+:root .board-pill { min-height: 36px; padding: 6px 13px; }
+:root .board-pill.out, :root .shift-flag.out { background: var(--c-fail-bg); color: var(--c-fail); border: 1.5px solid var(--c-fail); }
+
+
+/* Home: the "Your next step" card matches the other cards (same fill, same black outline). */
+:root .study-reminder { background: var(--c-surface); border: 1px solid var(--c-line); }
+
+/* Brand colors: Asphalt #302f2c and Paper #efede3. To go back, revert the commit that added this block. */
+:root{--c-bg:#302f2c;--c-bg-sunken:#2a2926;--c-surface:#3a3935;--c-surface-2:#363531;--c-surface-3:#3d3c38;--c-surface-hover:#454440;--c-raised:#413f3b;--c-raised-2:#4c4a45;--c-raised-3:#4f4d48;--c-raised-4:#55534e;--c-ink:#2a2926;--c-warm-1:#363531;--c-warm-2:#3a3935;--c-line:#efede3;--c-line-2:#efede3;--c-line-3:#efede3;--c-line-4:#efede3;--c-line-5:#77756e;--c-line-warm:#6b6962;--c-line-warm-2:#7a786f;--c-text:#efede3;--c-text-2:#e6e4d9;--c-text-3:#d6d4c9;--c-muted:#aeaca2;--c-muted-2:#aeaca2;--c-muted-3:#a9a79d;--c-muted-4:#aeaca2;--c-muted-5:#a19f95;--c-muted-6:#98968c;--c-on-accent:#302f2c;--c-heat:#efede3;--c-heat-text:#efede3;--c-heat-2:#efede3;--c-heat-3:#d2d0c6;--c-heat-4:#c6c4ba;--c-heat-5:#efede3;--c-heat-6:#8c8a82;--c-on-heat:#302f2c;--c-heat-bg:#3b3a36;--c-heat-bg-2:#403f3b;--c-heat-bg-3:#494843;--c-invert-bg:#efede3;--c-invert-text:#302f2c;--c-danger:#efede3;--c-danger-2:#e2e0d6;--c-danger-3:#e2e0d6;--c-danger-bg:#3a3935;--c-danger-bg-2:#3a3935;--c-danger-bg-3:#3b3a36;--c-danger-bg-4:#403f3b;--c-danger-line:#6b6962;--c-danger-line-2:#7a786f;--c-danger-line-3:#efede3;--c-ok:#efede3;--c-ok-bg:#3a3935;--c-ok-line:#6b6962;--c-warning:#d6d4c9;--c-warning-bg:#3a3935;--c-warning-line:#6b6962;--c-gold:#e2e0d6;--c-gold-2:#c6c4ba;--c-gold-bg:#3b3a36;--c-good:#efede3;--c-good-2:#c6c4ba;--c-good-bg:#3b3a36;}
+:root[data-theme="light"]{--c-bg:#efede3;--c-bg-sunken:#e6e4d9;--c-surface:#f6f4ec;--c-surface-2:#ebe9df;--c-surface-3:#e6e4da;--c-surface-hover:#e0ded3;--c-raised:#dedcd1;--c-raised-2:#d5d3c8;--c-raised-3:#d5d3c8;--c-raised-4:#cecbc0;--c-ink:#f6f4ec;--c-warm-1:#ebe9df;--c-warm-2:#e6e4da;--c-line:#302f2c;--c-line-2:#302f2c;--c-line-3:#302f2c;--c-line-4:#302f2c;--c-line-5:#aeaca2;--c-line-warm:#b8b6ab;--c-line-warm-2:#a5a398;--c-text:#302f2c;--c-text-2:#2a2926;--c-text-3:#3a3935;--c-muted:#6b6a62;--c-muted-2:#6b6a62;--c-muted-3:#6e6d65;--c-muted-4:#6b6a62;--c-muted-5:#716f67;--c-muted-6:#77756d;--c-on-accent:#efede3;--c-heat:#302f2c;--c-heat-text:#302f2c;--c-heat-2:#302f2c;--c-heat-3:#4a4944;--c-heat-4:#5a5954;--c-heat-5:#302f2c;--c-heat-6:#77756d;--c-on-heat:#efede3;--c-heat-bg:#e3e1d6;--c-heat-bg-2:#dedcd1;--c-heat-bg-3:#d8d6cb;--c-invert-bg:#302f2c;--c-invert-text:#efede3;--c-danger:#302f2c;--c-danger-2:#3a3935;--c-danger-3:#3a3935;--c-danger-bg:#e3e1d6;--c-danger-bg-2:#e3e1d6;--c-danger-bg-3:#dedcd1;--c-danger-bg-4:#dad8cd;--c-danger-line:#b3b1a5;--c-danger-line-2:#9d9b90;--c-danger-line-3:#302f2c;--c-ok:#302f2c;--c-ok-bg:#e3e1d6;--c-ok-line:#b3b1a5;--c-warning:#3a3935;--c-warning-bg:#e3e1d6;--c-warning-line:#b3b1a5;--c-gold:#3a3935;--c-gold-2:#4a4944;--c-gold-bg:#dad8cd;--c-good:#302f2c;--c-good-2:#4a4944;--c-good-bg:#dad8cd;}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--c-bg:#efede3;--c-bg-sunken:#e6e4d9;--c-surface:#f6f4ec;--c-surface-2:#ebe9df;--c-surface-3:#e6e4da;--c-surface-hover:#e0ded3;--c-raised:#dedcd1;--c-raised-2:#d5d3c8;--c-raised-3:#d5d3c8;--c-raised-4:#cecbc0;--c-ink:#f6f4ec;--c-warm-1:#ebe9df;--c-warm-2:#e6e4da;--c-line:#302f2c;--c-line-2:#302f2c;--c-line-3:#302f2c;--c-line-4:#302f2c;--c-line-5:#aeaca2;--c-line-warm:#b8b6ab;--c-line-warm-2:#a5a398;--c-text:#302f2c;--c-text-2:#2a2926;--c-text-3:#3a3935;--c-muted:#6b6a62;--c-muted-2:#6b6a62;--c-muted-3:#6e6d65;--c-muted-4:#6b6a62;--c-muted-5:#716f67;--c-muted-6:#77756d;--c-on-accent:#efede3;--c-heat:#302f2c;--c-heat-text:#302f2c;--c-heat-2:#302f2c;--c-heat-3:#4a4944;--c-heat-4:#5a5954;--c-heat-5:#302f2c;--c-heat-6:#77756d;--c-on-heat:#efede3;--c-heat-bg:#e3e1d6;--c-heat-bg-2:#dedcd1;--c-heat-bg-3:#d8d6cb;--c-invert-bg:#302f2c;--c-invert-text:#efede3;--c-danger:#302f2c;--c-danger-2:#3a3935;--c-danger-3:#3a3935;--c-danger-bg:#e3e1d6;--c-danger-bg-2:#e3e1d6;--c-danger-bg-3:#dedcd1;--c-danger-bg-4:#dad8cd;--c-danger-line:#b3b1a5;--c-danger-line-2:#9d9b90;--c-danger-line-3:#302f2c;--c-ok:#302f2c;--c-ok-bg:#e3e1d6;--c-ok-line:#b3b1a5;--c-warning:#3a3935;--c-warning-bg:#e3e1d6;--c-warning-line:#b3b1a5;--c-gold:#3a3935;--c-gold-2:#4a4944;--c-gold-bg:#dad8cd;--c-good:#302f2c;--c-good-2:#4a4944;--c-good-bg:#dad8cd;}}
+:root[data-theme="light"] .btn:not(.secondary),:root[data-theme="light"] button.allergy-choice.selected{color:var(--c-on-heat)}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .btn:not(.secondary),:root:not([data-theme="dark"]) button.allergy-choice.selected{color:var(--c-on-heat)}}
+:root[data-theme="dark"] .btn:not(.secondary),:root[data-theme="dark"] button.allergy-choice.selected{color:var(--c-on-heat)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn:not(.secondary),:root:not([data-theme="light"]) button.allergy-choice.selected{color:var(--c-on-heat)}}
+
+/* Allergy results: the tick is green and the cross is red, the same two colors as passed and needs-attention. */
+:root .allergy-mark.is-no-match { background: var(--c-pass); }
+:root .allergy-mark.is-avoid { background: var(--c-fail); }
+
+/* Pre-shift board: one height for every field, tighter cards, Status + Detail + Add on one line.
+   Text inside fields stays 16px on purpose: smaller makes iPhones zoom the page when a field is tapped. */
+.preshift .panel { padding: 16px; margin-bottom: 16px; }
+.preshift label { font-size: 13px; margin-bottom: 5px; }
+.preshift label.mt-5 { margin-top: 10px; }
+.preshift .field { margin-bottom: 0; }
+.preshift .dish-picker-field { margin-bottom: 6px; }
+.preshift input:not([type="checkbox"]), .preshift select { height: 40px; min-height: 0; padding-block: 0; }
+.preshift select { -webkit-appearance: none; appearance: none; border-radius: 999px; padding-inline: 14px 34px; background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'%238a8a84'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M8%2010l4-4%204%204M8%2014l4%204%204-4'%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 14px; }
+.preshift textarea { display: block; min-height: 0; height: 78px; padding: 9px 14px 22px; }
+.preshift #shift-note-count { position: relative; margin: -22px 14px 24px 0; font-size: 10.5px; line-height: 1; pointer-events: none; }
+.preshift .panel > h2 { font-size: 15px; line-height: 1.3; margin-bottom: 8px; }
+.preshift .panel > .muted { margin-top: 6px; font-size: 12px; line-height: 1.4; }
+.preshift .category-tabs { padding-bottom: 0; }
+.preshift-row { display: flex; gap: 7px; align-items: flex-end; margin-top: 4px; }
+.preshift-row > .field:first-child { width: 112px; flex: none; }
+.preshift-row > .field:nth-child(2) { flex: 1; min-width: 0; }
+.preshift-row > .btn { flex: none; height: 40px; min-height: 0; padding: 0 16px; }
+
+/* Home progress: one card with a ring per library (Food, Cocktails, Wine & Sake). */
+.progress-rings { display: flex; gap: 6px; padding: 12px 8px; }
+.progress-ring-item { flex: 1; min-width: 0; text-align: center; }
+.progress-ring { position: relative; width: 64px; height: 64px; margin: 0 auto 6px; }
+.progress-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.progress-ring circle { fill: none; stroke-width: 4.5; }
+.progress-ring-track { stroke: color-mix(in srgb, var(--c-text) 14%, transparent); }
+.progress-ring-arc { stroke: var(--c-text); stroke-linecap: round; }
+.progress-ring span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.progress-ring-item h2, .progress-ring-item h3 { font-size: 13px; font-weight: 700; line-height: 1.3; }
+.progress-ring-item p { margin-top: 2px; font-size: 11.5px; line-height: 1.35; color: var(--c-muted); }
+/* Keep the rings close together on wide screens (phones unchanged: items are narrower than the cap). */
+.progress-rings, div:has(> .progress-ring-item) { justify-content: center; }
+.progress-ring-item { max-width: 130px; }
+
+/* Library as a list: one row per dish, score above the allergen badges on the right. To undo, revert the commit that added this block. */
+div.grid.menu-list:has(>.compact-menu-row){grid-template-columns:1fr;gap:8px;align-items:stretch}
+@media (min-width:1024px){div.grid.menu-list:has(>.compact-menu-row){grid-template-columns:repeat(2,minmax(0,1fr))}}
+.menu-list>.compact-menu-row{border-radius:24px;flex-direction:row;align-items:center;gap:12px;min-height:72px;padding:10px;overflow:visible;position:static}
+.menu-list>.compact-menu-row>img{width:48px;height:48px;border-radius:8px}
+.menu-list>.compact-menu-row>svg{width:48px;height:48px;padding:12px;border-radius:8px;background:var(--c-bg-sunken)}
+.menu-list>.compact-menu-row>span:first-of-type{flex:1 1 0%;min-width:0;padding:0}
+.menu-list>.compact-menu-row>span:first-of-type>span:last-child{font-size:12px;letter-spacing:.06em;white-space:normal;margin-top:4px}
+.menu-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.menu-list .menu-side [aria-label^="Your last quiz score"]{position:static}
+.menu-list .menu-side .menu-badges{max-width:none;margin:0;padding:0;justify-content:flex-end;flex-wrap:nowrap}
+
+
+/* Old colors restored (the Paper, Asphalt and orange palette was removed). Orange accents below follow the original orange. To undo, revert the commit that added this note. */
+/* Library rows: name and category get the full width (no split "10 MIN"); allergen badges and score sit on a row below. To undo, revert the commit that added this block. */
+.menu-list>.compact-menu-row{display:grid;grid-template-columns:48px minmax(0,1fr) auto;column-gap:12px;row-gap:8px;align-items:center}
+.menu-list>.compact-menu-row>img,.menu-list>.compact-menu-row>svg{grid-column:1;grid-row:1 / span 2;align-self:start}
+.menu-list>.compact-menu-row>span:first-of-type{grid-column:2 / span 2;grid-row:1}
+.menu-list>.compact-menu-row>span:first-of-type>span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu-side{display:contents}
+.menu-list .menu-side .menu-badges{grid-column:2;grid-row:2;justify-content:flex-start;max-width:none;margin:0;padding:0;flex-wrap:nowrap}
+.menu-list .menu-side [aria-label^="Your last quiz score"]{grid-column:3;grid-row:2;position:static;justify-self:end}
+
+
+/* Library rows shorter + smaller text; Our story card titles orange. To undo, revert the commit that added this block. */
+.menu-list>.compact-menu-row{grid-template-columns:40px minmax(0,1fr) auto;column-gap:10px;row-gap:2px;min-height:0;padding:8px 10px}
+.menu-list>.compact-menu-row>img,.menu-list>.compact-menu-row>svg{width:40px;height:40px;border-radius:8px}
+.menu-list>.compact-menu-row>svg{padding:10px}
+.menu-list>.compact-menu-row>span:first-of-type>.font-semibold,.menu-list>.compact-menu-row>span:first-of-type>span:first-child{font-size:13px;line-height:1.25}
+.menu-list>.compact-menu-row>span:first-of-type>span:last-child{font-size:10px;margin-top:0;line-height:1.3}
+.menu-list .menu-side .menu-badges{font-size:10px;gap:4px}
+.menu-list .menu-side .menu-badges *{font-size:10px;line-height:1.2}
+.menu-list .menu-side [aria-label^="Your last quiz score"]{font-size:10px}
+:root .story-page button.panel .font-semibold{color:var(--c-heat-text)}
+
+
+/* Our story page title back to normal; Standards card titles orange. To undo, revert the commit that added this block. */
+:root .story-page h1{color:var(--c-text)}
+:root .sop-row .font-semibold{color:var(--c-heat-text)}
+
+
+/* Allergen box with orange accent, Observations boxed in orange, Library rows all the same height. To undo, revert the commit that added this block. */
+:root .dish-allergens{border-color:var(--c-heat-text);border-width:1.5px}
+:root .dish-allergens h3{color:var(--c-heat-text)}
+:root .dish-allergens li strong{color:var(--c-heat-text)}
+:root .dish-allergens .cross-contact{color:var(--c-heat-text);text-decoration:underline dashed;text-underline-offset:3px}
+:root .dish-facts>div:has(.dish-observation){border:1.5px solid var(--c-heat-text);border-radius:16px;padding:12px 14px;margin-top:4px}
+:root .dish-facts>div:has(.dish-observation) dt{color:var(--c-heat-text)}
+:root .dish-facts .dish-observation{font-weight:600}
+.menu-list>.compact-menu-row{grid-template-rows:auto 22px;min-height:64px}
+.menu-list .menu-side [aria-label^="Your last quiz score"]{display:inline-flex;align-items:center;height:22px;padding-top:0;padding-bottom:0;line-height:1}
+.menu-list .menu-side .menu-badges{align-self:center}
+
+
+/* Library photo centered vertically in the row. To undo, revert the commit that added this block. */
+.menu-list>.compact-menu-row>img,.menu-list>.compact-menu-row>svg{align-self:center}
+
+
+/* ===== Charcoal & Lime: colors and lime accents (all themes). To undo, revert the commit that added this block. ===== */
+:root{color-scheme:dark;--c-bg:#121311;--c-bg-sunken:#0d0e0c;--c-surface:#1b1d1a;--c-surface-2:#161816;--c-surface-3:#10100e;--c-surface-hover:#0d0e0c;--c-raised:#0d0e0c;--c-raised-2:#1e201c;--c-raised-3:#1e201c;--c-raised-4:#2e312b;--c-ink:#1b1d1a;--c-warm-1:#161816;--c-warm-2:#10100e;--c-line:#2e312b;--c-line-2:#2e312b;--c-line-3:#2e312b;--c-line-4:#2e312b;--c-line-5:#4b4e47;--c-line-warm:#2e312b;--c-line-warm-2:#4b4e47;--c-text:#eef0e8;--c-text-2:#eef0e8;--c-text-3:#eef0e8;--c-muted:#9a9e92;--c-muted-2:#9a9e92;--c-muted-3:#9a9e92;--c-muted-4:#9a9e92;--c-muted-5:#9a9e92;--c-muted-6:#9a9e92;--c-on-accent:#1b1c1a;--c-heat:#c7f23a;--c-heat-text:#c7f23a;--c-heat-2:#c7f23a;--c-heat-3:#ccf24f;--c-heat-4:#cff25d;--c-heat-5:#c7f23a;--c-heat-6:#c7f23a;--c-on-heat:#1b1c1a;--c-heat-bg:#2f3a0e;--c-heat-bg-2:#415013;--c-heat-bg-3:#556819;--c-invert-bg:#eef0e8;--c-invert-text:#121311;--lime:#c7f23a;--ink:#1b1c1a;--edge:transparent;--pill-border:#c7f23a;--switch-edge:#3a3d36;--switch-fg:#b9bcae;--ring-bg:#0d0e0c;--focus:#c7f23a;}
+:root[data-theme=light]{color-scheme:light;--c-bg:#f1f1ec;--c-bg-sunken:#e6e6df;--c-surface:#fbfbf8;--c-surface-2:#f6f6f2;--c-surface-3:#ecece6;--c-surface-hover:#e6e6df;--c-raised:#e6e6df;--c-raised-2:#dcddd5;--c-raised-3:#dcddd5;--c-raised-4:#d3d4cb;--c-ink:#fbfbf8;--c-warm-1:#f6f6f2;--c-warm-2:#ecece6;--c-line:#d3d4cb;--c-line-2:#d3d4cb;--c-line-3:#d3d4cb;--c-line-4:#d3d4cb;--c-line-5:#b7b8b0;--c-line-warm:#d3d4cb;--c-line-warm-2:#b7b8b0;--c-text:#1b1c1a;--c-text-2:#1b1c1a;--c-text-3:#1b1c1a;--c-muted:#62645d;--c-muted-2:#62645d;--c-muted-3:#62645d;--c-muted-4:#62645d;--c-muted-5:#62645d;--c-muted-6:#62645d;--c-on-accent:#1b1c1a;--c-heat:#c7f23a;--c-heat-text:#1b1c1a;--c-heat-2:#c7f23a;--c-heat-3:#b2d836;--c-heat-4:#a5c734;--c-heat-5:#c7f23a;--c-heat-6:#1b1c1a;--c-on-heat:#1b1c1a;--c-heat-bg:#eef8c4;--c-heat-bg-2:#e9f7b3;--c-heat-bg-3:#e4f6a2;--c-invert-bg:#1b1c1a;--c-invert-text:#f1f1ec;--lime:#c7f23a;--ink:#1b1c1a;--edge:#1b1c1a;--pill-border:#1b1c1a;--switch-edge:#1b1c1a;--switch-fg:#1b1c1a;--ring-bg:#1b1c1a;--focus:#1b1c1a;}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){color-scheme:light;--c-bg:#f1f1ec;--c-bg-sunken:#e6e6df;--c-surface:#fbfbf8;--c-surface-2:#f6f6f2;--c-surface-3:#ecece6;--c-surface-hover:#e6e6df;--c-raised:#e6e6df;--c-raised-2:#dcddd5;--c-raised-3:#dcddd5;--c-raised-4:#d3d4cb;--c-ink:#fbfbf8;--c-warm-1:#f6f6f2;--c-warm-2:#ecece6;--c-line:#d3d4cb;--c-line-2:#d3d4cb;--c-line-3:#d3d4cb;--c-line-4:#d3d4cb;--c-line-5:#b7b8b0;--c-line-warm:#d3d4cb;--c-line-warm-2:#b7b8b0;--c-text:#1b1c1a;--c-text-2:#1b1c1a;--c-text-3:#1b1c1a;--c-muted:#62645d;--c-muted-2:#62645d;--c-muted-3:#62645d;--c-muted-4:#62645d;--c-muted-5:#62645d;--c-muted-6:#62645d;--c-on-accent:#1b1c1a;--c-heat:#c7f23a;--c-heat-text:#1b1c1a;--c-heat-2:#c7f23a;--c-heat-3:#b2d836;--c-heat-4:#a5c734;--c-heat-5:#c7f23a;--c-heat-6:#1b1c1a;--c-on-heat:#1b1c1a;--c-heat-bg:#eef8c4;--c-heat-bg-2:#e9f7b3;--c-heat-bg-3:#e4f6a2;--c-invert-bg:#1b1c1a;--c-invert-text:#f1f1ec;--lime:#c7f23a;--ink:#1b1c1a;--edge:#1b1c1a;--pill-border:#1b1c1a;--switch-edge:#1b1c1a;--switch-fg:#1b1c1a;--ring-bg:#1b1c1a;--focus:#1b1c1a;}}
+:root ::selection{background:var(--lime);color:var(--ink)}
+:root :focus-visible{outline-color:var(--focus)!important}
+:root .btn:not(.secondary){background:var(--lime);border-color:transparent;font-weight:600;color:var(--ink)!important;box-shadow:inset 0 0 0 1.5px var(--edge)}
+:root .library-switch{background:var(--c-surface)!important;border:1.5px solid var(--switch-edge)!important;padding:4px;gap:4px}
+:root .library-switch button:not([aria-pressed=true]){color:var(--switch-fg)!important;background:transparent}
+:root .library-switch button[aria-pressed=true]{background:var(--lime)!important;color:var(--ink)!important;box-shadow:inset 0 0 0 1.5px var(--edge)}
+:root .category-tabs button[aria-pressed=true]{background:var(--lime);color:var(--ink);border-color:var(--pill-border)}
+:root .nav-item.active{background:var(--lime);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--edge)}
+:root button.allergy-choice.selected{background:var(--lime);color:var(--ink)!important;box-shadow:inset 0 0 0 1.5px var(--edge)}
+:root .eyebrow.text-heat{display:inline-block;background:var(--lime);color:var(--ink);padding:2px 9px;border-radius:999px;box-shadow:inset 0 0 0 1.5px var(--edge)}
+:root .step-number{background:var(--lime);color:var(--ink)}
+:root .word-chip[aria-pressed=true]{background:var(--lime);color:var(--ink);border-color:var(--pill-border)}
+:root .progress-ring{border-radius:50%;background:var(--ring-bg)}
+:root .progress-ring-track{stroke:#3a3d36}
+:root .progress-ring-arc{stroke:var(--lime)}
+:root .progress-ring span{color:#eef0e8}
+:root button.panel>.text-heat.shrink-0.text-right{background:var(--lime);color:var(--ink);border-radius:999px;padding:3px 12px;font-weight:600;font-size:13px;line-height:1.5;box-shadow:inset 0 0 0 1.5px var(--edge)}
+:root .posted-head~.btn.secondary{background:var(--lime);color:var(--ink);font-weight:600;box-shadow:inset 0 0 0 1.5px var(--edge)}
+:root .board-focus button{background:var(--lime);color:var(--ink);border-color:transparent}
+:root .board-focus button .text-heat{color:var(--ink)}
+:root .preshift-row .btn{background:var(--lime);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--edge)}
+.study-card{position:relative}
+.study-card>h2{padding-right:38px}
+.study-card::after{content:"";position:absolute;top:16px;right:16px;width:18px;height:18px;border-radius:50%;background:var(--lime);border:1.5px solid var(--edge);box-shadow:0 0 0 4px rgba(199,242,58,.4)}
+
+
+/* ===== Allergens box, light theme: black outline, lime label, plain body. To undo, revert the commit that added this block. ===== */
+:root[data-theme=light] .dish-allergens{background:var(--c-surface);border:1.5px solid #1b1c1a}
+:root[data-theme=light] .dish-allergens h3{display:inline-block;background:var(--lime);color:#1b1c1a;border:1.5px solid #1b1c1a;border-radius:999px;padding:1px 10px}
+:root[data-theme=light] .dish-allergens li strong{color:#1b1c1a;background:transparent;border:1.5px solid #1b1c1a;border-radius:6px;padding:0 5px}
+:root[data-theme=light] .dish-allergen-help{color:#3d3f38}
+@media (prefers-color-scheme:light){
+:root:not([data-theme=dark]) .dish-allergens{background:var(--c-surface);border:1.5px solid #1b1c1a}
+:root:not([data-theme=dark]) .dish-allergens h3{display:inline-block;background:var(--lime);color:#1b1c1a;border:1.5px solid #1b1c1a;border-radius:999px;padding:1px 10px}
+:root:not([data-theme=dark]) .dish-allergens li strong{color:#1b1c1a;background:transparent;border:1.5px solid #1b1c1a;border-radius:6px;padding:0 5px}
+:root:not([data-theme=dark]) .dish-allergen-help{color:#3d3f38}
+}
+
+
+/* ===== Words, Standards, Our story, Pre-shift lime labels (light theme) and Library text size. To undo, revert the commit that added this block. ===== */
+:root[data-theme=light] .word-say{display:block;width:fit-content;background:var(--lime);color:var(--ink);border:1.5px solid #1b1c1a;border-radius:999px;padding:0 9px}
+:root[data-theme=light] .mb-5>p.eyebrow.muted{display:inline-block;background:var(--lime);color:var(--ink);border:1.5px solid #1b1c1a;border-radius:999px;padding:2px 10px}
+:root[data-theme=light] .preshift>.eyebrow{display:inline-block;background:var(--lime);color:var(--ink);border:1.5px solid #1b1c1a;border-radius:999px;padding:2px 10px}
+:root[data-theme=light] .preshift fieldset ul>li>span.font-semibold::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--lime);border:1.5px solid #1b1c1a;margin-right:8px}
+@media (prefers-color-scheme:light){
+:root:not([data-theme=dark]) .word-say{display:block;width:fit-content;background:var(--lime);color:var(--ink);border:1.5px solid #1b1c1a;border-radius:999px;padding:0 9px}
+:root:not([data-theme=dark]) .mb-5>p.eyebrow.muted{display:inline-block;background:var(--lime);color:var(--ink);border:1.5px solid #1b1c1a;border-radius:999px;padding:2px 10px}
+:root:not([data-theme=dark]) .preshift>.eyebrow{display:inline-block;background:var(--lime);color:var(--ink);border:1.5px solid #1b1c1a;border-radius:999px;padding:2px 10px}
+:root:not([data-theme=dark]) .preshift fieldset ul>li>span.font-semibold::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--lime);border:1.5px solid #1b1c1a;margin-right:8px}
+}
+.menu-list>.compact-menu-row>span:first-of-type>span:last-child{font-size:11px}
+.menu-list .menu-side .menu-badges,.menu-list .menu-side .menu-badges *{font-size:11px}
+.menu-list .menu-side [aria-label^="Your last quiz score"]{font-size:11px}
+.menu-list>.compact-menu-row>span:first-of-type>.font-semibold{font-size:14px}
+.menu-list>.compact-menu-row{min-height:68px;grid-template-columns:44px minmax(0,1fr) auto}
+.menu-list>.compact-menu-row>img{width:44px;height:44px}
+
+
+/* ===== Calmer lime in dark: allergens like light, neutral observations, lime pills only on Standards/Our story categories. To undo, revert the commit that added this block. ===== */
+:root .dish-allergens{background:var(--c-surface);border:1.5px solid var(--switch-edge)}
+:root .dish-allergens h3{display:inline-block;background:var(--lime);color:var(--ink);border:1.5px solid var(--edge);border-radius:999px;padding:1px 10px}
+:root .dish-allergens li strong{color:var(--c-text);background:transparent;border:1.5px solid var(--switch-fg);border-radius:6px;padding:0 5px}
+:root .dish-facts>div:has(.dish-observation){border-color:var(--switch-edge)}
+:root .dish-facts>div:has(.dish-observation) dt{color:var(--c-text)}
+:root .dish-facts .dish-observation{color:var(--c-text)}
+:root .sop-row .font-semibold{color:var(--c-text)}
+:root .mb-5>p.eyebrow.muted,:root .story-page .space-y-2>p.eyebrow.muted{display:inline-block;background:var(--lime);color:var(--ink);border:1.5px solid var(--edge);border-radius:999px;padding:2px 10px}
+
+
+/* ===== Titles back to normal text on Standards/Our story cards; breathing room under the category pills. To undo, revert the commit that added this block. ===== */
+:root .story-page button.panel .font-semibold,:root .sop-row .font-semibold{color:var(--c-text)}
+:root .mb-5>p.eyebrow.muted,:root .story-page .space-y-2>p.eyebrow.muted{margin-bottom:.6rem}
+
+
+/* ===== Back buttons (arrow + label) are lime. The small round previous/next arrows stay as they are. To undo, revert the commit that added this block. ===== */
+:root .btn.secondary:has(>svg[width="16"][class*="arrow-left"]){background:var(--lime);border-color:transparent;font-weight:600;color:var(--ink)!important;box-shadow:inset 0 0 0 1.5px var(--edge)}
+:root .btn.secondary:has(>svg[width="16"][class*="arrow-left"]):hover:not(:disabled){background:var(--lime);filter:brightness(.95)}
+
+
+/* ===== Lime buttons: the outline is the button's own border, so no lime ring shows outside it in light. To undo, revert the commit that added this block. ===== */
+:root .btn:not(.secondary),:root .btn.secondary:has(>svg[width="16"][class*="arrow-left"]),:root .posted-head~.btn.secondary,:root .preshift-row .btn{border:1.5px solid var(--edge);box-shadow:none}
+
+
+/* ===== Step numbers: round lime badge with outline, number centered. To undo, revert the commit that added this block. ===== */
+:root .step-number{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;min-width:1.7rem;border-radius:50%;background:var(--lime);color:var(--ink);border:1.5px solid var(--edge);font-weight:600;letter-spacing:0}
+
+
+/* ===== Allergen codes: the dashed cross-contamination underline no longer runs under the code chip. To undo, revert the commit that added this block. ===== */
+:root .dish-allergens li strong{display:inline-block}
+
+
+/* ===== Allergen list: more air between rows, tidier code chips, cross-contamination in normal text color with the dashed underline. To undo, revert the commit that added this block. ===== */
+:root .dish-allergens ul{row-gap:.8rem}
+:root:root:root .dish-allergens li strong{padding:1px 6px;line-height:1.3;margin-right:.2rem;vertical-align:baseline}
+:root:root .dish-allergens .cross-contact{color:var(--c-text);text-decoration:underline dashed;text-decoration-thickness:1px;text-underline-offset:5px}
+
+
+/* ===== Cross-contamination: no underline; bold line with a small amber "!" at the end. To undo, revert the commit that added this block. ===== */
+:root:root:root .dish-allergens .cross-contact{color:var(--c-text);text-decoration:none;font-weight:600}
+:root:root:root .dish-allergens .cross-contact::after{content:"!";display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-left:8px;border-radius:50%;background:#f0a04b;color:#1b1c1a;border:1.5px solid var(--edge);font-family:var(--font-mono);font-size:12px;font-weight:700;line-height:1;vertical-align:1px}
+
+
+/* ===== Selected allergy choice: outline is the button's own border, no lime ring outside it. To undo, revert the commit that added this block. ===== */
+:root:root button.allergy-choice.selected{border-color:var(--edge);box-shadow:none}
+
+
+/* ===== Employee Home cards: plain small labels (lime stays on the action), stronger outline on the next-step card. To undo, revert the commit that added this block. ===== */
+:root:root .study-reminder .eyebrow.text-heat,:root:root section[aria-label$="pre-shift board"] .eyebrow.text-heat{display:block;background:transparent;color:var(--c-muted);padding:0;border-radius:0;box-shadow:none}
+:root:root .study-reminder{border:1.5px solid var(--c-line-5)}
+
+
+/* ===== Manager Home: "Your team" tiles and their bubbles. To undo, revert the commit that added this block. ===== */
+.team-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+button.team-tile{display:block;text-align:left;background:var(--c-surface);border:1px solid var(--c-line);border-radius:18px;padding:12px;color:var(--c-text);min-height:84px;cursor:pointer}
+button.team-tile b{display:block;font-size:22px;font-weight:600;line-height:1.1}
+button.team-tile span{display:block;margin-top:4px;color:var(--c-muted);font-size:12.5px;line-height:1.3}
+:root button.team-tile[aria-pressed=true]{background:var(--lime);border:1.5px solid var(--pill-border);color:var(--ink)}
+:root button.team-tile[aria-pressed=true] span{color:var(--ink)}
+.team-bubble{margin-top:14px;padding:14px 16px 10px;border:1px solid var(--c-line-3);border-radius:24px;background:var(--c-raised)}
+.team-bubble h3{font-size:15px;font-weight:600}
+.team-bubble .team-sub{margin:4px 0 6px;color:var(--c-muted);font-size:12.5px;line-height:1.4}
+.team-bubble .team-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:9px 0;border:0;border-top:1px solid var(--c-line);background:transparent;color:var(--c-text);font-size:15px;text-align:left}
+.team-bubble .team-list>.team-row:first-child{border-top:0}
+.team-bubble .team-row small{display:block;margin-top:2px;color:var(--c-muted);font-size:12.5px}
+.team-bubble .team-pill{white-space:nowrap;background:var(--lime);color:var(--ink);border:1.5px solid var(--edge);border-radius:999px;padding:2px 10px;font-weight:600;font-size:13px}
+.team-bubble .team-quiet{white-space:nowrap;color:var(--c-muted);font-size:13px}
+.team-bubble .team-pct{font-family:var(--font-mono);font-weight:600;font-size:14px;white-space:nowrap}
+.team-bubble .team-more{display:block;width:100%;margin-top:6px;padding:10px 0;border:0;border-top:1px solid var(--c-line);background:transparent;color:var(--c-text);font-size:14px;font-weight:600;text-align:left}
+.team-bubble .team-empty{margin:8px 0;color:var(--c-muted);font-size:14px}
+
+
+/* ===== Pre-shift header label: plain gray like every other manager screen (lime stays on the dots and buttons). To undo, revert the commit that added this block. ===== */
+:root:root:root .preshift>.eyebrow,:root:root:root .preshift>.eyebrow.text-heat{display:block;background:transparent;color:var(--c-muted);border:0;border-radius:0;padding:0;box-shadow:none}
+
+
+/* ===== Pre-shift board: the lime Focus pill gets the same outline as other lime buttons in light (transparent in dark). To undo, revert the commit that added this block. ===== */
+:root:root .board-focus button{border:1.5px solid var(--edge)}
+:root:root .board-focus button:hover{border-color:var(--edge)}
+
+
+/* ===== Quiz result: verdict label and next-dish button/link. To undo, revert the commit that added this block. ===== */
+.quiz-verdict{display:inline-flex;align-items:center;gap:6px;margin-top:.7rem;padding:3px 12px;border-radius:999px;font-family:var(--font-mono);font-size:13px;font-weight:600;letter-spacing:.02em}
+.quiz-verdict.pass{background:var(--c-pass-bg);color:var(--c-pass);border:1.5px solid var(--c-pass)}
+.quiz-verdict.warn{background:var(--c-fail-bg);color:var(--c-fail);border:1.5px solid var(--c-fail)}
+.quiz-next{display:inline-flex;align-items:center;gap:10px;text-align:left;line-height:1.25}
+.quiz-next small{display:block;margin-top:2px;font-size:12.5px;font-weight:500;opacity:.8}
+.quiz-next-link{align-self:center;padding:10px 4px;background:none;border:0;color:var(--c-text);font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+
+/* ===== Team roster: "to review" as the lime pill, and a quiet "On track". To undo, revert the commit that added this block. ===== */
+.team-review-pill{flex:none;white-space:nowrap;padding:2px 11px;border-radius:999px;background:var(--lime);color:var(--ink);border:1.5px solid var(--edge);font-size:13px;font-weight:600}
+.team-ontrack{flex:none;white-space:nowrap;color:var(--c-muted);font-size:13px}
+
+
+/* ===== Employee initial circles: lime with the black outline in light (transparent in dark). To undo, revert the commit that added this block. ===== */
+:root .employee-avatar{box-sizing:border-box;background:var(--lime);color:var(--ink);border:1.5px solid var(--edge)}
+
+
+/* ===== Quiz result: the next-dish button spans the full width. To undo, revert the commit that added this block. ===== */
+.quiz-next{display:flex;width:100%;justify-content:space-between;padding-top:12px;padding-bottom:12px}
+
+
+/* ===== Team person: Name & role and Can change as expandable chips (closed on arrival, lime while open). To undo, revert the commit that added this block. ===== */
+.team-chips{display:flex;flex-wrap:wrap;gap:8px;margin:1rem 0}
+.team-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1.5px solid var(--c-line-5);background:transparent;color:var(--c-text);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.team-chip small{color:var(--c-muted);font-size:12.5px;font-weight:500}
+.team-chip::after{content:"";width:7px;height:7px;margin-left:2px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px)}
+:root:root .team-chip[aria-expanded="true"]{background:var(--lime);color:var(--ink);border-color:var(--edge)}
+:root:root .team-chip[aria-expanded="true"] small{color:var(--ink);opacity:.7}
+.team-chip[aria-expanded="true"]::after{transform:rotate(-135deg) translate(-2px,-1px)}
+
+
+/* ===== Quiz: the first card sits right under the dish name and is more compact. To undo, revert the commit that added this block. ===== */
+:root .quiz-shell > div + section.panel{margin-top:.5rem;padding:1rem 1.25rem}
+:root .quiz-shell > div + section.panel .btn{margin-top:.9rem}
+:root .quiz-shell > div + section.panel h2,:root .quiz-shell > div + section.panel p.muted{margin-top:.4rem}
+
+
+/* ===== Library rows: the pre-shift tag (Low count, Changed, 86'd) sits in the top-right corner of the card. To undo, revert the commit that added this block. ===== */
+:root .compact-menu-row{position:relative}
+:root .compact-menu-row .shift-flag{position:absolute;top:10px;right:14px;margin:0;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:root .compact-menu-row:has(.shift-flag) .min-w-0.flex-1 > .font-semibold{padding-right:6.5rem}
+
+/* ===== Chips across the app: bold text, dark outline, black counts (the tap-to-choose chips only; small labels like Done / Not yet / You / Note stay light). To undo, revert the commit that added this block. ===== */
+:root .category-tabs button,:root .word-chip{font-weight:700;border-width:1.5px;border-color:var(--c-text)}
+:root .category-tabs button[aria-pressed="false"],:root .word-chip[aria-pressed="false"]{color:var(--c-text)}
+:root .category-tabs button[aria-pressed="true"],:root .word-chip[aria-pressed="true"]{border-color:var(--pill-border)}
+:root .category-tabs .tab-count,:root .word-chip .tab-count{opacity:1;color:inherit;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* ===== Words: the pronunciation pill is a quiet gray pill instead of lime, so the list is calm. To undo, revert the commit that added this block. ===== */
+:root:root:root .word-say{background:var(--c-raised);color:var(--c-text);border:1px solid var(--c-line-3)}
+
+/* ===== Team: the "to review" pill is quiet gray instead of lime (the avatars stay lime). To undo, revert the commit that added this block. ===== */
+:root:root .team-review-pill{background:var(--c-raised);color:var(--c-text);border:1px solid var(--c-line-3);font-weight:600}
+
+/* ===== The last tap-to-choose chips (Not completed, the Allergy tiles) get the same bold text and dark outline as every other chip. To undo, revert the commit that added this block. ===== */
+:root:root .not-taken-chip{font-weight:700;border:1.5px solid var(--c-text);color:var(--c-text);padding:5px 12px;min-height:32px}
+:root:root .not-taken-chip[aria-pressed="true"]{background:var(--lime);color:var(--ink);border-color:var(--pill-border)}
+:root:root button.allergy-choice{font-weight:700;border:1.5px solid var(--c-text);background:var(--c-surface)}
+:root:root button.allergy-choice.selected{font-weight:700;background:var(--lime);color:var(--ink)!important;border-color:var(--edge)}
+
+/* ===== Team rows: the stats and the pill line up in the same columns on every row. To undo, revert the commit that added this block. ===== */
+/* Wide screens: the stats and the pill line up in columns. Phones: name and pill share the top line, the stats sit under the name. */
+@media (min-width:640px){.team-summary{flex:none;width:15rem}.team-review-pill,.team-ontrack{min-width:6.75rem;text-align:center}}
+@media (max-width:639px){.team-review-pill,.team-ontrack{order:2}.team-summary{order:3;flex:1 1 100%;margin-left:48px}}
+
+/* ===== Pre-shift redesign: white fields with a bold outline, round remove buttons, calm tags, one full-width lime Post button on phones. To undo, revert the commits that added this block and the Pre-shift layout. ===== */
+.preshift input:not([type="checkbox"]),.preshift select,.preshift textarea{background:var(--c-surface);border:1.5px solid var(--c-text)}
+.preshift .preshift-row{align-items:center;margin-top:10px}
+.preshift .preshift-row .field{flex:1;min-width:0;margin:0}
+.preshift .category-tabs{margin-top:12px;flex-wrap:wrap;overflow-x:visible}
+.preshift .icon-chip{width:32px;height:32px;border:1.5px solid var(--c-text);color:var(--c-text)}
+.preshift .menu-badge{border-radius:999px;padding:2px 10px;background:var(--c-raised);color:var(--c-text);font-family:var(--font-sans);font-size:12px;letter-spacing:0;border:1px solid var(--c-line-3)}
+.preshift .menu-badge.cc{border:1px dashed var(--c-text)}
+.preshift-post{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+@media (max-width:639px){.preshift-post .btn:first-child{flex:1 1 100%;min-height:48px}}
+
+/* ===== "Take it down" on the posted board is a delete-style button (red text, red outline), not lime. To undo, revert the commit that added this block. ===== */
+:root:root:root .posted-head~.btn.card-admin-danger{background:var(--c-surface);color:var(--c-danger);border:1.5px solid var(--c-danger-line);box-shadow:none;font-weight:700}
+
+
+/* ===== Board chips (Focus, 86'd, Low count, New, Changed): dark outline, app font. Today's note stands out. To undo, revert the commit that added this block. ===== */
+:root:root .board-pill,:root:root .shift-flag{font-family:var(--font-sans);letter-spacing:0;font-weight:600;border:1.5px solid var(--c-text)}
+:root:root .board-pill.low{border:1.5px solid var(--c-text)}
+:root:root .board-pill.out,:root:root .shift-flag.out{border:1.5px solid var(--c-text)}
+:root:root .board-pill .detail{font-weight:400}
+:root:root .posted-head ~ p.guide-blurb{color:var(--c-text);font-size:var(--text-sm);font-weight:500;line-height:1.5}
+
+
+/* ===== Home pre-shift card: small white Edit/Write button at the bottom right. To undo, revert the commit that added this block. ===== */
+.preshift-home-foot{display:flex;justify-content:flex-end;margin-top:12px}
+:root:root:root .home-edit-btn{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:6px 14px;font-size:var(--text-sm,14px);font-weight:700;background:var(--c-surface);color:var(--c-text);border:1.5px solid var(--c-text);box-shadow:none}
+
+
+/* ===== Pre-shift posted card: Take it down + Edit sit together, small, bottom right. To undo, revert the commit that added this block. ===== */
+.posted-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:16px}
+:root:root:root .posted-actions .btn{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:6px 14px;font-size:var(--text-sm,14px);font-weight:700;box-shadow:none}
+:root:root:root .posted-actions .posted-edit{background:var(--c-surface);color:var(--c-text);border:1.5px solid var(--c-text)}
+:root:root:root .posted-actions .card-admin-danger{background:var(--c-surface);color:var(--c-danger);border:1.5px solid var(--c-danger-line)}
+
+
+/* Take it down is red (the app's red), outline included. To undo, revert the commit that added this block. */
+:root:root:root .posted-actions .card-admin-danger{color:var(--c-fail);border-color:var(--c-fail)}
+
+
+/* ===== Manager Home shortcuts: Pre-shift, Checklists, Assign study, Open library as one even 2-column group, with status dots. To undo, revert the commit that added this block. ===== */
+.home-chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+:root:root:root .home-chips .home-chip{display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:8px 16px;font-size:var(--text-base,15px);font-weight:700;background:var(--c-surface);color:var(--c-text);border:1.5px solid var(--c-text);box-shadow:none}
+.home-dot{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--c-text);background:var(--c-raised);display:inline-block;flex:none}
+.home-dot.on{background:var(--lime)}
+
+
+/* ===== Team: search bar, and simple one-line employee cards. To undo, revert the commit that added this block. ===== */
+.team-search{display:flex;align-items:center;gap:10px;min-height:46px;margin-bottom:12px;padding:0 14px 0 16px;border-radius:999px;background:var(--c-surface);border:1.5px solid var(--c-text);color:var(--c-text)}
+.team-search svg{flex:none}
+:root:root:root .team-search input{flex:1;min-width:0;min-height:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;outline:none;font-size:var(--text-base,16px);color:var(--c-text)}
+.team-search-clear{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:var(--c-text);cursor:pointer;flex:none}
+:root:root .team-row{flex-wrap:nowrap;align-items:center}
+:root:root .team-row .team-review-pill{flex:none;white-space:nowrap;order:0}
+
+
+/* ===== Team person page: matching dark-outline chips and rows, red Remove button. To undo, revert the commit that added this block. ===== */
+:root:root .team-chips{display:grid;grid-template-columns:1fr 1fr;gap:8px!important}
+:root:root .team-chip{display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:8px;width:100%;min-height:52px;padding:8px 16px;text-align:left;border:1.5px solid var(--c-text);background:var(--c-surface);font-weight:700;font-size:15px;line-height:1.25}
+:root:root .team-chip small{grid-column:1;grid-row:2;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:root:root .team-chip::after{grid-column:2;grid-row:1 / span 2}
+:root:root .team-fold{border:1.5px solid var(--c-text);background:var(--c-surface)}
+:root:root .team-fold > summary{min-height:48px;padding:12px 18px;font-weight:700}
+:root:root .team-fold > summary::after,:root:root .team-fold[open] > summary::after{content:"";flex:none;width:7px;height:7px;margin-right:3px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);color:var(--c-text);font-weight:400}
+:root:root .team-fold[open] > summary::after{transform:rotate(-135deg) translate(-2px,-1px)}
+:root:root:root .team-remove{min-height:36px;padding:6px 14px;font-size:var(--text-sm,14px);font-weight:700;background:var(--c-surface);color:var(--c-fail);border:1.5px solid var(--c-fail);box-shadow:none}
+:root:root:root button[aria-label="Download employee training summary"]{border:1.5px solid var(--c-text);font-weight:700}
+
+
+/* Name & role / Can change: title and value sit close together, vertically centered. To undo, revert the commit that added this block. */
+:root:root:root .team-chip{align-content:center;row-gap:1px;min-height:0;padding:9px 16px}
+
+
+/* Name & role / Can change: title 14px like Assign study; the gray line under it 12px, not bold. To undo, revert the commit that added this block. */
+:root:root:root .team-chip{font-size:14px}
+:root:root:root .team-chip small{font-size:12px;font-weight:400}
+
+
+/* Pre-shift: the example text inside the empty fields is 12px. To undo, revert the commit that added this block. */
+:root:root .preshift input::placeholder,:root:root .preshift textarea::placeholder{font-size:12px}
+
+
+/* ===== Search bars and Pre-shift fields: what you type is 14px, the example text is 12px, everywhere. To undo, revert the commit that added this block. ===== */
+:root:root:root input[type="search"],:root:root:root .team-search input,:root:root:root .preshift input:not([type="checkbox"]),:root:root:root .preshift textarea{font-size:14px}
+:root:root:root input[type="search"]::placeholder,:root:root:root .team-search input::placeholder,:root:root:root .preshift input::placeholder,:root:root:root .preshift textarea::placeholder{font-size:12px}
+
+
+/* Content library search: example text 12px like every other search bar. To undo, revert the commit that added this block. */
+:root:root:root #content-search::placeholder{font-size:12px}
+
+
+/* What you type in a search bar or Pre-shift field is 16px (phones do not zoom in on tap). The example text stays 12px. To undo, revert the commit that added this block. */
+:root:root:root input[type="search"],:root:root:root .team-search input,:root:root:root .preshift input:not([type="checkbox"]),:root:root:root .preshift textarea{font-size:16px}
+
+
+/* Content library search: typed text 16px like every other search bar. To undo, revert the commit that added this block. */
+:root:root:root #content-search{font-size:16px}
+
+
+/* ===== Example text in search bars and Pre-shift fields: 16px, light gray. Team search: no square box inside the bar when you tap it. To undo, revert the commit that added this block. ===== */
+:root:root:root input[type="search"]::placeholder,:root:root:root #content-search::placeholder,:root:root:root .team-search input::placeholder,:root:root:root .preshift input::placeholder,:root:root:root .preshift textarea::placeholder{font-size:16px;color:color-mix(in srgb,var(--c-text) 40%,transparent);opacity:1}
+:root:root:root:root:root:root:root .team-search input:focus-visible,:root:root:root:root:root:root:root .team-search input:focus{outline:none;border-color:transparent;box-shadow:none;background:transparent}
+.team-search:focus-within{outline:1px solid var(--c-heat);outline-offset:2px}
+
+
+/* ===== Every search bar: white with a dark outline, same height. To undo, revert the commit that added this block. ===== */
+:root:root:root input[type="search"],:root:root:root #content-search{background:var(--c-surface);border:1.5px solid var(--c-text)}
+:root:root:root .team-search{min-height:44px}
+
+
+/* Every search bar and one-line Pre-shift field is the same height (44px). To undo, revert the commit that added this block. */
+:root:root:root input[type="search"],:root:root:root #content-search,:root:root:root .preshift input:not([type="checkbox"]){height:44px;min-height:44px;box-sizing:border-box}
+:root:root:root .team-search{height:44px}
+
+
+/* ===== No lime ring when you tap a search bar or a Pre-shift field: the dark outline just gets a little thicker. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root input[type="search"]:focus-visible,:root:root:root:root:root:root:root #content-search:focus-visible,:root:root:root:root:root:root:root .preshift input:not([type="checkbox"]):focus-visible,:root:root:root:root:root:root:root .preshift textarea:focus-visible{outline:none;border-color:var(--c-text);box-shadow:0 0 0 1px var(--c-text)}
+.team-search:focus-within{outline:none;box-shadow:0 0 0 1px var(--c-text)}
+
+
+/* ===== Medium text (600) instead of bold (700) on buttons, chips, tags and badges, as chosen from the mockup. The little count numbers inside chips stay bold. To undo, revert the commit that added this block. ===== */
+:root:root:root button,
+:root:root:root .btn,
+:root:root:root summary,
+:root:root:root [class*="chip"],
+:root:root:root [class*="pill"],
+:root:root:root [class*="badge"],
+:root:root:root [class*="flag"],
+:root:root:root .allergy-choice,
+:root:root:root .theme-choice,
+:root:root:root .done,
+:root:root:root .count-info-btn {
+  font-weight: 600;
+}
+:root:root:root button b,
+:root:root:root button strong,
+:root:root:root .team-chip b,
+:root:root:root .team-chip strong,
+:root:root:root .team-fold > summary b {
+  font-weight: 600;
+}
+:root:root:root .tab-count {
+  font-weight: 700;
+}
+
+
+/* ===== Same Medium text (600), for the buttons and chips that already had their own stronger bold setting. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .posted-actions .btn,
+:root:root:root:root:root:root:root .home-chips .home-chip,
+:root:root:root:root:root:root:root .posted-head ~ .btn.card-admin-danger,
+:root:root:root:root:root:root:root button[aria-label="Download employee training summary"],
+:root:root:root:root:root:root:root button.allergy-choice,
+:root:root:root:root:root:root:root button.allergy-choice.selected,
+:root:root:root:root:root:root:root .category-tabs button,
+:root:root:root:root:root:root:root .word-chip,
+:root:root:root:root:root:root:root .not-taken-chip,
+:root:root:root:root:root:root:root .count-info-i,
+:root:root:root:root:root:root:root .home-edit-btn,
+:root:root:root:root:root:root:root .team-remove,
+:root:root:root:root:root:root:root .team-chip,
+:root:root:root:root:root:root:root .team-fold > summary {
+  font-weight: 600;
+}
+
+
+/* ===== Medium text (600) for the few buttons and chips whose bold is set directly in the page (Add, Assign study, status chips). To undo, revert the commit that added this block. ===== */
+:root button[style*="font-weight: 700"],
+:root .btn[style*="font-weight: 700"],
+:root button[style*="font-weight:700"] {
+  font-weight: 600 !important;
+}
+
+
+/* ===== Every button is the compact size: 36px tall (before they were 35 to 48). To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .btn,
+:root:root:root:root:root:root:root .home-chips .home-chip,
+:root:root:root:root:root:root:root .preshift-row > .btn,
+:root:root:root:root:root:root:root .card-admin-actions > .btn,
+:root:root:root:root:root:root:root .preshift-post .btn,
+:root:root:root:root:root:root:root .confirm-actions .btn,
+:root:root:root:root:root:root:root .word-actions .btn,
+:root:root:root:root:root:root:root .home-edit-btn,
+:root:root:root:root:root:root:root .posted-actions .btn,
+:root:root:root:root:root:root:root .team-remove {
+  height: auto;
+  min-height: 36px;
+  max-height: none;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+:root:root:root:root:root:root:root .card-navigation .btn {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+}
+
+
+/* ===== One corner size for every card: 20px (before they were 18, 20, 22 and 24). To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .panel,
+:root:root:root:root:root:root:root .study-reminder,
+:root:root:root:root:root:root:root .allergy-card,
+:root:root:root:root:root:root:root .team-fold,
+:root:root:root:root:root:root:root .notice,
+:root:root:root:root:root:root:root .word-bubble,
+:root:root:root:root:root:root:root .compact-item,
+:root:root:root:root:root:root:root .about-kero,
+:root:root:root:root:root:root:root .team-bubble,
+:root:root:root:root:root:root:root .confirm-card,
+:root:root:root:root:root:root:root .menu-search-results,
+:root:root:root:root:root:root:root .dish-picker-results,
+:root:root:root:root:root:root:root .quiz-explanation,
+:root:root:root:root:root:root:root .assign-picker,
+:root:root:root:root:root:root:root .word-row,
+:root:root:root:root:root:root:root .word-deleted,
+:root:root:root:root:root:root:root .dish-allergens,
+:root:root:root:root:root:root:root .menu-list > .compact-menu-row,
+:root:root:root:root:root:root:root .space-y-2 > .compact-menu-row:not(:has(.employee-avatar)),
+:root:root:root:root:root:root:root button.team-tile {
+  border-radius: 20px;
+}
+
+
+/* ===== Every (i) info button is the same: 24px round, one gray outline (before: 24 and 28px). To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .count-info-btn {
+  width: 24px !important;
+  height: 24px !important;
+  min-height: 0;
+  padding: 0;
+  border: 1.5px solid var(--c-line-5);
+  background: var(--c-surface);
+  color: var(--c-text);
+}
+:root:root:root:root:root:root:root .count-info-btn .count-info-i {
+  font-size: 0.75rem;
+}
+
+
+/* ===== Form fields (the labeled ones, like Library settings) match the search bars: white, dark outline, 16px text, lighter example text. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+:root:root:root:root:root:root:root .field select,
+:root:root:root:root:root:root:root .field textarea,
+:root:root:root:root:root:root:root input[aria-label="New section name"] {
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-text);
+  color: var(--c-text);
+  font-size: 16px;
+}
+:root:root:root:root:root:root:root .field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+:root:root:root:root:root:root:root .field select,
+:root:root:root:root:root:root:root input[aria-label="New section name"] {
+  border-radius: 999px;
+  min-height: 44px;
+  padding: 0 16px;
+}
+:root:root:root:root:root:root:root .field textarea {
+  border-radius: 20px;
+  padding: 11px 16px;
+}
+:root:root:root:root:root:root:root .field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"])::placeholder,
+:root:root:root:root:root:root:root .field select::placeholder,
+:root:root:root:root:root:root:root .field textarea::placeholder,
+:root:root:root:root:root:root:root input[aria-label="New section name"]::placeholder {
+  font-size: 16px;
+  color: color-mix(in srgb, var(--c-text) 40%, transparent);
+  opacity: 1;
+}
+
+
+/* ===== One focus look everywhere: a dark outline, never lime (fields, buttons, links, rows). To undo, revert the commit that added this block. ===== */
+:root:root:root:root {
+  --focus: var(--c-text);
+}
+:root:root:root:root:root:root:root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus-visible,
+:root:root:root:root:root:root:root textarea:focus-visible,
+:root:root:root:root:root:root:root select:focus-visible {
+  border-color: var(--c-text);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--c-text);
+}
+
+
+/* ===== Pre-shift: lime is only for "Post to the floor". Chosen chips are dark with light text, and Add is a white button. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .preshift .category-tabs button[aria-pressed="true"],
+:root:root:root:root:root:root:root .preshift .word-chip[aria-pressed="true"] {
+  background: var(--c-text);
+  color: var(--c-bg);
+  border-color: var(--c-text);
+}
+:root:root:root:root:root:root:root .preshift .preshift-row > .btn {
+  background: var(--c-surface);
+  color: var(--c-text);
+  border-color: var(--c-text);
+}
+:root:root:root:root:root:root:root .preshift .preshift-row > .btn:disabled {
+  opacity: 0.45;
+}
+
+
+/* ===== "Take it down" looks like the Edit button next to it: dark text, dark outline (it was red). To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .posted-actions .btn.card-admin-danger,
+:root:root:root:root:root:root:root .posted-head ~ .btn.card-admin-danger {
+  color: var(--c-text);
+  border-color: var(--c-text);
+}
+
+
+/* ===== Desktop sidebar: each item is the compact 36px size and stays on one line (Content library was wrapping onto two). To undo, revert the commit that added this block. ===== */
+@media (min-width: 768px) {
+  :root:root:root:root:root:root:root .nav-item {
+    min-height: 36px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+    gap: 10px;
+    white-space: nowrap;
+  }
+}
+
+
+/* ===== Phone menu: same compact 36px items as the desktop sidebar, so the menu looks the same everywhere. To undo, revert the commit that added this block. ===== */
+@media (max-width: 767px) {
+  :root:root:root:root:root:root:root .nav-item {
+    min-height: 36px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+    gap: 10px;
+    white-space: nowrap;
+  }
+}
+
+
+/* ===== Chips (Library filters, Words, Allergy tiles) are all the same size: 36px tall, 14px text (they were 32, 34 and 44px). To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .category-tabs button,
+:root:root:root:root:root:root:root .theme-choice .category-tabs button,
+:root:root:root:root:root:root:root .word-chip,
+:root:root:root:root:root:root:root button.allergy-choice,
+:root:root:root:root:root:root:root button.allergy-choice.selected {
+  min-height: 36px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-size: 14px;
+}
+
+
+/* ===== Allergy tab: less empty space around the results summary and the "Show results" menu (it was about 28px between each piece, now 12 to 16px). To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .allergy-picker ~ div[aria-live="polite"] {
+  margin-top: 16px;
+  margin-bottom: 12px;
+}
+:root:root:root:root:root:root:root label[for="allergy-result-filter"] {
+  margin-bottom: 6px;
+}
+:root:root:root:root:root:root:root #allergy-result-filter {
+  margin-bottom: 16px;
+}
+
+
+/* ===== One section-title size: 18px (they were 14, 15, 16, 17 and 20px). To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root h2.text-xl,
+:root:root:root:root:root:root:root h2.text-lg,
+:root:root:root:root:root:root:root h3.text-lg,
+:root:root:root:root:root:root:root :not(.posted-head) > h2.text-sm,
+:root:root:root:root:root:root:root .preshift .panel > h2,
+:root:root:root:root:root:root:root [aria-label="Study assignments"] h2,
+:root:root:root:root:root:root:root .my-6[aria-label="Your learning progress"] > h2,
+:root:root:root:root:root:root:root .study-reminder h2,
+:root:root:root:root:root:root:root .confirm-card h2 {
+  font-size: 18px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+
+/* ===== Every white button has the dark outline (a few still had a gray one, like "Clear selections"). To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .btn.secondary:not(:has(> svg[class*="arrow-left"])) {
+  border-color: var(--c-text);
+}
+
+
+/* ===== Allergy tab "Show results" menu: white with a dark outline like the other fields. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root #allergy-result-filter {
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-text);
+  border-radius: 999px;
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 16px;
+}
+
+
+/* ===== Words rows get the same thin outline and light surface as every other card. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .word-row {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-3);
+}
+:root:root:root:root:root:root:root .word-deleted .word-row {
+  background: transparent;
+  border: 0;
+}
+
+
+/* ===== Small caps labels: the app font (not the mono one) and plain gray, no lime pill. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .eyebrow,
+:root:root:root:root:root:root:root .dish-facts dt,
+:root:root:root:root:root:root:root .dish-allergens h3,
+:root:root:root:root:root:root:root .sauce-breakdown > h3,
+:root:root:root:root:root:root:root .recipe-source {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+:root:root:root:root:root:root:root .eyebrow.text-heat,
+:root:root:root:root:root:root:root .mb-5 > p.eyebrow.muted,
+:root:root:root:root:root:root:root .story-page .space-y-2 > p.eyebrow.muted,
+:root:root:root:root:root:root:root .preshift > .eyebrow {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+  color: var(--c-muted);
+  display: block;
+}
+
+
+/* ===== Home details: stat numbers start at the same height, a little more room above "Your team", and the download button is the same 24px as the (i). To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root button.team-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  border-radius: 20px;
+}
+:root:root:root:root:root:root:root .home-chips {
+  margin-bottom: 24px;
+}
+:root:root:root:root:root:root:root .icon-chip,
+:root:root:root:root:root:root:root .preshift .icon-chip {
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--c-line-5);
+  color: var(--c-text);
+}
+:root:root:root:root:root:root:root .icon-chip svg {
+  width: 14px;
+  height: 14px;
+}
+
+
+/* Dark mode polish 1: pronunciation text is plain gray text, not a black code box */
+:root:root:root:root:root:root:root .word-say{background:transparent;font-family:inherit;font-size:.8125rem;font-weight:500;letter-spacing:0;color:var(--c-muted);padding:0;border-radius:0}
+
+
+/* Dark mode polish 2: no resize corner on text boxes; Note to the floor box tall enough so no scroll bar shows */
+:root:root:root:root:root:root:root textarea{resize:none}
+:root:root:root:root:root:root:root #shift-note{min-height:92px}
+
+
+/* Dark mode polish 3: even spacing between stacked fields in Library settings (fields already carry their own bottom space) */
+:root:root:root:root:root:root:root .grid.gap-4:has(> .field){row-gap:0}
+
+
+/* Dark mode polish 4: soft side-menu hover (was near black in dark mode); no sticky hover on touch screens */
+@media (hover:hover){:root:root:root:root:root:root:root .nav-item:not(.active):hover,:root:root:root:root:root:root:root .category-nav:not(.active):hover{background:color-mix(in srgb,var(--c-text) 8%,transparent);color:var(--c-text)}}
+@media (hover:none){:root:root:root:root:root:root:root .nav-item:not(.active):hover,:root:root:root:root:root:root:root .category-nav:not(.active):hover{background:transparent}}
+
+
+/* Dark mode polish 5: Back buttons (Menu, Team, Back to menu) are white with a dark outline like the other buttons, not lime */
+:root:root:root:root:root:root:root .btn.secondary:has(> svg[class*="arrow-left"]):not(.card-navigation .btn){background:var(--c-surface);color:var(--c-text);border:1.5px solid var(--c-text)}
+
+
+/* Dark mode polish 6: team initials circles are gray instead of lime (less lime) */
+:root:root:root:root:root:root:root .employee-avatar{background:var(--c-line-3);color:var(--c-text)}
+
+
+/* Fix for polish 5: an older rule forced dark text on back buttons; use the normal text color and keep hover white */
+:root:root:root:root:root:root:root .btn.secondary:has(> svg[class*="arrow-left"]):not(.card-navigation .btn){color:var(--c-text)!important}
+:root:root:root:root:root:root:root .btn.secondary:has(> svg[class*="arrow-left"]):not(.card-navigation .btn):hover:not(:disabled){background:var(--c-surface);filter:none}
+
+
+/* Pre-shift board: Focus chips use the same app font as the 86'd chips (was the code font) */
+:root:root:root:root:root:root:root .board-focus button{font-family:var(--font-sans);letter-spacing:0;font-weight:600}
+
+
+/* Pronunciation tag is a rounded pill with a soft outline (was a square box) in light and dark */
+:root:root:root:root:root:root:root:root .word-say{border-radius:999px;padding:2px 10px;border:1px solid var(--c-line-5);line-height:1.3}
+
+
+/* Pre-shift board tags use the real colours, solid, with a matching outline: Focus is the quiz-pass green, 86'd is red, Low count is amber (light and dark) */
+:root:root:root:root:root:root:root .board-pill:not(.out):not(.low):not(:disabled){background:var(--c-pass);border:1.5px solid var(--c-pass);color:var(--c-bg);font-weight:600}
+:root:root:root:root:root:root:root .board-pill.out:not(:disabled){background:var(--c-fail);border:1.5px solid var(--c-fail);color:var(--c-bg);font-weight:600}
+:root:root:root:root:root:root:root .board-pill.low:not(:disabled){background:#f0a04b;border:1.5px solid #f0a04b;color:var(--ink);font-weight:600}
+/* Allergy results use the same compact rows as the Content library: photo, name, category and price, allergen codes, and the verdict as a small round mark on the right. What was found stays under the codes. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .menu-list>.allergy-row>span:first-of-type{grid-column:2}
+:root:root:root:root:root:root:root .menu-list>.allergy-row:has(.shift-flag)>span:first-of-type{grid-column:2 / span 2}
+:root:root:root:root:root:root:root .menu-list .allergy-row .allergy-mark{grid-column:3;grid-row:1 / span 2;align-self:center;justify-self:end;width:26px;height:26px;font-size:13px;background:transparent;border:1.5px solid currentColor;color:var(--c-muted)}
+:root:root:root:root:root:root:root .menu-list .allergy-row .allergy-mark.is-no-match{color:var(--c-pass)}
+:root:root:root:root:root:root:root .menu-list .allergy-row .allergy-mark.is-avoid{color:var(--c-fail)}
+:root:root:root:root:root:root:root .menu-list .allergy-row .allergy-mark.is-cross-contact{color:#f0a04b}
+:root:root:root:root:root:root:root .menu-list .allergy-row:has(.shift-flag) .allergy-mark{grid-row:2;width:22px;height:22px;font-size:12px}
+:root:root:root:root:root:root:root .menu-list .allergy-row .allergy-reason{grid-column:2 / span 2;grid-row:3;font-size:11px;line-height:1.35;color:var(--c-muted);padding-top:2px}
+
+
+/* "Study these again" on the employee Home uses the same compact rows as the library, with a small Review button on the right. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .menu-list>.study-row{grid-template-rows:auto;min-height:60px}
+:root:root:root:root:root:root:root .menu-list>.study-row>img,:root:root:root:root:root:root:root .menu-list>.study-row>svg{grid-row:1}
+:root:root:root:root:root:root:root .menu-list>.study-row>span:first-of-type{grid-column:2;grid-row:1}
+:root:root:root:root:root:root:root .menu-list>.study-row>span:first-of-type>span:last-child{white-space:normal;overflow:visible;text-overflow:clip;text-transform:none;letter-spacing:0;font-size:11px;line-height:1.3}
+:root:root:root:root:root:root:root .menu-list>.study-row>.study-pill{grid-column:3;grid-row:1;align-self:center;border:1.5px solid currentColor;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;line-height:1.2;white-space:nowrap}
+
+
+/* Category chips: no scrollbar drawn over the chips on touch screens, and a soft fade on the right edge shows there is more to swipe. Mouse users keep a thin bar below the chips. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .category-tabs{padding-bottom:12px;padding-right:28px;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+@media (hover:none){:root:root:root:root:root:root:root .category-tabs::-webkit-scrollbar{display:none}}
+@media (hover:hover) and (pointer:fine){:root:root:root:root:root:root:root .category-tabs{scrollbar-width:thin}}
+:root:root:root:root:root:root:root .preshift .category-tabs{padding-right:0;-webkit-mask-image:none;mask-image:none}
+
+
+/* Content library submenu in the side menu (Food, Cocktails, Wine & Sake): the three items sit closer together. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .category-nav{min-height:0;padding:6px 12px;line-height:1.4}
+
+
+/* Amber (!) inside the Review button on "Study these again". To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .menu-list>.study-row>.study-pill{display:inline-flex;align-items:center;gap:6px;padding-left:8px}
+:root:root:root:root:root:root:root .study-pill .study-alert{display:inline-grid;place-items:center;flex:none;width:18px;height:18px;border-radius:50%;background:#e8a65d;border:1.5px solid #1d1d1b;color:#1d1d1b;font-size:11px;font-weight:800;line-height:1}
+
+
+/* Library category chips: the selected one is black with white letters instead of lime (light on dark in dark mode). To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .workspace-main .category-tabs button[aria-pressed="true"]{background:var(--c-text);color:var(--c-bg);border-color:var(--c-text)}
+
+
+/* "Review a missed item" on Home looks like the Review button in "Study these again": outlined pill with the amber (!). To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .study-reminder .review-missed{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--c-text);border:1.5px solid currentColor;border-radius:999px;padding:7px 14px 7px 10px;min-height:0;font-size:15px;font-weight:600;box-shadow:none}
+
+
+/* ===== One button size everywhere: 30px tall, 12px text (before: 28 to 48 tall, 12 to 16 text). The small round previous/next arrows on a dish card and icon-only buttons keep their own shape. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .btn:not(.card-navigation .btn){min-height:30px;padding-top:0;padding-bottom:0;font-size:12px;line-height:1.2}
+:root:root:root:root:root:root:root .btn:not(.card-navigation .btn):not(:has(>svg:only-child)){padding-left:14px;padding-right:14px}
+:root:root:root:root:root:root:root .quiz-next{padding-top:7px;padding-bottom:7px}
+:root:root:root:root:root:root:root .menu-list>.study-row>.study-pill,:root:root:root:root:root:root:root .study-reminder .review-missed{min-height:30px;padding-top:0;padding-bottom:0;padding-left:8px;padding-right:12px;font-size:12px;line-height:1.2}
+:root:root:root:root:root:root:root .study-pill .study-alert{width:16px;height:16px;font-size:10px}
+
+
+/* Category chips and the "Not completed" chip use the same size as the buttons: 30px tall, 12px text. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .workspace-main .category-tabs button{min-height:30px;padding-top:0;padding-bottom:0;padding-left:12px;padding-right:12px;font-size:12px;line-height:1.2}
+:root:root:root:root:root:root:root .not-taken-chip{min-height:30px;padding-top:0;padding-bottom:0;font-size:12px}
+
+
+/* Expandable sections (Spec, Words to know, the Team folds, About) share one size: 36px tall, 13px text (before: 36 to 48 tall, 14 text). To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .team-fold > summary,:root:root:root:root:root:root:root .about-kero > summary{min-height:36px;padding:8px 16px;font-size:13px;line-height:1.3}
+
+
+/* Words list rows (word, how to say it, arrow) use the same expandable size: 36px tall, 13px text (before: 56 tall, 14 text). To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .panel>button[aria-expanded]:has(>.word-say){min-height:36px;padding:8px 16px;font-size:13px;line-height:1.3}
+
+
+/* Quiz answer choices are more compact: 36px tall at the least, 13px text, smaller letter circle (before: 48px, 16px). To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .quiz-option{min-height:36px;padding:7px 12px;gap:10px;font-size:13px;line-height:1.35}
+:root:root:root:root:root:root:root .quiz-option .answer-letter{width:20px;height:20px;font-size:10px}
+
+
+/* The "saved" message: a small green pill with a check, only as wide as its text (before: a full-width gray bar). Error messages are unchanged. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .notice.good{display:flex;align-items:center;gap:8px;width:fit-content;max-width:100%;padding:8px 14px 8px 8px;border-radius:999px;border:1.5px solid var(--c-pass);background:color-mix(in srgb,var(--c-pass) 14%,var(--c-bg));color:var(--c-text);font-size:13px;font-weight:600;line-height:1.3}
+:root:root:root:root:root:root:root .notice.good .notice-check{display:inline-grid;place-items:center;flex:none;width:20px;height:20px;border-radius:50%;background:var(--c-pass);color:var(--c-bg)}
+:root:root:root:root:root:root:root .notice.good .notice-check svg{width:12px;height:12px}
+
+
+/* Error messages match the "saved" pill: same shape, red, with an (x). To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .notice.bad{display:flex;align-items:center;gap:8px;width:fit-content;max-width:100%;padding:8px 14px 8px 8px;border-radius:20px;border:1.5px solid var(--c-fail);background:color-mix(in srgb,var(--c-fail) 12%,var(--c-bg));color:var(--c-text);font-size:13px;font-weight:600;line-height:1.3}
+:root:root:root:root:root:root:root .notice.bad .notice-check{display:inline-grid;place-items:center;flex:none;width:20px;height:20px;border-radius:50%;background:var(--c-fail);color:var(--c-bg)}
+:root:root:root:root:root:root:root .notice.bad .notice-check svg{width:12px;height:12px}
+
+/* Saved / error messages: shown in the middle of the screen instead of at the top of the page.
+   A saved message fades out by itself after about 3 seconds; an error stays until it is tapped.
+   To undo, revert the commit "Show saved and error messages in the middle of the screen". */
+:root:root:root:root:root:root:root .notice.good,:root:root:root:root:root:root:root .notice.bad{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:80;max-width:min(90vw,420px);box-shadow:0 10px 30px rgba(0,0,0,.25);margin:0}
+:root:root:root:root:root:root:root .notice.good{pointer-events:none;animation:notice-fade 3.2s ease forwards}
+:root:root:root:root:root:root:root .notice.bad{cursor:pointer}
+@keyframes notice-fade{0%{opacity:0;transform:translate(-50%,-46%)}8%{opacity:1;transform:translate(-50%,-50%)}85%{opacity:1}100%{opacity:0;visibility:hidden}}
+
+/* The centered message was squeezed to half the screen width because it is positioned from left:50%.
+   Let it size to its text instead (up to 90% of the screen, 420px at most).
+   To undo, revert the commit "Make the centered message wider". */
+:root:root:root:root:root:root:root .notice.good,:root:root:root:root:root:root:root .notice.bad{width:max-content;max-width:min(90vw,420px);box-sizing:border-box}
+
+/* Dish card: tighter spacing between the sections (about 120px shorter on a phone).
+   To undo, revert the commit "Dish card: compact spacing". */
+:root:root:root:root:root:root:root div:has(>.dish-facts){padding:16px}
+:root:root:root:root:root:root:root .dish-facts{margin-top:12px;padding-top:12px;gap:10px}
+:root:root:root:root:root:root:root .dish-allergens{margin-top:12px;padding:10px 14px}
+:root:root:root:root:root:root:root .dish-allergens ul{margin-top:8px;row-gap:8px}
+:root:root:root:root:root:root:root .dish-allergen-help{margin-top:8px}
+:root:root:root:root:root:root:root .sauce-breakdown{margin-top:12px;padding-top:12px}
+:root:root:root:root:root:root:root .sauce-recipe{padding-top:10px;padding-bottom:6px}
+:root:root:root:root:root:root:root .words-fold{margin-top:8px;margin-bottom:0}
+
+/* One spacing scale for the manager and staff screens, so nothing looks looser than the rest:
+   page header to content 14px, sections 14px apart, big gaps 20px, card padding 16px.
+   To undo, revert the commit "Compact spacing across the app". */
+:root:root:root:root:root:root:root .workspace-main .mt-5,:root:root:root:root:root:root:root .workspace-main .my-5{margin-top:14px}
+:root:root:root:root:root:root:root .workspace-main .mb-5,:root:root:root:root:root:root:root .workspace-main .my-5{margin-bottom:14px}
+:root:root:root:root:root:root:root .workspace-main .mt-6{margin-top:14px}
+:root:root:root:root:root:root:root .workspace-main .mb-6{margin-bottom:14px}
+:root:root:root:root:root:root:root .workspace-main .mt-8{margin-top:20px}
+:root:root:root:root:root:root:root .workspace-main .mb-8{margin-bottom:20px}
+:root:root:root:root:root:root:root .workspace-main .panel.p-5,:root:root:root:root:root:root:root .workspace-main .panel.p-6{padding:16px}
+
+/* Section names in Standards and Our story: black chip with white letters, like the selected library chip. */
+:root:root:root:root:root:root:root .section-chip{display:inline-flex;align-items:center;width:fit-content;max-width:100%;min-height:26px;margin:0 0 8px;padding:0 12px;border-radius:999px;background:var(--c-text);color:var(--c-bg);font-size:11px;font-weight:700;letter-spacing:.08em;line-height:1.2;text-transform:uppercase}
+:root:root:root:root:root:root:root .story-page .mt-4.space-y-2>.space-y-2:not(:last-child){margin-bottom:16px}
+
+/* Dish card: section labels (Ingredients, Table setting, Observations, Sauce breakdown) in bold black,
+   and a solid thin line between sauces instead of the dotted one.
+   To undo, revert the commit "Dish card: bold black labels, solid line between sauces". */
+:root:root:root:root:root:root:root .dish-facts dt,:root:root:root:root:root:root:root .sauce-breakdown>h3{color:var(--c-text);font-weight:700}
+:root:root:root:root:root:root:root .sauce-recipe{border-top-style:solid}
+
+/* Dish card: smaller Observations box.
+   To undo, revert the commit "Dish card: compact Observations box". */
+:root:root:root:root:root:root:root .dish-facts div:has(>.dish-observation){margin-top:0;padding:8px 12px;gap:2px;border-radius:14px}
+:root:root:root:root:root:root:root .dish-facts .dish-observation{font-size:13px;line-height:1.4}
+
+
+/* Library settings: the Add button keeps the standard 30px button size instead of stretching to the height of the input. To undo, revert the commit "Library settings Add button: standard size". */
+:root:root:root:root:root:root:root form:has(>input[aria-label="New section name"])>.btn{align-self:center}
+
+/* Job editor: the step fields use the same input style as every other field (white fill, dark outline, rounded) instead of the gray fill. To undo, revert the commit "Job editor step fields: same style as other inputs". */
+:root:root:root:root:root:root:root input[placeholder^="The next thing"]{background:var(--c-surface);border:1.5px solid var(--c-text);color:var(--c-text);font-size:16px;border-radius:999px;min-height:44px;padding:0 16px}
+
+/* ── Public site (/). The app's own tokens and type; only the page layout is new here. ── */
+.site { min-height:100vh; background:var(--c-bg); }
+.site-wrap { width:100%; max-width:1120px; margin:0 auto; padding:0 16px; }
+@media (min-width: 768px) { .site-wrap { padding:0 32px; } }
+.site-nav { position:sticky; top:0; z-index:20; background:var(--c-bg); border-bottom:1px solid var(--c-line-5); }
+.site-nav-inner { display:flex; align-items:center; gap:16px; min-height:64px; }
+.site-logo { display:inline-flex; align-items:center; }
+.site-logo .heat-logo { width:96px; height:36px; }
+.site-logo-small .heat-logo { width:72px; height:27px; }
+.site-links { display:none; gap:24px; margin-left:16px; font-size:var(--text-sm); }
+.site-links a { color:var(--c-muted); text-decoration:none; }
+.site-links a:hover { color:var(--c-text); }
+@media (min-width: 900px) { .site-links { display:flex; } }
+.site-actions { display:flex; gap:8px; margin-left:auto; }
+@media (max-width: 420px) { .site-actions .btn.secondary { display:none; } }
+
+/* The hero shares the sign-in screen's fixed dark panel, in every theme. */
+.site-hero { color:#f3f3f0; padding:56px 0 64px; }
+@media (min-width: 900px) { .site-hero { padding:96px 0 104px; } }
+.site-hero-grid { display:grid; gap:48px; align-items:center; }
+@media (min-width: 900px) { .site-hero-grid { grid-template-columns:1.15fr .85fr; } }
+.site-title { font-size:2.5rem; line-height:1.05; font-weight:600; letter-spacing:-.02em; }
+@media (min-width: 900px) { .site-title { font-size:4.25rem; } }
+
+.site-sample { display:grid; gap:12px; max-width:420px; width:100%; justify-self:center; }
+.site-sample-card { background:#1c1c1b; border:1px solid #5a5a58; border-radius:24px; padding:22px; color:#f3f3f0; }
+.site-sample-card .muted { color:#b4b4af; }
+.site-sample-small { margin-left:32px; }
+.site-badge { padding:2px 9px; border-radius:999px; border:1px solid #6a6a67; font-family:var(--font-mono); font-size:var(--text-xs); letter-spacing:.04em; }
+.site-badge.cc { border-style:dashed; color:#d8d8d4; }
+.site-sample-row { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-top:1px solid #303030; font-size:var(--text-sm); }
+.site-sample-row b { font-family:var(--font-mono); font-weight:600; }
+
+.site-section { padding:64px 0; }
+@media (min-width: 900px) { .site-section { padding:96px 0; } }
+.site-sunken { background:var(--c-bg-sunken); border-top:1px solid var(--c-line-5); border-bottom:1px solid var(--c-line-5); }
+.site-heading { margin-top:12px; font-size:1.75rem; line-height:1.2; font-weight:600; letter-spacing:-.01em; }
+@media (min-width: 900px) { .site-heading { font-size:2.25rem; } }
+.site-steps { display:grid; gap:16px; margin:40px 0 0; padding:0; list-style:none; }
+@media (min-width: 900px) { .site-steps { grid-template-columns:repeat(3, 1fr); } }
+.site-features { display:grid; gap:16px; margin-top:40px; }
+@media (min-width: 640px) { .site-features { grid-template-columns:repeat(2, 1fr); } }
+@media (min-width: 1000px) { .site-features { grid-template-columns:repeat(3, 1fr); } }
+.site-groups { display:grid; gap:32px; align-items:center; }
+@media (min-width: 900px) { .site-groups { grid-template-columns:1fr 1fr; gap:64px; } }
+.site-list { display:grid; gap:10px; margin:0; padding:0; list-style:none; }
+.site-footer { border-top:1px solid var(--c-line-5); padding:28px 0; }
+.site-footer-inner { display:flex; align-items:center; gap:14px; }
+
+/* Importing dishes from another location: a long checklist, so rows stay tight. */
+.import-group { margin:0 0 18px; padding:0; border:0; }
+.import-group > legend { margin-bottom:8px; }
+.import-category { border-top:1px solid var(--c-line-5); padding:6px 0; }
+.import-row { display:flex; align-items:center; gap:10px; margin:0; padding:7px 4px; font-weight:400; cursor:pointer; }
+.import-row input { width:18px; height:18px; flex:none; padding:0; accent-color:var(--lime, currentColor); }
+.import-category-head { font-weight:600; }
+.import-category-head ~ .import-row { padding-left:28px; }
+.import-here { display:inline-flex; align-items:center; gap:4px; font-size:var(--text-xs); white-space:nowrap; }
+
+/* ── Dashboards. One series, in the app's ink; lime only marks this week. Numbers always written out. ── */
+.dash-tiles { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; margin-bottom:16px; }
+@media (min-width: 900px) { .dash-tiles { grid-template-columns:repeat(4, minmax(0, 1fr)); } }
+.dash-tile { display:flex; flex-direction:column; gap:2px; padding:16px; border:1px solid var(--c-line-5); border-radius:18px; background:var(--c-surface); min-width:0; }
+.dash-tile b { font-family:var(--font-mono); font-size:1.5rem; font-weight:600; line-height:1.2; }
+.dash-tile span { font-size:var(--text-sm); font-weight:600; }
+.dash-tile small { color:var(--c-muted); font-size:var(--text-xs); line-height:1.4; }
+.dash-panel { padding:20px; margin-bottom:16px; }
+
+.dash-weeks { margin:16px 0 0; }
+.dash-weeks-plot { position:relative; display:flex; align-items:flex-end; gap:6px; height:160px; padding-top:22px; border-bottom:1px solid var(--c-line-5); }
+.dash-weeks-max { position:absolute; top:0; left:0; font-family:var(--font-mono); font-size:var(--text-xs); color:var(--c-muted); }
+.dash-col { position:relative; flex:1 1 0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; outline:none; cursor:default; }
+.dash-col-bar { display:block; width:100%; max-width:36px; min-height:2px; border-radius:4px 4px 0 0; background:var(--c-heat-6); }
+.dash-col.current .dash-col-bar { background:var(--lime, var(--c-heat)); box-shadow:inset 0 0 0 1.5px var(--edge, transparent); }
+.dash-col:hover .dash-col-bar, .dash-col:focus-visible .dash-col-bar { background:var(--c-text); }
+.dash-col-value { font-family:var(--font-mono); font-size:var(--text-xs); font-weight:600; margin-bottom:4px; }
+.dash-col-tip { position:absolute; bottom:calc(100% - 18px); z-index:2; padding:4px 8px; border-radius:8px; background:var(--c-invert-bg); color:var(--c-invert-text); font-size:var(--text-xs); white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .12s; }
+.dash-col:first-child .dash-col-tip { left:0; }
+.dash-col:last-child .dash-col-tip { right:0; }
+.dash-col:hover .dash-col-tip, .dash-col:focus-visible .dash-col-tip { opacity:1; }
+.dash-weeks-axis { display:flex; gap:6px; margin-top:6px; }
+.dash-weeks-axis span { flex:1 1 0; text-align:center; font-size:var(--text-xs); color:var(--c-muted); white-space:nowrap; overflow:visible; }
+
+.dash-table { width:100%; margin-top:12px; border-collapse:collapse; font-size:var(--text-sm); }
+.dash-table th, .dash-table td { padding:10px 8px 10px 0; text-align:left; vertical-align:middle; border-top:1px solid var(--c-line-5); }
+.dash-table thead th { border-top:0; padding-top:0; font-family:var(--font-mono); font-size:var(--text-xs); font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--c-muted); }
+.dash-table tbody th { font-weight:600; min-width:0; }
+.dash-table tbody th small { display:block; margin-top:2px; font-weight:400; font-size:var(--text-xs); color:var(--c-muted); }
+.dash-table .num { text-align:right; font-family:var(--font-mono); white-space:nowrap; }
+.dash-name { padding:0; border:0; background:none; color:inherit; font:inherit; font-weight:600; text-align:left; text-decoration:underline; text-underline-offset:3px; }
+span.dash-name { text-decoration:none; }
+.dash-meter { display:flex; align-items:center; gap:8px; min-width:96px; }
+.dash-meter-track { position:relative; flex:1 1 auto; height:8px; border-radius:4px; background:var(--c-raised-2); overflow:hidden; }
+.dash-meter-fill { position:absolute; inset:0 auto 0 0; border-radius:4px; background:var(--c-text); }
+.dash-meter-target { position:absolute; top:0; bottom:0; left:80%; width:2px; background:var(--c-surface); }
+.dash-meter-value { width:3.2em; text-align:right; font-family:var(--font-mono); font-size:var(--text-xs); }
+@media (max-width: 560px) {
+  .dash-table th, .dash-table td { padding-right:6px; }
+  .dash-meter { min-width:64px; }
+  .dash-meter-track { display:none; }
+}

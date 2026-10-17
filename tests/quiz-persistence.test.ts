@@ -1,0 +1,52 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { PGlite } from "@electric-sql/pglite";
+test("saved scores survive service changes and fresh sign-ins", async () => {
+ const db=new PGlite();try {
+ await db.exec(`
+      create role anon; create role authenticated;
+      create schema auth; create schema storage;
+      create table auth.users (id uuid primary key, email text);
+      create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+      create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+      create table storage.objects (id uuid default gen_random_uuid(), bucket_id text, name text);
+      create function storage.foldername(text) returns text[] language sql as $$ select string_to_array($1, '/') $$;
+      alter table storage.objects enable row level security;
+      grant usage on schema public, auth, storage to authenticated, anon;
+      grant select, insert, delete on storage.objects to authenticated;
+      insert into auth.users(id) values ('00000000-0000-0000-0000-000000000001'), ('00000000-0000-0000-0000-000000000002'), ('00000000-0000-0000-0000-000000000003');
+`);
+ for(const file of ['001_heat','002_edit_menu_items','003_content_categories','004_food_cocktails','005_menu_quizzes','006_quiz_management','007_menu_service_details'])await db.exec(await readFile(new URL('../supabase/migrations/'+file+'.sql',import.meta.url),'utf8'));
+ const asUser=async(n:number)=>db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-${String(n).padStart(12,'0')}',false);`);
+ await asUser(1);
+ const rid=(await db.query<{id:string}>("insert into public.restaurants(name) values ('Training') returning id")).rows[0].id;
+ const mid=(await db.query<{id:string}>("insert into public.menu_items(restaurant_id,name,description,ingredients,allergens,photo_path,category) values ($1,'Citrus Fish',E'Citrus fish.\\n\\nSauces and component recipes:\\nLime sauce: lime, salt',array['Fish','Lime'],array['Fish','Shellfish (CC)'],$2,'Ceviches') returning id",[rid,rid+'/a.jpg'])).rows[0].id;
+ const token=(await db.query<{token:string}>("select public.create_employee_invite($1) token",[rid])).rows[0].token;
+ const rpc=async(name:string,args:unknown[]=[])=> (await db.query<{q:any}>(`select public.${name}(${args.map((_,i)=>'$'+(i+1)).join(',')}) q`,args)).rows[0]?.q;
+ const bank=await rpc('manage_menu_quiz',[mid]);
+ await asUser(2);await rpc('join_restaurant',[token]);
+ const session=await rpc('start_menu_quiz',[mid]);
+ for(let i=0;i<6;i++)await rpc('answer_menu_quiz',[session.id,i,bank.questions[i].correct]);
+ const unfinished=await rpc('start_menu_quiz',[mid]);
+ await rpc('answer_menu_quiz',[unfinished.id,0,bank.questions[0].correct]);
+ await asUser(1);await db.query('update public.menu_items set price=32,fire_minutes=10 where id=$1',[mid]);
+ await asUser(2);assert.equal((await db.query('select * from public.get_quiz_progress($1)',[rid])).rows.length,0,'reproduces old hidden-score bug');
+ await db.exec('reset role');await db.exec(await readFile(new URL('../supabase/migrations/008_quiz_content_versions.sql',import.meta.url),'utf8'));
+ await asUser(2);
+ const restored=(await db.query<{correct:number}>('select * from public.get_quiz_progress($1)',[rid])).rows;
+ assert.equal(restored.length,1);assert.equal(restored[0].correct,6);
+ assert.equal((await rpc('start_menu_quiz',[mid])).id,unfinished.id,'pre-update unfinished attempt resumes');
+ const resumed=await rpc('answer_menu_quiz',[unfinished.id,1,bank.questions[1].correct]);assert.equal(resumed.answers[1],bank.questions[1].correct);
+ await db.exec("reset role;set role anon;select set_config('request.jwt.claim.sub','',false)");
+ await assert.rejects(rpc('get_quiz_progress',[rid]),/permission denied/);
+ await asUser(2);assert.equal((await db.query('select * from public.get_quiz_progress($1)',[rid])).rows.length,1,'new sign-in still reads saved result');
+ await asUser(3);assert.equal((await db.query('select * from public.get_quiz_progress($1)',[rid])).rows.length,0,'different user has no access');
+ await asUser(1);await db.query('update public.menu_items set price=35,photo_path=$2 where id=$1',[mid,rid+'/new.jpg']);
+ await asUser(2);assert.equal((await db.query('select * from public.get_quiz_progress($1)',[rid])).rows.length,1);
+ await asUser(1);await db.query("update public.menu_items set description='New recipe description' where id=$1",[mid]);
+ await asUser(2);assert.equal((await db.query('select * from public.get_quiz_progress($1)',[rid])).rows.length,0,'real quiz-content changes still require study');
+ await assert.rejects(rpc('answer_menu_quiz',[unfinished.id,2,0]),/changed/);
+ assert.equal((await db.query('select * from public.quiz_attempts')).rows.length,1,'history is retained');
+ } finally {await db.close();}
+});
