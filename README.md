@@ -193,3 +193,9 @@ Apply `supabase/migrations/036_dashboards.sql` after 035. It only adds read-only
 All figures use the same rules as Home and Team (`026_learning_notes.md`): latest result per current item, accuracy weighted by answered questions, review below 80%. Learners are a location's members; the owner's own practice is not counted.
 
 The database tests (`organizations`, `dashboards`) run every migration in order, so `pnpm test` runs test files one at a time to stay within memory. The test setup adds `menu_items.details`, which production has but no migration in this folder creates.
+
+## Guided tour and demo copies
+
+**Tour.** Every new account (demo visitor, trial or live restaurant) gets a short guided tour the first time it opens a restaurant, and anyone can replay it from **Take the tour** in the sidebar. It can be skipped at any step (Skip tour or Esc). Managers see where to add a dish, the allergy check, pre-shift, inviting the team and the dashboard; team members see the menu, quizzes, the allergy check and their progress. The highlight never blocks the page, so a step can be tried on the spot. Having seen it is saved on the account (`user_metadata.heat_tour`), so it doesn't come back on another device; bump `TOUR_VERSION` in `app/tour.tsx` to show a changed tour to everyone once more. The tour is in English, like the rest of the app.
+
+**Demo copies.** Apply `supabase/migrations/037_demo_copies.sql` after 036, then run `supabase/schedule-demo-cleanup.sql` once. Each demo visitor now gets a private copy of the demo kitchen as its owner, so the tour can have them really add a dish or make an invite link. Nobody else sees a copy. Copies are removed after 7 days by a nightly job (`purge_expired_demos`), together with the anonymous accounts left with nothing. The restaurant marked `is_demo` is now only the template: edit it to change what every new visitor starts with.

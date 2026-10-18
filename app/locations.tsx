@@ -85,7 +85,7 @@ export function Locations({userId, restaurant, restaurants, organizations, items
     <p className="eyebrow muted">Locations</p>
     {!organization ? <>
       <h1 className="mt-3 text-2xl font-semibold">{restaurant.name}</h1>
-      {restaurant.owner_id === userId && !restaurant.is_demo ? <div className="panel mt-6 p-6">
+      {restaurant.owner_id === userId && !restaurant.is_demo && !restaurant.demo_expires_at ? <div className="panel mt-6 p-6">
         <Store size={24} aria-hidden="true" />
         <h2 className="mt-4 text-lg font-semibold">Run several locations?</h2>
         <p className="muted mt-2">Group them under your brand. Each location keeps its own menu and team, and you can open new ones and bring over the dishes they share.</p>

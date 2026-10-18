@@ -1,5 +1,5 @@
-// trial_ends_at and is_demo arrive with migration 034, organization_id with 035; older databases simply leave them out.
-export type Restaurant = { id: string; name: string; owner_id: string; trial_ends_at?: string | null; is_demo?: boolean; organization_id?: string | null };
+// trial_ends_at and is_demo arrive with migration 034, organization_id with 035, demo_expires_at with 037; older databases simply leave them out.
+export type Restaurant = { id: string; name: string; owner_id: string; trial_ends_at?: string | null; is_demo?: boolean; organization_id?: string | null; demo_expires_at?: string | null };
 export type MenuItem = {
   id: string;
   restaurant_id: string;

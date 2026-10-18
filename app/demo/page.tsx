@@ -1,32 +1,44 @@
 "use client";
 // The demo kitchen: a real HEAT workspace with a sample menu, opened without an account.
-// The visitor gets an anonymous Supabase account and joins the one restaurant marked is_demo
-// (migration 034), as a read-only team member. Everything they see is the real app.
+// The visitor gets an anonymous Supabase account and their own copy of the restaurant marked
+// is_demo (migration 037), as its owner, so the guided tour can have them really add a dish or
+// make an invite link. Nobody else sees the copy, and it is removed after 7 days.
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { HeatLogo } from "../heat-logo";
+
+// One opening per page load. React may run the effect twice (it does in development), and two
+// overlapping runs would each sign in anonymously and each get a demo copy of their own.
+let opening: Promise<{signedInAs: string} | {opened: true}> | null = null;
+function openDemo() {
+  const client = supabase!;
+  return opening ??= (async () => {
+    const { data } = await client.auth.getSession();
+    const current = data.session?.user;
+    // A real account stays as it is: opening the demo must never sign someone out of their restaurant.
+    if (current && !current.is_anonymous) return {signedInAs: current.email ?? "your account"};
+    if (!current) {
+      const signIn = await client.auth.signInAnonymously();
+      if (signIn.error) throw new Error("The demo kitchen is closed right now. Please try again later.");
+    }
+    const opened = await client.rpc("start_demo");
+    if (opened.error) throw new Error("The demo kitchen isn't set up yet. Please try again later.");
+    return {opened: true as const};
+  })();
+}
 
 export default function Demo() {
   const [problem, setProblem] = useState("");
   const [signedInAs, setSignedInAs] = useState("");
   useEffect(() => {
     if (!supabase) return setProblem("The demo needs the HEAT database, and this copy of HEAT is not connected to one yet.");
-    const client = supabase;
     let live = true;
-    (async () => {
-      const { data } = await client.auth.getSession();
-      const current = data.session?.user;
-      // A real account stays as it is: opening the demo must never sign someone out of their restaurant.
-      if (current && !current.is_anonymous) return live && setSignedInAs(current.email ?? "your account");
-      if (!current) {
-        const signIn = await client.auth.signInAnonymously();
-        if (signIn.error) throw new Error("The demo kitchen is closed right now. Please try again later.");
-      }
-      const joined = await client.rpc("join_demo");
-      if (joined.error) throw new Error("The demo kitchen isn't set up yet. Please try again later.");
-      if (live) window.location.replace("/app");
-    })().catch(e => live && setProblem(e instanceof Error ? e.message : "The demo could not open."));
+    openDemo().then(result => {
+      if (!live) return;
+      if ("signedInAs" in result) setSignedInAs(result.signedInAs);
+      else window.location.replace("/app");
+    }).catch(e => live && setProblem(e instanceof Error ? e.message : "The demo could not open."));
     return () => {live = false;};
   }, []);
   return <main className="flex min-h-screen items-center justify-center px-6 py-12">
@@ -45,7 +57,7 @@ export default function Demo() {
         <a href="/" className="btn secondary mt-3 w-full"><ArrowLeft size={16} />Back to HEAT</a>
       </> : <>
         <h1 className="text-2xl font-semibold tracking-tight">Setting the table…</h1>
-        <p className="muted mt-3" role="status">Opening a sample restaurant. No account needed, and nothing you do changes the menu.</p>
+        <p className="muted mt-3" role="status">Opening your own copy of a sample restaurant. No account needed: change anything you like, it's yours for 7 days.</p>
       </>}
     </div>
   </main>;

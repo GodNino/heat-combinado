@@ -18,6 +18,7 @@ import {
   RotateCcw,
   BarChart3,
   LayoutDashboard,
+  CircleHelp,
   ArrowLeft,
   ArrowRight,
   BookOpen,
@@ -61,6 +62,7 @@ import { Checklists } from "./checklists";
 import { MyJobCard } from "./checklist-card";
 import { Locations, setUpLibraries, type Organization } from "./locations";
 import { BrandDashboard, ManagerDashboard, MyActivity } from "./dashboards";
+import { Tour, tourSeen, tourSteps } from "./tour";
 
 // Every screen the workspace can show. Named once: it used to be spelled out in two places.
 type View = "tostudy" | "home" | "library" | "allergy" | "review" | "progress" | "team" | "preshift" | "words" | "standards" | "story" | "library-settings" | "checklists" | "locations" | "dashboard";
@@ -1750,6 +1752,14 @@ function Workspace({
   const ownsBrand = !!brand && brand.owner_id === user.id;
   const isOwner = restaurant?.owner_id === user.id || ownsBrand;
   const [dashboardScope, setDashboardScope] = useState<"location" | "brand">("location");
+  // The guided tour: once for every new account, then on request from "Take the tour".
+  const [touring, setTouring] = useState(false);
+  const tourOffered = useRef(false);
+  useEffect(() => {
+    if (tourOffered.current || loading || creating || !restaurant || tourSeen(user)) return;
+    tourOffered.current = true;
+    setTouring(true);
+  }, [loading, creating, restaurant, user]);
   // Access is per person, not a rank: holding an area means "can change things here".
   // The owner holds every area and has no stored access to take away.
   const [access, setAccess] = useState<string[]>([]);
@@ -2051,6 +2061,17 @@ function Workspace({
       )}
       {/* A mode you can forget is a mode that bites. While the preview is on it says so across
         the top, and the way out is the bar itself. */}
+      {/* The manager tour needs the screens it visits: the owner, or someone holding menu, pre-shift and team. */}
+      {touring && restaurant && <Tour
+        steps={tourSteps({
+          manager: isOwner || ["library", "preshift", "team"].every(area => access.includes(area)),
+          demo: !!user.is_anonymous,
+          restaurantName: restaurant.name,
+        })}
+        onGo={next => navigate(next)}
+        onClose={() => setTouring(false)}
+        onFinishLink={async href => {if (user.is_anonymous) await supabase?.auth.signOut(); window.location.href = href;}}
+      />}
       {employeeView && <button type="button" className="preview-bar" onClick={() => setEmployeeView(false)}>
         <BookOpen size={15} aria-hidden="true" />
         <span>Previewing as a server</span>
@@ -2059,7 +2080,7 @@ function Workspace({
       {/* A demo visitor is an anonymous account inside the shared demo kitchen. Saying so keeps them from
         mistaking it for their own restaurant, and the way to their own one is right there. */}
       {user.is_anonymous ? <div className="preview-bar" role="note">
-        <span>Demo kitchen · Sample menu · Read-only</span>
+        <span>Demo kitchen · Your own copy for 7 days</span>
         <a className="preview-bar-exit" href="/trial" onClick={async event => {event.preventDefault(); await supabase?.auth.signOut(); window.location.href = "/trial";}}>Start your own free trial</a>
       </div> : isOwner && restaurant?.trial_ends_at && <div className="preview-bar" role="note">
         <span>{trialLabel(restaurant.trial_ends_at)}</span>
@@ -2101,7 +2122,7 @@ function Workspace({
               </select>
             </>
           )}
-          <nav aria-label="Main navigation" className="mt-6 space-y-2">
+          <nav aria-label="Main navigation" className="mt-6 space-y-2" data-tour="nav">
             <button className={`nav-item ${view === "home" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "home" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("home")}><HomeIcon size={19} />Home</button>
             {can("team") && <button className={`nav-item ${view === "dashboard" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "dashboard" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("dashboard")}><LayoutDashboard size={19} />Dashboard</button>}
             <button className={`nav-item ${view === "library" || adding || editing ? "active" : ""}`} aria-expanded={libraryExpanded} aria-controls="library-options" onClick={() => setLibraryExpanded(expanded => !expanded)}><BookOpen size={19} /><span className="flex-1">Content library</span><span aria-hidden="true">{libraryExpanded ? "⌃" : "⌄"}</span></button>
@@ -2125,7 +2146,7 @@ function Workspace({
               <button className={`nav-item ${view === "locations" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "locations" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("locations")}><Store size={19} />Locations</button>
             </nav>
           </>}
-          {restaurants.some((r) => r.owner_id === user.id) && (
+          {!user.is_anonymous && restaurants.some((r) => r.owner_id === user.id) && (
             <button
               onClick={() => {
                 setCreating(true);
@@ -2145,6 +2166,9 @@ function Workspace({
               <BookOpen size={19} />{employeeView ? "Back to your view" : "Preview as a server"}
             </button>
           </div>}
+          {restaurant && <button type="button" data-tour="tour-button" className="nav-item mt-6" onClick={() => {setNavOpen(false); setTouring(true);}}>
+            <CircleHelp size={19} />Take the tour
+          </button>}
           <ThemeChoice />
         </aside>
         <main className="workspace-main min-w-0 p-4 md:p-9">
@@ -2334,6 +2358,7 @@ function Workspace({
                       <button
                         disabled={busy}
                         className="btn mt-6"
+                        data-tour="invite"
                         onClick={() =>
                           action(async () => {
                             const result = await supabase!.rpc(
@@ -2422,10 +2447,10 @@ function Workspace({
                   <button className={can("team") ? "btn secondary" : "btn"} style={can("team") ? {fontWeight: 700, border: "1.5px solid var(--c-text)"} : undefined} onClick={() => navigate("library")}>Open library</button>
                 </div>}
                 {itemsLoading ? <p role="status" className="muted py-10">Loading your library…</p> : <>
-                  {can("team") && restaurant && <TeamSnapshot key={restaurant.id} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenTeam={() => navigate("team")} />}
-                  {can("team") && restaurant && <RecentCompletions key={restaurant.id} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} />}
+                  {can("team") && restaurant && <TeamSnapshot key={`team-${restaurant.id}`} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenTeam={() => navigate("team")} />}
+                  {can("team") && restaurant && <RecentCompletions key={`recent-${restaurant.id}`} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} />}
                   {can("preshift") && restaurant && <MyJobCard key={`job-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => navigate("checklists")} manager />}
-                  {can("preshift") ? <PreShiftHomeCard key={restaurant.id} restaurantId={restaurant.id} items={items} onOpen={() => navigate("preshift")} canDownload restaurantName={restaurant.name} /> : <>
+                  {can("preshift") ? <PreShiftHomeCard key={`preshift-${restaurant.id}`} restaurantId={restaurant.id} items={items} onOpen={() => navigate("preshift")} canDownload restaurantName={restaurant.name} /> : <>
                   <h2 className="mb-4 text-xl font-semibold">Explore your menu</h2>
                   <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">{counts.filter(c => c.count > 0).map(c => <button key={c.name} className="panel category-card flex items-center gap-2 p-3 text-left" onClick={() => navigate("library", c.name, contentType)}><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{c.name}</span><span className="muted mt-1 block text-xs">{c.count} {c.count === 1 ? wordsIn(taxonomy, contentType).item_one : wordsIn(taxonomy, contentType).item_many}</span></span><ArrowRight size={15} className="muted shrink-0" /></button>)}</div></>}
                   {!items.length && <p className="panel muted mt-4 p-6">{can("library") ? "Add your first dish to start building the library." : "Your manager hasn’t added content yet."}</p>}
@@ -2447,6 +2472,7 @@ function Workspace({
                   action={can("library") && (
                     <button
                       className="btn"
+                      data-tour="add-item"
                       onClick={() => {
                         setAdding(true);
                         setError("");
@@ -2521,6 +2547,7 @@ function Workspace({
                     {can("library") && (
                       <button
                         className="btn mt-6"
+                        data-tour="add-item"
                         onClick={() => setAdding(true)}
                       >
                         <Plus size={16} />
