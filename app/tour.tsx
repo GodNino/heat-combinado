@@ -10,7 +10,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
-export type TourView = "home" | "library" | "allergy" | "preshift" | "team" | "dashboard" | "progress";
+export type TourView = "home" | "library" | "allergy" | "preshift" | "team" | "dashboard" | "progress" | "reports";
 type Step = {title: string; body: string; view?: TourView; target?: string; cta?: {label: string; href: string}};
 
 // Bump when the tour changes enough that everyone should see it again.
@@ -57,6 +57,7 @@ export function tourSteps({manager, demo, restaurantName}: {manager: boolean; de
     {title: "Pre-shift", body: "Before service, post tonight's 86 list, the dishes to push and a note. Your team reads it on their phones.", view: "preshift"},
     {title: "Invite your team", body: "Tap Invite employees, copy the link and send it. Whoever opens it joins this restaurant, ready to study.", view: "team", target: '[data-tour="invite"]'},
     {title: "See how it's going", body: "Menu covered, quiz accuracy and weekly activity for your team, and for every location if you run a brand.", view: "dashboard", target: ".dash-tiles"},
+    {title: "End-of-shift report", body: "After service, send the night's report from here. HEAT fills in the 86 list and checklists; you add covers, issues and notes, and it goes to the GM, managers and owners.", view: "reports", target: '[data-tour="nav-reports"]'},
     replay,
     finish,
   ];
