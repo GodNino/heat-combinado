@@ -282,7 +282,7 @@ export function Today({restaurantId, jobs, onOpenSaved, onSavedJobsChanged, onDe
           <ChevronRight size={16} aria-hidden="true" />
         </button>)}
       </div>
-      : <div className="panel mt-4 p-6"><p className="muted">No jobs for {service} yet.</p></div>}
+      : <div className="panel mt-4 p-6"><p className="muted">{`No jobs for ${service} yet.`}</p></div>}
     <button className="btn mt-4" onClick={openAssign}><Plus size={14} />Assign a job</button>
   </div>;
 }

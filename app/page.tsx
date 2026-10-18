@@ -3,6 +3,7 @@
 import { BookOpen, ClipboardList, FileText, Languages, ListChecks, ShieldAlert, Store, Users, Utensils } from "lucide-react";
 import { HeatLogo } from "./heat-logo";
 import { AuthForward } from "./auth-forward";
+import { LanguageSwitch } from "./language";
 
 const STEPS = [
   {title: "Create your restaurant", text: "Start a free trial and name your restaurant. Each location gets a workspace of its own."},
@@ -40,6 +41,7 @@ export default function Landing() {
           <a href="#features">Features</a>
           <a href="#groups">For groups</a>
         </nav>
+        <div className="site-lang"><LanguageSwitch compact /></div>
         <div className="site-actions">
           <a href="/app" className="btn secondary">Sign in</a>
           <a href="/trial" className="btn">Start free trial</a>

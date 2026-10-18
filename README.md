@@ -210,3 +210,27 @@ Apply `supabase/migrations/038_shift_reports.sql` after 037. **Shift report** in
 - **Next manager's home** shows the last shift's "for the next shift" note for two days.
 
 **Email.** Reports are emailed through [Resend](https://resend.com) by `app/api/shift-report/route.ts`, acting as the signed-in manager (no service key). To turn it on: create a Resend account, verify the `heatplatform.io` domain there (it gives DNS records to add in Hostinger), then add `RESEND_API_KEY` (and optionally `REPORTS_FROM`, default `HEAT <reports@heatplatform.io>`) to the Vercel project's environment variables and redeploy. Until then, reports are saved and shown in the app, and the manager is told the email isn't set up yet.
+
+## Spanish
+
+**EN | ES** in the sidebar, on the sign-in screen and on the public site switches the whole interface with one tap, and the choice is saved on the account so it follows the person to other devices. `app/language.tsx` swaps every piece of interface text it knows for its Spanish in `lib/i18n-es.ts`, right on the page, and swaps it back for English; text it doesn't know stays in English, and what a restaurant writes itself (dish names, descriptions, notes) is never changed. Allergen names and badge codes, dates, and the automatic quiz's questions are translated too. **When you add or change interface text, add its Spanish to `lib/i18n-es.ts`** (exact English as the key; patterns for sentences with a name or number inside). `tests/i18n.test.ts` covers the rules.
+
+## Phone notifications
+
+Apply `supabase/migrations/039_push_notifications.sql` after 038. Each person turns notifications on for their device from **Turn on notifications** in the sidebar (on iPhone, HEAT must first be added to the Home Screen). They're sent, in the language that device uses, when:
+
+- a manager posts the **pre-shift** → the board's recipients, or the whole team;
+- a manager **assigns study** → that person;
+- a shift report comes in **urgent** (allergy incident or injury) → managers and owners;
+- someone **asks for another quiz attempt** → the owner.
+
+`app/api/notify/route.ts` sends them: the database first checks, as the person who caused the event, who may be told (`push_audience`), then the server reads those devices and sends. To turn it on, add these to the Vercel project's environment variables and redeploy:
+
+| Variable | Where it comes from |
+|---|---|
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | the VAPID key pair (generate with `npx web-push generate-vapid-keys`) |
+| `VAPID_PRIVATE_KEY` | the same pair; secret |
+| `VAPID_SUBJECT` | `mailto:` plus an address people can reach, e.g. `mailto:hello@heatplatform.io` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API keys (the secret / service_role key); secret, server only |
+
+Without them the switch doesn't appear and nothing else changes. Devices that turned notifications off are forgotten on the next send.

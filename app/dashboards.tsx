@@ -89,7 +89,7 @@ function WeeksChart({weeks, unit}: {weeks: Week[]; unit: "team" | "me"}) {
       })}
     </div>
     <div className="dash-weeks-axis" aria-hidden="true">{weeks.map((w, index) => <span key={w.week_start}>{index === weeks.length - 1 ? "This week" : index % 2 === weeks.length % 2 ? weekLabel(w.week_start) : ""}</span>)}</div>
-    <figcaption className="muted mt-2 text-xs">{total} completed {total === 1 ? "quiz" : "quizzes"} in the last {weeks.length} weeks</figcaption>
+    <figcaption className="muted mt-2 text-xs">{`${total} completed ${total === 1 ? "quiz" : "quizzes"} in the last ${weeks.length} weeks`}</figcaption>
   </figure>;
 }
 

@@ -10,6 +10,7 @@ import { DownloadSheet } from './sheet-download';
 import { quizSheet } from '@/lib/sheets';
 import { supabase } from '@/lib/supabase';
 import { ProgressRing, SectionInfo } from './ui';
+import { notify } from './notifications';
 export type ProgressRow = {menu_item_id:string; correct:number; total:number; needs_review?:boolean; created_at:string};
 type Question = {prompt:string; options:string[]; topic:string; correct?:number; explanation?:string};
 type Quiz = {version:string; questions:Question[]};
@@ -33,7 +34,7 @@ export function QuizPanel({item,onClose,onMenu,onSaved,children,items=[],progres
  async function start(){setBusy(true);setError('');try{const {data,error}=await supabase!.rpc('start_menu_quiz',{mid:item.id});if(error)throw error;const s=data as Session;setSession(s);setShowResult(false);setStep(s.blocked?0:Math.max(0,s.answers.findIndex(a=>a<0)));setSelected(-1);}catch(e){setError(messageOf(e));}finally{setBusy(false);}}
  const answerInFlight=useRef(false);
  async function check(choice:number){if(!session||choice<0||busy||answerInFlight.current)return;answerInFlight.current=true;setSelected(choice);setBusy(true);setError('');try{const {data,error}=await supabase!.rpc('answer_menu_quiz',{sid:session.id,question_index:step,selected_answer:choice});if(error)throw error;setSession(data as Session);if(data.completed)await onSaved();}catch(e){setError(messageOf(e));}finally{answerInFlight.current=false;setBusy(false);}}
- async function request(){setBusy(true);setError('');try{const {error}=await supabase!.rpc('request_quiz_retake',{mid:item.id});if(error)throw error;setSession(s=>s?{...s,requested:true}:s);}catch(e){setError(messageOf(e));}finally{setBusy(false);}}
+ async function request(){setBusy(true);setError('');try{const {error}=await supabase!.rpc('request_quiz_retake',{mid:item.id});if(error)throw error;notify('retake_requested',item.id);setSession(s=>s?{...s,requested:true}:s);}catch(e){setError(messageOf(e));}finally{setBusy(false);}}
  const q=session?.questions?.[step],answer=session?.answers?.[step]??-1,checked=answer>=0;
  // Mid-quiz there is no one-tap route back to the answers: leaving asks first, so a peek is a decision.
  const inProgress = !!session && !session.blocked && !showResult && !session.completed;

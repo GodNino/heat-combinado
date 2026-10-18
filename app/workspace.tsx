@@ -65,6 +65,8 @@ import { Locations, setUpLibraries, type Organization } from "./locations";
 import { BrandDashboard, ManagerDashboard, MyActivity } from "./dashboards";
 import { Tour, tourSeen, tourSteps } from "./tour";
 import { LastShiftNote, ShiftReports } from "./shift-report";
+import { LanguageSwitch, currentLang, setLang } from "./language";
+import { NotificationSwitch, notify } from "./notifications";
 
 // Every screen the workspace can show. Named once: it used to be spelled out in two places.
 type View = "tostudy" | "home" | "library" | "allergy" | "review" | "progress" | "team" | "preshift" | "words" | "standards" | "story" | "library-settings" | "checklists" | "locations" | "dashboard" | "reports";
@@ -117,7 +119,7 @@ function AllergyView({items, loading, refresh, shift, restaurantName, memory, on
     <div className="library-switch mb-4" aria-label="Content type">{CONTENT_TYPES.map(type => <button key={type} type="button" aria-pressed={contentType === type} onClick={() => {if (type !== contentType) {setContentType(type);setSelectedAllergies([]);setResultFilter("all");}}}>{labelFor(type).name}</button>)}</div>
     {loading ? <p role="status" className="muted py-8">Loading allergen information…</p> : <>
       <fieldset className="panel allergy-picker p-5"><legend className="font-semibold">Allergens and dietary flags in this menu</legend><p className="muted mb-4 text-sm">Select as many as needed. Tap a selected allergy again to remove it.</p><div className="allergy-choices">{options.map(option => <button key={option} type="button" aria-pressed={allergies.includes(option)} className={`allergy-choice ${allergies.includes(option) ? "selected" : ""}`} onClick={() => {setSelectedAllergies(current => current.includes(option) ? current.filter(value => value !== option) : [...current, option]);setResultFilter("all");}}>{option}</button>)}</div>{allergies.length > 0 && <button type="button" className="btn secondary mt-4" onClick={() => {setSelectedAllergies([]);setResultFilter("all");}}>Clear selections ({allergies.length})</button>}{!options.length && <p className="muted">No allergen information is available. Ask the manager to complete the menu records.</p>}</fieldset>
-      {!allergies.length ? <p className="muted py-8">Choose one or more allergies above to see {labelFor(contentType).item_many} results.</p> : <>
+      {!allergies.length ? <p className="muted py-8">{`Choose one or more allergies above to see ${labelFor(contentType).item_many} results.`}</p> : <>
         <div className="my-7" aria-live="polite"><InfoRow info={<>{results.filter(r => r.status === "avoid").length} do not offer · {results.filter(r => r.status === "cross-contact").length} cross-contamination risk · {results.filter(r => r.status === "unknown").length} need review · {results.filter(r => r.status === "no-match").length} with no allergen found</>}><h2 className="text-xl font-semibold">{allergies.join(" + ")} · {results.length} {labelFor(contentType).item_many} checked</h2></InfoRow></div>
         <label htmlFor="allergy-result-filter">Show results</label><select className="mb-7" id="allergy-result-filter" value={resultFilter} onChange={e => setResultFilter(e.target.value)}><option value="all">All results</option>{groups.map(g => <option key={g.status} value={g.status}>{g.title} ({results.filter(r=>r.status===g.status).length})</option>)}</select>
         {groups.filter(g => resultFilter === "all" || resultFilter === g.status).map(group => <section className="mb-9" key={group.status} aria-label={group.title}>
@@ -238,6 +240,7 @@ function Auth({ invitation, trial }: { invitation: string; trial: boolean }) {
       </aside>
       <main className="flex items-center justify-center px-6 py-12 lg:p-14">
         <div className="w-full max-w-md enter">
+          <div className="mb-6 flex justify-end"><div className="w-28"><LanguageSwitch compact /></div></div>
           <div className="mb-7 inline-flex rounded-2xl bg-surface p-4 text-heat shadow-sm">
             <HeatIcon />
           </div>
@@ -622,7 +625,7 @@ export function DishCard({ item, score, shift }: { item: MenuItem; score?: Progr
         </div>
       )}
       <div className="p-6">
-        <p className="eyebrow muted mb-2">Know your {labelFor(contentTypeOf(item)).name}</p>
+        <p className="eyebrow muted mb-2">{`Know your ${labelFor(contentTypeOf(item)).name}`}</p>
         <div className="flex items-center gap-2"><h2 className="text-2xl font-semibold tracking-tight">{item.name}</h2><CardQuizScore score={score} /></div>
         <ShiftFlag entry={shift} /><p className="muted mt-2 text-xs uppercase tracking-wide">{categoryOf(item)}{summary && ` · ${summary}`}</p>
         <p className="muted mt-3 whitespace-pre-line leading-relaxed">{intro}</p>
@@ -1163,6 +1166,7 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
       const names = selected.map(id => teamOptions.find(person => person.user_id === id)?.name || "Team member");
       const recipients = names.length <= 2 ? names.join(" and ") : `${names.slice(0, 2).join(", ")} and ${names.length - 2} ${names.length === 3 ? "other" : "others"}`;
       await loadBoard();
+      notify("preshift_posted", result.data as string);
       setMessage(names.length ? `Posted to ${recipients}.` : "Posted to the whole team.");
       onPosted();
     } catch (e) {
@@ -1606,6 +1610,7 @@ function TeamMemberDetail({restaurantId, restaurantName, member, items, busy, ac
         if (!supabase) throw new Error("Please reconnect to your workspace.");
         const result = await supabase.rpc("assign_menu_items", {rid: restaurantId, learner_id: member.user_id, mids, note, due: due || null});
         if (result.error) throw new Error(result.error.message);
+        notify("study_assigned", restaurantId, member.user_id);
         setMids([]);setNote("");setDue("");await loadDetail();setMessage("Study items assigned.");
       });}}><fieldset disabled={busy}><fieldset className="field"><legend className="mb-2 block text-sm font-semibold">Menu items</legend><div className="dish-picker-field"><Search size={18} aria-hidden="true" className="dish-picker-lens" /><input type="search" autoComplete="off" aria-label="Search menu items to assign" placeholder="Search dishes" value={pickFilter} style={{ paddingLeft: 44 }} onChange={e => setPickFilter(e.target.value)} onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} /></div><div className="word-chips mt-3" style={{marginBottom: 16}} role="group" aria-label="Show">{([["all", "All dishes"], ["new", `Not quizzed yet · ${unopened.length}`], ["practice", `Needs practice · ${review.length}`]] as const).map(([key, text]) => <button key={key} type="button" className="word-chip" aria-pressed={pickShow === key} onClick={() => setPickShow(key)}>{text}</button>)}</div>{mids.length > 0 && <div className="dish-chips">{mids.map(mid => {const dish = items.find(item => item.id === mid); return dish ? <button type="button" key={mid} className="dish-chip" aria-label={"Remove " + dish.name} onClick={() => setMids(mids.filter(id => id !== mid))}>{dish.name}<X size={13} aria-hidden="true" /></button> : null;})}</div>}{pickFilter.trim() && !items.some(item => dishKey(item.name).includes(dishKey(pickFilter))) && <p className="muted dish-picker-empty">No dish called “{pickFilter.trim()}”.</p>}{pickShow !== "all" && !(pickShow === "new" ? unopened.length : review.length) && <p className="muted dish-picker-empty">{pickShow === "new" ? "Every menu item has a completed quiz." : "Nothing needs practice."}</p>}<div className="assign-picker">{CONTENT_TYPES.map(type => {const group = inMenuOrder(items.filter(item => contentTypeOf(item) === type && (!pickFilter.trim() || dishKey(item.name).includes(dishKey(pickFilter))) && showItem(item)), namesFor(type));return group.length ? <div key={type}><p className="assign-picker-heading eyebrow muted">{labelFor(type).heading}</p>{group.map(item => <label key={item.id} className="assign-option"><input type="checkbox" checked={mids.includes(item.id)} onChange={event => setMids(event.target.checked ? [...mids, item.id] : mids.filter(id => id !== item.id))}/><span>{item.name}</span>{(() => {const row = attempts.find(r => r.menu_item_id === item.id); return row && row.total > 0 ? <span className="muted text-xs"> · {learningStatus(row) === "At target" ? "Passed" : "Needs practice"} {row.correct}/{row.total}</span> : null;})()}</label>)}</div> : null;})}</div></fieldset><p className="muted mt-2 mb-4 text-xs">{mids.length ? `${mids.length} selected` : "Tick the items you want this person to study."}</p><Field label="Note (optional)"><input id="team-study-note" maxLength={200} value={note} onChange={e => setNote(e.target.value)}/></Field><Field label="Due date (optional)"><input id="team-study-due" type="date" value={due} onChange={e => setDue(e.target.value)}/></Field><div className="mt-4 flex flex-wrap items-center gap-3"><button className="btn" type="submit" disabled={!mids.length}>Assign</button>{due && <button type="button" className="btn secondary" onClick={() => setDue("")}>Clear due date</button>}</div></fieldset></form></div></details>
       {!!assignments.length && <details className="panel team-fold" style={{margin: "12px 0"}}><summary>Assigned · {assignments.length}{assignmentsDone ? ` · ${assignmentsDone} done` : ""}</summary><div className="team-fold-body"><ul className="space-y-3">{assignmentRows.map(({assignment, status}) => <li key={assignment.id} className="flex items-start justify-between gap-3 border-t border-line pt-3"><div className="min-w-0"><p className="font-semibold">{assignment.item_name}</p><p className="mt-2"><span className={`menu-badge ${status.tone}`}>{status.label}</span></p>{assignment.note && <p className="muted mt-1 whitespace-pre-wrap">{assignment.note}</p>}{assignment.due_on && <p className="muted mt-1 text-xs">Due {new Date(`${assignment.due_on}T12:00:00`).toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"})}</p>}</div><button className="btn secondary shrink-0" disabled={busy} aria-label={`Remove assignment for ${assignment.item_name}`} onClick={() => void action(async () => {
@@ -1757,6 +1762,11 @@ function Workspace({
   // The guided tour: once for every new account, then on request from "Take the tour".
   const [touring, setTouring] = useState(false);
   const tourOffered = useRef(false);
+  // The language chosen on another device comes along with the account.
+  useEffect(() => {
+    const saved = user.user_metadata?.heat_lang;
+    if ((saved === "es" || saved === "en") && saved !== currentLang()) setLang(saved, false);
+  }, [user]);
   useEffect(() => {
     if (tourOffered.current || loading || creating || !restaurant || tourSeen(user)) return;
     tourOffered.current = true;
@@ -2172,6 +2182,8 @@ function Workspace({
           {restaurant && <button type="button" data-tour="tour-button" className="nav-item mt-6" onClick={() => {setNavOpen(false); setTouring(true);}}>
             <CircleHelp size={19} />Take the tour
           </button>}
+          <NotificationSwitch />
+          <LanguageSwitch />
           <ThemeChoice />
         </aside>
         <main className="workspace-main min-w-0 p-4 md:p-9">
@@ -2443,7 +2455,7 @@ function Workspace({
               <section>
                 {!isManager ? <EmployeeHome key={restaurant.id} onProgress={() => navigate("progress")} onChecklists={() => navigate("checklists")} restaurantId={restaurant.id} canDownloadBoard={can("preshift")} restaurantName={restaurant.name} onFocusQuiz={item => {navigate("library", "All", contentTypeOf(item));setDetailItem(item);setQuizEditing(false);setQuizItem(item);}} onBoardItem={item => {navigate("library", "All", contentTypeOf(item));setCameFrom({view: "home", label: "Pre-shift board"});openCard(item);}} user={user} items={items} progress={quizProgress} loading={itemsLoading || progressLoading} error={progressError || error} onRetry={() => {void loadItems();void loadProgress();}} onStudy={(item, mode) => {if(item && mode === "list"){setStudyType(CONTENT_TYPES.find(type => items.some(other => contentTypeOf(other) === type && !takenIds.has(other.id))) ?? "food");navigate("tostudy");return;}navigate("library", item ? categoryOf(item) : "All", item ? contentTypeOf(item) : "food");setHideTaken(false);if(item)setQuery(item.name);}} /> : <>
                 <p className="eyebrow muted mb-3">Home · {isManager ? "Manager workspace" : "Ready for service"}</p>
-                <h1 className="text-2xl font-semibold md:text-2xl">Welcome to {restaurant.name}</h1>
+                <h1 className="text-2xl font-semibold md:text-2xl">{`Welcome to ${restaurant.name}`}</h1>
                 <p className="muted mt-3 max-w-xl">Feel ready for every service.</p>
                 {can("preshift") && restaurant ? <HomeShortcuts key={`shortcuts-${restaurant.id}`} restaurantId={restaurant.id} canAssign={can("team")} onPreshift={() => navigate("preshift")} onChecklists={() => navigate("checklists")} onAssign={() => navigate("team")} onLibrary={() => navigate("library")} /> : <div className="mt-5 mb-4 flex flex-wrap gap-3">
                   {can("team") && <button className="btn secondary" style={{fontWeight: 700, border: "1.5px solid var(--c-text)"}} onClick={() => navigate("team")}>Assign study</button>}

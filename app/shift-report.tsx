@@ -9,6 +9,7 @@ import type { Restaurant } from "@/lib/menu";
 import { ISSUE_KINDS, MOODS, SERVICES, URGENT_KINDS, heatLines, money, serviceDate, serviceDay, type FromHeat, type IssueKind, type Mood, type ShiftReport } from "@/lib/shift-report";
 import type { Organization } from "./locations";
 import { Field, SectionInfo } from "./ui";
+import { notify } from "./notifications";
 
 type Tab = "tonight" | "past" | "recipients";
 
@@ -28,7 +29,7 @@ export function ShiftReports({restaurant, restaurants, brand, ownsBrand, canWrit
     ...(canManageRecipients ? [["recipients", "Who gets it"] as [Tab, string]] : []),
   ];
   return <section className="mx-auto max-w-3xl">
-    <p className="eyebrow muted">Shift report · {restaurant.name}</p>
+    <p className="eyebrow muted">{`Shift report · ${restaurant.name}`}</p>
     <h1 className="mt-3 mb-5 text-2xl font-semibold">End of shift</h1>
     {tabs.length > 1 && <div className="library-switch mb-5" aria-label="Shift report">
       {tabs.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}
@@ -73,6 +74,8 @@ function TonightReport({restaurant, setMessage, onSent}: {restaurant: Restaurant
         low_stock: text("low_stock"), shoutouts: text("shoutouts"), next_shift: text("next_shift"), notes: text("notes"),
       }});
       if (saved.error) throw new Error(saved.error.message);
+      // An allergy incident or an injury reaches managers' phones right away, not just their inbox.
+      if (issues.some(issue => URGENT_KINDS.includes(issue.kind))) notify("urgent_report", saved.data as string);
       // Saving is what matters; the email is a courtesy on top. If it fails, the report is still here.
       const {data: session} = await supabase!.auth.getSession();
       const sent = await fetch("/api/shift-report", {
@@ -138,7 +141,7 @@ function TonightReport({restaurant, setMessage, onSent}: {restaurant: Restaurant
 
     {error && <p role="alert" className="notice bad mb-4">{error}</p>}
     <button className="btn w-full" disabled={busy}>{busy ? "Sending…" : `Submit ${label.toLowerCase()} report`}</button>
-    <p className="muted mt-3 text-center text-xs">Goes to the owners and everyone who manages {restaurant.name}. Sending again tonight replaces it.</p>
+    <p className="muted mt-3 text-center text-xs">{`Goes to the owners and everyone who manages ${restaurant.name}. Sending again tonight replaces it.`}</p>
   </form>;
 }
 
