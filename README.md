@@ -234,3 +234,16 @@ Apply `supabase/migrations/039_push_notifications.sql` after 038. Each person tu
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API keys (the secret / service_role key); secret, server only |
 
 Without them the switch doesn't appear and nothing else changes. Devices that turned notifications off are forgotten on the next send.
+
+## Schedule (stage 1 of replacing Sling)
+
+Apply `supabase/migrations/040_schedule.sql` after 039. **Schedule** in the sidebar, for everyone:
+
+- **Build the week** (Team access and the owner): one row per person, one column per day, Monday to Sunday. Tap **+** to add a shift (who, position, day, start, end, note; an end before the start closes after midnight). Each person's weekly hours show beside their name, with **Overtime** past 40. A shift that overlaps another, falls on a time the person marked unavailable, or on time off (approved or asked for) is flagged. **Copy last week** brings last week's shifts in as drafts, never doubling one.
+- **Drafts and publishing**: new and changed shifts are drafts (dashed) that only managers see. **Publish** shows the week to the team and notifies the people whose shifts changed. Editing a published shift makes it a draft again until the next publish.
+- **My shifts** and **Your next shift** on Home: the next three weeks of one's own published shifts.
+- **Team schedule** (everyone else): the published week, read-only.
+- **My availability**: the days or hours someone can never work, every week.
+- **Time off**: asked by the person, approved or denied by Team access, with notifications both ways.
+
+Next stages (not built yet): shift swaps and pickups; floor plan, sections and rotating side work; labor cost and payroll export.
