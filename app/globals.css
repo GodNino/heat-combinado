@@ -2256,25 +2256,77 @@ span.dash-name { text-decoration:none; }
 
 /* ── Schedule ── */
 .sched-bar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
-.sched-icon { padding-left:10px; padding-right:10px; }
-.sched-scroll { overflow-x:auto; border:1px solid var(--c-line-5); border-radius:16px; background:var(--c-surface); }
-.sched-grid { width:100%; min-width:900px; border-collapse:separate; border-spacing:0; font-size:var(--text-sm); }
-.sched-grid th, .sched-grid td { vertical-align:top; padding:8px; border-bottom:1px solid var(--c-line-5); border-left:1px solid var(--c-line-5); text-align:left; }
-.sched-grid thead th { font-family:var(--font-mono); font-size:var(--text-xs); font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--c-muted); white-space:nowrap; }
-.sched-grid thead th.today { color:var(--c-text); }
-.sched-grid th:first-child { position:sticky; left:0; z-index:1; min-width:150px; border-left:0; background:var(--c-surface); }
+.sched-nav, .sched-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.sched-range { display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:0 4px; border:1px solid var(--c-line-5); border-radius:999px; background:var(--c-surface); font-size:var(--text-sm); white-space:nowrap; }
+.sched-icon { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:999px; color:var(--c-muted); }
+.sched-icon:hover { color:var(--c-text); background:var(--c-raised-2); }
+.sched-toggle { position:relative; display:inline-flex; align-items:center; gap:8px; font-size:var(--text-sm); font-weight:600; cursor:pointer; user-select:none; }
+.sched-toggle input { position:absolute; opacity:0; width:1px; height:1px; }
+.sched-toggle > span { position:relative; width:34px; height:20px; border-radius:999px; background:var(--c-raised-4); border:1px solid var(--c-line-5); transition:background .15s; }
+.sched-toggle > span::after { content:""; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:999px; background:var(--c-muted); transition:transform .15s, background .15s; }
+.sched-toggle input:checked + span { background:var(--c-heat); border-color:var(--c-heat); }
+.sched-toggle input:checked + span::after { transform:translateX(14px); background:var(--c-on-heat); }
+.sched-toggle input:focus-visible + span { outline:2px solid var(--c-text); outline-offset:2px; }
+.sched-toggle em { font-style:normal; min-width:20px; padding:0 6px; border-radius:999px; background:var(--c-invert-bg); color:var(--c-invert-text); font-family:var(--font-mono); font-size:var(--text-xs); text-align:center; }
+.sched-scroll { overflow:auto; max-height:calc(100vh - 220px); border:1px solid var(--c-line-5); border-radius:16px; background:var(--c-surface); }
+.sched-scroll.dragging, .sched-scroll.dragging * { cursor:grabbing !important; user-select:none; }
+.sched-grid { width:100%; min-width:980px; border-collapse:separate; border-spacing:0; font-size:var(--text-sm); table-layout:fixed; }
+.sched-grid th, .sched-grid td { vertical-align:top; padding:6px; border-bottom:1px solid var(--c-line-5); border-left:1px solid var(--c-line-5); text-align:left; }
+.sched-grid thead th { position:sticky; top:0; z-index:2; background:var(--c-surface); vertical-align:middle; text-align:center; padding:10px 6px; }
+.sched-grid tfoot > tr > * { position:sticky; bottom:0; z-index:2; background:var(--c-surface-2); border-top:1px solid var(--c-line-5); border-bottom:0; }
+.sched-grid th:first-child { position:sticky; left:0; z-index:1; width:190px; border-left:0; background:var(--c-surface); text-align:left; }
+.sched-grid thead th:first-child, .sched-grid tfoot th:first-child { z-index:3; }
+.sched-grid tfoot th:first-child { background:var(--c-surface-2); }
 .sched-grid tbody tr:last-child > * { border-bottom:0; }
-.sched-hours { display:block; margin-top:2px; font-family:var(--font-mono); font-size:var(--text-xs); color:var(--c-muted); }
+.sched-grid td { height:64px; transition:background .1s; }
+.sched-grid td.drop { background:var(--c-heat-bg); box-shadow:inset 0 0 0 2px var(--c-heat); }
+.sched-day { display:inline-flex; align-items:baseline; gap:5px; padding:3px 10px; border-radius:999px; border:1.5px solid transparent; font-family:var(--font-mono); font-size:var(--text-xs); letter-spacing:.04em; text-transform:uppercase; color:var(--c-muted); white-space:nowrap; }
+.sched-day b { font-size:var(--text-sm); color:var(--c-text); }
+.sched-day.today { border-color:var(--c-text); color:var(--c-text); }
+.sched-viewby { display:flex; flex-direction:column; gap:2px; }
+.sched-viewby label { font-size:var(--text-xs); color:var(--c-muted); font-weight:600; }
+.sched-viewby select { width:100%; min-height:30px; padding:2px 8px; border-radius:8px; border:1px solid var(--c-line-5); background-color:var(--c-bg); color:var(--c-text); font-size:16px; }
+.sched-search { display:block; margin-top:6px; }
+.sched-search input { font-size:16px; }
+.sched-person { display:flex; align-items:center; gap:10px; }
+.sched-avatar { flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:999px; background:var(--c-raised-4); color:var(--c-text); font-family:var(--font-mono); font-size:var(--text-xs); font-weight:700; letter-spacing:.02em; }
+.sched-hours { display:block; margin-top:1px; font-family:var(--font-mono); font-size:var(--text-xs); color:var(--c-muted); }
 .sched-hours.over { color:var(--c-danger); font-weight:600; }
-.sched-shift { display:block; width:100%; margin-bottom:6px; padding:6px 8px; border-radius:10px; border:1.5px solid var(--c-line); background:var(--c-bg); color:inherit; text-align:left; }
-.sched-shift b { display:block; font-size:var(--text-sm); }
-.sched-shift small { display:block; color:var(--c-muted); font-size:var(--text-xs); }
-.sched-shift.draft { border-style:dashed; }
-.sched-shift.warn { border-color:var(--c-warning); }
-.sched-warn { display:flex !important; align-items:center; gap:4px; margin-top:2px; color:var(--c-text) !important; }
+.sched-shift { display:block; width:100%; margin-bottom:4px; padding:5px 8px 5px 10px; border-radius:8px; border:1.5px solid var(--c-heat-bg-2); border-left:4px solid var(--c-heat); background:var(--c-heat-bg); color:var(--c-text); text-align:left; line-height:1.3; touch-action:manipulation; -webkit-touch-callout:none; user-select:none; }
+.sched-shift:not(:disabled) { cursor:grab; }
+.sched-shift:not(:disabled):hover { border-color:var(--c-heat-4); }
+.sched-shift b { display:block; font-size:var(--text-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sched-shift small { display:block; color:var(--c-muted); font-size:var(--text-xs); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sched-shift.draft { background:var(--c-surface); border:1.5px dashed var(--c-line-5); border-left:4px dashed var(--c-heat-4); }
+.sched-shift.warn { border-color:var(--c-warning); border-left-color:var(--c-warning); box-shadow:inset 0 0 0 1px var(--c-warning); }
+.sched-shift.lifting { opacity:.3; }
+.sched-warn { display:flex !important; align-items:flex-start; gap:4px; margin-top:2px; color:var(--c-text) !important; white-space:normal !important; line-height:1.25; }
+.sched-warn svg { flex-shrink:0; margin-top:1px; }
 .sched-shift:disabled { cursor:default; opacity:1; }
-.sched-add { display:flex; align-items:center; justify-content:center; width:100%; min-height:30px; border-radius:10px; border:1px dashed var(--c-line-5); background:none; color:var(--c-muted); }
-.sched-add:hover { color:var(--c-text); border-color:var(--c-text); }
+.sched-ghost { position:fixed; z-index:70; margin:0; pointer-events:none; transform:rotate(-1.5deg); box-shadow:0 12px 28px rgb(0 0 0 / .35); }
+.sched-ghost.draft { background:var(--c-surface); }
+.sched-ghost em { position:absolute; top:-8px; right:-8px; padding:1px 7px; border-radius:999px; background:var(--c-invert-bg); color:var(--c-invert-text); font-style:normal; font-size:var(--text-xs); font-weight:700; }
+.sched-block { display:block; margin-bottom:4px; padding:4px 8px; border-radius:8px; background:repeating-linear-gradient(135deg, var(--c-surface-3) 0 6px, var(--c-surface-2) 6px 12px); color:var(--c-muted); line-height:1.3; }
+.sched-block b { display:block; font-size:var(--text-xs); color:var(--c-text-3); }
+.sched-block small { display:block; font-size:var(--text-xs); }
+.sched-block.time_off_pending { background:none; border:1px dashed var(--c-line-5); }
+.sched-add { display:flex; align-items:center; justify-content:center; width:100%; min-height:26px; border-radius:8px; border:1px dashed transparent; background:none; color:var(--c-muted); opacity:0; transition:opacity .1s; }
+.sched-add.empty { min-height:50px; }
+.sched-grid td:hover .sched-add, .sched-add:focus-visible { opacity:1; border-color:var(--c-line-5); }
+.sched-add:hover { color:var(--c-text); border-color:var(--c-text) !important; }
+@media (hover: none) { .sched-add { opacity:1; border-color:var(--c-line-5); } }
+.sched-scroll.dragging .sched-add { opacity:0 !important; }
+.sched-foot-label { display:flex; justify-content:space-between; gap:8px; font-size:var(--text-xs); color:var(--c-muted); }
+.sched-foot-label b { font-family:var(--font-mono); color:var(--c-text); }
+.sched-foot { display:flex; align-items:center; justify-content:center; gap:4px; font-family:var(--font-mono); font-size:var(--text-xs); color:var(--c-muted); }
+.sched-foot + .sched-foot { color:var(--c-text); font-weight:600; }
+.sched-grid tfoot td { height:auto; }
+@media (max-width: 639px) {
+  .sched-grid { min-width:820px; }
+  .sched-grid th:first-child { width:124px; }
+  .sched-avatar { display:none; }
+  .sched-scroll { max-height:calc(100vh - 160px); }
+}
 .sched-sheet { position:fixed; inset:0; z-index:60; display:flex; align-items:flex-end; justify-content:center; padding:16px; background:rgb(0 0 0 / .45); }
 @media (min-width: 640px) { .sched-sheet { align-items:center; } }
 .sched-form { width:100%; max-width:440px; max-height:calc(100vh - 32px); overflow-y:auto; padding:20px; }

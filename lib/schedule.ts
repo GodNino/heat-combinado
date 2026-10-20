@@ -92,6 +92,34 @@ export function shiftWarnings(shift: Shift, others: Shift[], unavailable: Unavai
   return found;
 }
 
+// Dragging a shift to another day (and maybe another person): the same time of day and the same
+// length, so a 5p–1a close stays a 5p–1a close wherever it lands.
+export function movedShift(shift: Pick<Shift, "starts_at" | "ends_at">, day: Date) {
+  const from = new Date(shift.starts_at);
+  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), from.getHours(), from.getMinutes());
+  return {starts_at: start.toISOString(), ends_at: new Date(start.getTime() + Date.parse(shift.ends_at) - from.getTime()).toISOString()};
+}
+
+// What already fills someone's day before a shift goes in: their weekly unavailability and time off.
+export type DayBlock = {kind: "unavailable" | "time_off" | "time_off_pending"; label: string};
+export function dayBlocks(userId: string, day: Date, unavailable: Unavailability[], timeOff: TimeOff[]): DayBlock[] {
+  const key = dayKey(day);
+  const off = timeOff.filter(t => t.user_id === userId && t.starts_on <= key && t.ends_on >= key && t.status !== "denied");
+  const blocks: DayBlock[] = off.map(t => ({kind: t.status === "approved" ? "time_off" : "time_off_pending", label: "All day"}));
+  for (const u of unavailable) if (u.user_id === userId && u.weekday === day.getDay()) {
+    blocks.push({kind: "unavailable", label: u.starts && u.ends ? `${shortTime(atTime(day, u.starts))}–${shortTime(atTime(day, u.ends))}` : "All day"});
+  }
+  return blocks;
+}
+
+// The footer of each day: hours scheduled and how many people work.
+export function dayTotals(shifts: Shift[], day: Date) {
+  const mine = shifts.filter(s => dayKey(new Date(s.starts_at)) === dayKey(day));
+  return {hours: mine.reduce((sum, s) => sum + shiftHours(s), 0), people: new Set(mine.map(s => s.user_id)).size};
+}
+
+export const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]!.toUpperCase()).join("") || "?";
+
 // Copying last week: the same shifts, seven days later, as drafts.
 export function copiedWeek(shifts: Shift[]) {
   return shifts.map(s => ({
