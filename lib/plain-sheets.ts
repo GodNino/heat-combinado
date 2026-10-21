@@ -345,6 +345,60 @@ function panelText(sheet: PlainSheet, text: string, tint: Tone, edge: Tone | nul
   }
 }
 
+/* ----------------------------------------------------------- shift report -- */
+
+export type ShiftReportSheetInput = {
+  /** "Fri, Oct 23". */
+  day: string;
+  label: string;
+  urgent: boolean;
+  mood: string;
+  covers: string;
+  sales: string;
+  issues: { kind: string; note: string; urgent: boolean }[];
+  fromHeat: string[];
+  lowStock: string;
+  shoutouts: string;
+  nextShift: string;
+  notes: string;
+  writtenBy: string;
+  changedBy?: string | null;
+  changedAt?: string | null;
+};
+
+/** The end-of-shift report on paper: who wrote it and who changed it last, problems first. */
+export function plainShiftReportSheet(input: ShiftReportSheetInput, header: SheetHeader): Uint8Array {
+  const sheet = new PlainSheet(header, `${input.label} report / ${input.day}`);
+  const changed = input.changedBy ? ` / Last changed by ${input.changedBy}${input.changedAt ? `, ${input.changedAt}` : ''}` : '';
+  sheet.title(`${input.label} report`, `${input.day} / Written by ${input.writtenBy}${changed}`);
+  sheet.y += 10;
+  if (input.urgent) { sheet.band('URGENT: allergy incident or injury reported', RED, WHITE); sheet.y += 8; }
+  sheet.glance([{ label: 'Night', value: input.mood }, { label: 'Covers', value: input.covers }, { label: 'Sales', value: input.sales }]);
+  sheet.y += 4;
+  if (input.issues.length) {
+    sheet.section('Issues');
+    for (const issue of input.issues) {
+      panelText(sheet, `${issue.kind}${issue.urgent ? ' (urgent)' : ''}: ${issue.note || 'no details'}`, issue.urgent ? SOFT_RED : PALE, issue.urgent ? RED : null, issue.urgent ? 'bold' : 'regular');
+      sheet.y += 4;
+    }
+  }
+  if (input.fromHeat.length) {
+    sheet.section('From HEAT');
+    for (const line of input.fromHeat) sheet.body(`- ${line}`);
+  }
+  const blocks: [string, string][] = [['Low stock / to order', input.lowStock], ['Shout-outs', input.shoutouts], ['For the next shift', input.nextShift], ['Notes', input.notes]];
+  for (const [title, text] of blocks) {
+    if (!text.trim()) continue;
+    sheet.section(title);
+    for (const paragraph of text.split(/\r?\n/)) sheet.body(paragraph);
+  }
+  if (!input.issues.length && !input.fromHeat.length && blocks.every(([, text]) => !text.trim())) {
+    sheet.y += 8;
+    sheet.body('Nothing else was added to this report.', 'regular', MUTED);
+  }
+  return sheet.finish(`${input.label} report - ${input.day}`);
+}
+
 /* --------------------------------------------------------------- pre-shift -- */
 
 export function plainPreshiftSheet(input: PreshiftInput, date: string, header: SheetHeader): Uint8Array {

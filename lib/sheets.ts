@@ -20,6 +20,7 @@ import type { CardFieldRow } from "./card-fields.ts";
 import type { CustomTerm } from "./glossary.ts";
 import { contentTypeOf, CONTENT_LABELS } from "./categories.ts";
 import { plainScheduleSheet, type ScheduleSheetInput } from "./schedule-sheet.ts";
+import { plainShiftReportSheet, type ShiftReportSheetInput } from "./plain-sheets.ts";
 
 /* ---------------------------------------------------------------- shared --- */
 
@@ -219,5 +220,14 @@ export function scheduleSheet(input: ScheduleSheetInput, context: SheetContext):
   return {
     filename: `${slug(context.restaurant)}-schedule-${input.start}.pdf`,
     bytes: plainScheduleSheet(input, header(context, "Schedule")),
+  };
+}
+
+/* ---------------------------------------------------------- shift report --- */
+
+export function shiftReportSheet(input: ShiftReportSheetInput & { serviceDate: string; updated?: string | Date | null }, context: SheetContext): PrintedSheet {
+  return {
+    filename: `${slug(input.label)}-report-${input.serviceDate}.pdf`,
+    bytes: plainShiftReportSheet(input, header(context, "Shift report", input.updated)),
   };
 }

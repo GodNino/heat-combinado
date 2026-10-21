@@ -38,7 +38,12 @@ export type ShiftReport = {
   next_shift: string;
   notes: string;
   from_heat: FromHeat;
+  /** Who wrote it (sending again doesn't change it, 046). */
+  submitted_by?: string;
   submitted_at: string;
+  /** Who changed it last, and when (046). */
+  updated_by?: string | null;
+  updated_at?: string | null;
 };
 
 // "2026-10-17" is a calendar day, not a moment: read it in local time so it never shifts a day.

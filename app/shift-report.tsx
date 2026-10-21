@@ -2,14 +2,16 @@
 // The end-of-shift report: what used to be a free-text message to the GM, operations manager,
 // managers and owners. HEAT fills in what it already knows; the manager adds the night in a few taps,
 // and submitting saves it here and emails it (see app/api/shift-report/route.ts).
-import { useEffect, useState, type FormEvent } from "react";
-import { Plus, X } from "lucide-react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Restaurant } from "@/lib/menu";
 import { ISSUE_KINDS, MOODS, SERVICES, URGENT_KINDS, heatLines, money, serviceDate, serviceDay, type FromHeat, type IssueKind, type Mood, type ShiftReport } from "@/lib/shift-report";
 import type { Organization } from "./locations";
+import { shiftReportSheet } from "@/lib/sheets";
 import { Field, SectionInfo } from "./ui";
 import { notify } from "./notifications";
+import { DownloadSheet } from "./sheet-download";
 
 type Tab = "tonight" | "past" | "recipients";
 
@@ -35,7 +37,7 @@ export function ShiftReports({restaurant, restaurants, brand, ownsBrand, canWrit
       {tabs.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}
     </div>}
     {tab === "tonight" && <TonightReport restaurant={restaurant} setMessage={setMessage} onSent={() => setTab("past")} />}
-    {tab === "past" && <PastReports restaurant={restaurant} restaurants={restaurants} brand={ownsBrand ? brand : undefined} />}
+    {tab === "past" && <PastReports restaurant={restaurant} restaurants={restaurants} brand={ownsBrand ? brand : undefined} canEdit={canWrite || canManageRecipients} canDeleteAny={canManageRecipients} canWrite={canWrite} setMessage={setMessage} />}
     {tab === "recipients" && <Recipients restaurant={restaurant} />}
   </section>;
 }
@@ -43,13 +45,74 @@ export function ShiftReports({restaurant, restaurants, brand, ownsBrand, canWrit
 // Lunch before four in the afternoon, dinner after: the usual answer, changeable in one tap.
 const likelyService = () => new Date().getHours() < 16 ? "Lunch" : "Dinner";
 
+// What a manager types into a report: the same fields for tonight's and for correcting a past one.
+type ReportValues = {label: string; mood: Mood | ""; covers: string; sales: string; issues: {kind: IssueKind; note: string}[]; low_stock: string; shoutouts: string; next_shift: string; notes: string};
+const emptyReport = (): ReportValues => ({label: likelyService(), mood: "", covers: "", sales: "", issues: [], low_stock: "", shoutouts: "", next_shift: "", notes: ""});
+const valuesOf = (report: ShiftReport): ReportValues => ({
+  label: report.label, mood: report.mood, covers: report.covers === null ? "" : String(report.covers), sales: report.sales === null ? "" : String(report.sales),
+  issues: report.issues.map(i => ({kind: i.kind, note: i.note})), low_stock: report.low_stock, shoutouts: report.shoutouts, next_shift: report.next_shift, notes: report.notes,
+});
+const payload = (v: ReportValues) => ({
+  label: v.label, mood: v.mood, covers: v.covers.trim(), sales: v.sales.trim(),
+  issues: v.issues.map(i => ({kind: i.kind, note: i.note.trim()})),
+  low_stock: v.low_stock.trim(), shoutouts: v.shoutouts.trim(), next_shift: v.next_shift.trim(), notes: v.notes.trim(),
+});
+
+function ReportForm({initial, before, busy, error, submitText, footer, onSubmit, onCancel}: {
+  initial: ReportValues; before?: ReactNode; busy: boolean; error: string; submitText: (label: string) => string; footer?: string;
+  onSubmit: (values: ReportValues) => void; onCancel?: () => void;
+}) {
+  const [v, setV] = useState<ReportValues>(initial);
+  const set = (change: Partial<ReportValues>) => setV(current => ({...current, ...change}));
+  const services = SERVICES.includes(v.label as typeof SERVICES[number]) ? SERVICES : [v.label, ...SERVICES];
+  return <form onSubmit={event => {event.preventDefault(); onSubmit(v);}}>
+    {before}
+    <div className="panel dash-panel">
+      <div className="report-row">
+        <Field label="Service"><select id="report-service" value={v.label} onChange={e => set({label: e.target.value})}>{services.map(s => <option key={s}>{s}</option>)}</select></Field>
+        <Field label="Covers"><input id="report-covers" type="number" inputMode="numeric" min={0} max={100000} placeholder="e.g. 180" value={v.covers} onChange={e => set({covers: e.target.value})} /></Field>
+        <Field label="Sales (optional)"><input id="report-sales" type="number" inputMode="decimal" min={0} step="0.01" placeholder="e.g. 14250" value={v.sales} onChange={e => set({sales: e.target.value})} /></Field>
+      </div>
+      <p className="report-label">How did the night go?</p>
+      <div className="library-switch" role="radiogroup" aria-label="How did the night go?">
+        {(Object.keys(MOODS) as Mood[]).map(key => <button key={key} type="button" role="radio" aria-checked={v.mood === key} aria-pressed={v.mood === key} onClick={() => set({mood: key})}>{MOODS[key]}</button>)}
+      </div>
+    </div>
+
+    <div className="panel dash-panel">
+      <SectionInfo heading="Anything to flag?">Tap what happened and add a line. Allergy incidents and injuries mark the report urgent.</SectionInfo>
+      <div className="report-chips">{(Object.keys(ISSUE_KINDS) as IssueKind[]).map(kind => <button key={kind} type="button" className="btn secondary" onClick={() => set({issues: [...v.issues, {kind, note: ""}]})}><Plus size={14} />{ISSUE_KINDS[kind]}</button>)}</div>
+      {v.issues.map((issue, index) => <div key={index} className="report-issue">
+        <div className="flex items-center gap-2">
+          <b className="text-sm">{ISSUE_KINDS[issue.kind]}</b>
+          {URGENT_KINDS.includes(issue.kind) && <span className="report-urgent">Urgent</span>}
+          <button type="button" className="ml-auto muted" aria-label={`Remove ${ISSUE_KINDS[issue.kind]}`} onClick={() => set({issues: v.issues.filter((_, i) => i !== index)})}><X size={16} /></button>
+        </div>
+        <textarea aria-label={`${ISSUE_KINDS[issue.kind]}: what happened`} rows={2} maxLength={1000} value={issue.note} placeholder="What happened, and what you did about it"
+          onChange={e => set({issues: v.issues.map((item, i) => i === index ? {...item, note: e.target.value} : item)})} />
+      </div>)}
+    </div>
+
+    <div className="panel dash-panel">
+      <Field label="Low stock / to order"><textarea id="report-low" rows={2} maxLength={1000} placeholder="e.g. Uni, yuzu, Albariño" value={v.low_stock} onChange={e => set({low_stock: e.target.value})} /></Field>
+      <Field label="Shout-outs"><textarea id="report-shout" rows={2} maxLength={1000} placeholder="Who did great tonight" value={v.shoutouts} onChange={e => set({shoutouts: e.target.value})} /></Field>
+      <Field label="For the next shift"><textarea id="report-next" rows={2} maxLength={1000} placeholder="What the opening manager needs to know" value={v.next_shift} onChange={e => set({next_shift: e.target.value})} /></Field>
+      <Field label="Anything else"><textarea id="report-notes" rows={4} maxLength={4000} placeholder="Write it the way you always have" value={v.notes} onChange={e => set({notes: e.target.value})} /></Field>
+    </div>
+
+    {error && <p role="alert" className="notice bad mb-4">{error}</p>}
+    <div className="flex gap-2">
+      <button className="btn flex-1" disabled={busy}>{busy ? "Saving…" : submitText(v.label)}</button>
+      {onCancel && <button type="button" className="btn secondary" disabled={busy} onClick={onCancel}>Cancel</button>}
+    </div>
+    {footer && <p className="muted mt-3 text-center text-xs">{footer}</p>}
+  </form>;
+}
+
 function TonightReport({restaurant, setMessage, onSent}: {restaurant: Restaurant; setMessage: (text: string) => void; onSent: () => void}) {
   const [draft, setDraft] = useState<FromHeat | null>(null);
   const [draftError, setDraftError] = useState("");
-  const [label, setLabel] = useState(likelyService());
   const [day] = useState(serviceDate);
-  const [mood, setMood] = useState<Mood | "">("");
-  const [issues, setIssues] = useState<{kind: IssueKind; note: string}[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -61,21 +124,14 @@ function TonightReport({restaurant, setMessage, onSent}: {restaurant: Restaurant
     return () => {live = false;};
   }, [restaurant.id, day]);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!mood) return setError("Choose how the night went.");
-    const form = new FormData(event.currentTarget);
-    const text = (name: string) => String(form.get(name) ?? "").trim();
+  async function submit(v: ReportValues) {
+    if (!v.mood) return setError("Choose how the night went.");
     setBusy(true); setError("");
     try {
-      const saved = await supabase!.rpc("submit_shift_report", {rid: restaurant.id, report: {
-        service_date: day, label, mood, covers: text("covers"), sales: text("sales"),
-        issues: issues.map(i => ({kind: i.kind, note: i.note.trim()})),
-        low_stock: text("low_stock"), shoutouts: text("shoutouts"), next_shift: text("next_shift"), notes: text("notes"),
-      }});
+      const saved = await supabase!.rpc("submit_shift_report", {rid: restaurant.id, report: {service_date: day, ...payload(v)}});
       if (saved.error) throw new Error(saved.error.message);
       // An allergy incident or an injury reaches managers' phones right away, not just their inbox.
-      if (issues.some(issue => URGENT_KINDS.includes(issue.kind))) notify("urgent_report", saved.data as string);
+      if (v.issues.some(issue => URGENT_KINDS.includes(issue.kind))) notify("urgent_report", saved.data as string);
       // Saving is what matters; the email is a courtesy on top. If it fails, the report is still here.
       const {data: session} = await supabase!.auth.getSession();
       const sent = await fetch("/api/shift-report", {
@@ -97,59 +153,32 @@ function TonightReport({restaurant, setMessage, onSent}: {restaurant: Restaurant
   }
 
   const known = draft ? heatLines(draft) : [];
-  return <form onSubmit={submit}>
-    <div className="panel dash-panel">
+  return <ReportForm initial={emptyReport()} busy={busy} error={error} onSubmit={v => void submit(v)}
+    submitText={label => `Submit ${label.toLowerCase()} report`}
+    footer={`Goes to the owners and everyone who manages ${restaurant.name}. Sending again tonight replaces it.`}
+    before={<div className="panel dash-panel">
       <SectionInfo heading="Already in HEAT tonight">Taken from tonight's pre-shift, checklists and quizzes when you submit. Nothing to type.</SectionInfo>
       {draftError ? <p className="muted mt-3">{draftError}</p>
         : !draft ? <p className="muted mt-3" role="status">Loading…</p>
         : known.length ? <ul className="report-lines">{known.map(line => <li key={line}>{line}</li>)}</ul>
         : <p className="muted mt-3">No pre-shift, checklists or quizzes recorded today.</p>}
-    </div>
-
-    <div className="panel dash-panel">
-      <div className="report-row">
-        <Field label="Service"><select id="report-service" value={label} onChange={e => setLabel(e.target.value)}>{SERVICES.map(s => <option key={s}>{s}</option>)}</select></Field>
-        <Field label="Covers"><input id="report-covers" name="covers" type="number" inputMode="numeric" min={0} max={100000} placeholder="e.g. 180" /></Field>
-        <Field label="Sales (optional)"><input id="report-sales" name="sales" type="number" inputMode="decimal" min={0} step="0.01" placeholder="e.g. 14250" /></Field>
-      </div>
-      <p className="report-label">How did the night go?</p>
-      <div className="library-switch" role="radiogroup" aria-label="How did the night go?">
-        {(Object.keys(MOODS) as Mood[]).map(key => <button key={key} type="button" role="radio" aria-checked={mood === key} aria-pressed={mood === key} onClick={() => setMood(key)}>{MOODS[key]}</button>)}
-      </div>
-    </div>
-
-    <div className="panel dash-panel">
-      <SectionInfo heading="Anything to flag?">Tap what happened and add a line. Allergy incidents and injuries mark the report urgent.</SectionInfo>
-      <div className="report-chips">{(Object.keys(ISSUE_KINDS) as IssueKind[]).map(kind => <button key={kind} type="button" className="btn secondary" onClick={() => setIssues(list => [...list, {kind, note: ""}])}><Plus size={14} />{ISSUE_KINDS[kind]}</button>)}</div>
-      {issues.map((issue, index) => <div key={index} className="report-issue">
-        <div className="flex items-center gap-2">
-          <b className="text-sm">{ISSUE_KINDS[issue.kind]}</b>
-          {URGENT_KINDS.includes(issue.kind) && <span className="report-urgent">Urgent</span>}
-          <button type="button" className="ml-auto muted" aria-label={`Remove ${ISSUE_KINDS[issue.kind]}`} onClick={() => setIssues(list => list.filter((_, i) => i !== index))}><X size={16} /></button>
-        </div>
-        <textarea aria-label={`${ISSUE_KINDS[issue.kind]}: what happened`} rows={2} maxLength={1000} value={issue.note} placeholder="What happened, and what you did about it"
-          onChange={e => setIssues(list => list.map((item, i) => i === index ? {...item, note: e.target.value} : item))} />
-      </div>)}
-    </div>
-
-    <div className="panel dash-panel">
-      <Field label="Low stock / to order"><textarea id="report-low" name="low_stock" rows={2} maxLength={1000} placeholder="e.g. Uni, yuzu, Albariño" /></Field>
-      <Field label="Shout-outs"><textarea id="report-shout" name="shoutouts" rows={2} maxLength={1000} placeholder="Who did great tonight" /></Field>
-      <Field label="For the next shift"><textarea id="report-next" name="next_shift" rows={2} maxLength={1000} placeholder="What the opening manager needs to know" /></Field>
-      <Field label="Anything else"><textarea id="report-notes" name="notes" rows={4} maxLength={4000} placeholder="Write it the way you always have" /></Field>
-    </div>
-
-    {error && <p role="alert" className="notice bad mb-4">{error}</p>}
-    <button className="btn w-full" disabled={busy}>{busy ? "Sending…" : `Submit ${label.toLowerCase()} report`}</button>
-    <p className="muted mt-3 text-center text-xs">{`Goes to the owners and everyone who manages ${restaurant.name}. Sending again tonight replaces it.`}</p>
-  </form>;
+    </div>} />;
 }
 
-function PastReports({restaurant, restaurants, brand}: {restaurant: Restaurant; restaurants: Restaurant[]; brand?: Organization}) {
+// "Oct 21, 10:14 AM": when a report was last changed.
+const stamp = (iso: string) => new Date(iso).toLocaleString("en-US", {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"});
+
+function PastReports({restaurant, restaurants, brand, canEdit, canDeleteAny, canWrite, setMessage}: {
+  restaurant: Restaurant; restaurants: Restaurant[]; brand?: Organization; canEdit: boolean; canDeleteAny: boolean; canWrite: boolean; setMessage: (text: string) => void;
+}) {
   const [scope, setScope] = useState<"location" | "brand">("location");
   const [reports, setReports] = useState<ShiftReport[] | null>(null);
   const [error, setError] = useState("");
   const [open, setOpen] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [me, setMe] = useState("");
+  const [reload, setReload] = useState(0);
+  useEffect(() => { void supabase!.auth.getUser().then(({data}) => setMe(data.user?.id ?? "")); }, []);
   useEffect(() => {
     let live = true;
     setReports(null); setError("");
@@ -161,7 +190,7 @@ function PastReports({restaurant, restaurants, brand}: {restaurant: Restaurant; 
       if (error) setError(error.message); else setReports((data ?? []) as ShiftReport[]);
     });
     return () => {live = false;};
-  }, [restaurant.id, scope, brand]);
+  }, [restaurant.id, scope, brand, reload]);
   const nameOf = (id: string) => restaurants.find(r => r.id === id)?.name ?? "";
   return <div>
     {brand && <div className="library-switch mb-4" aria-label="Which reports">
@@ -174,6 +203,8 @@ function PastReports({restaurant, restaurants, brand}: {restaurant: Restaurant; 
       : <ul className="space-y-2">{reports.map(report => {
         const expanded = open === report.id;
         const facts = [MOODS[report.mood], report.covers !== null ? `${report.covers} covers` : "", money(report.sales) ?? "", report.issues.length ? `${report.issues.length} ${report.issues.length === 1 ? "issue" : "issues"}` : ""].filter(Boolean);
+        const here = report.restaurant_id === restaurant.id;
+        if (editing === report.id) return <li key={report.id}><EditReport report={report} onCancel={() => setEditing(null)} onSaved={message => {setEditing(null);setMessage(message);setReload(n => n + 1);}} /></li>;
         return <li key={report.id} className="panel report-card">
           <button type="button" className="report-head" aria-expanded={expanded} onClick={() => setOpen(expanded ? null : report.id)}>
             <span className="min-w-0 flex-1">
@@ -182,13 +213,44 @@ function PastReports({restaurant, restaurants, brand}: {restaurant: Restaurant; 
             </span>
             {report.urgent && <span className="report-urgent">Urgent</span>}
           </button>
-          {expanded && <ReportBody report={report} />}
+          {expanded && <ReportBody report={report} restaurantName={nameOf(report.restaurant_id) || restaurant.name}
+            canEdit={here && canEdit} canDelete={here && (canDeleteAny || (canWrite && report.submitted_by === me))}
+            onEdit={() => setEditing(report.id)}
+            onDeleted={() => {setOpen(null);setMessage("Report deleted.");setReload(n => n + 1);}} />}
         </li>;
       })}</ul>}
   </div>;
 }
 
-function ReportBody({report}: {report: ShiftReport}) {
+function ReportBody({report, restaurantName, canEdit, canDelete, onEdit, onDeleted}: {
+  report: ShiftReport; restaurantName: string; canEdit: boolean; canDelete: boolean; onEdit: () => void; onDeleted: () => void;
+}) {
+  const [names, setNames] = useState<{written_by: string; changed_by: string | null} | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let live = true;
+    void supabase!.rpc("shift_report_names", {report_id: report.id}).then(({data}) => {
+      if (live) setNames(((data ?? []) as {written_by: string; changed_by: string | null}[])[0] ?? null);
+    });
+    return () => {live = false;};
+  }, [report.id, report.updated_at]);
+  async function remove() {
+    setBusy(true); setError("");
+    const {error} = await supabase!.rpc("delete_shift_report", {report_id: report.id});
+    setBusy(false);
+    if (error) return setError(error.message.includes("delete_shift_report") ? "Deleting reports needs database update 046." : error.message);
+    onDeleted();
+  }
+  const print = async () => shiftReportSheet({
+    serviceDate: report.service_date, day: serviceDay(report.service_date), label: report.label, urgent: report.urgent,
+    mood: MOODS[report.mood], covers: report.covers === null ? "" : String(report.covers), sales: money(report.sales) ?? "",
+    issues: report.issues.map(i => ({kind: ISSUE_KINDS[i.kind], note: i.note, urgent: URGENT_KINDS.includes(i.kind)})),
+    fromHeat: heatLines(report.from_heat), lowStock: report.low_stock, shoutouts: report.shoutouts, nextShift: report.next_shift, notes: report.notes,
+    writtenBy: names?.written_by ?? "Team member", changedBy: names?.changed_by ?? null, changedAt: report.updated_at ? stamp(report.updated_at) : null,
+    updated: report.updated_at ?? report.submitted_at,
+  }, {restaurant: restaurantName});
   const sections: [string, string[]][] = [
     ["Issues", report.issues.map(i => `${ISSUE_KINDS[i.kind]}: ${i.note || "no details"}`)],
     ["From HEAT", heatLines(report.from_heat)],
@@ -199,10 +261,45 @@ function ReportBody({report}: {report: ShiftReport}) {
   ];
   const filled = sections.filter(([, lines]) => lines.length);
   return <div className="report-body">
+    {names && <p className="muted text-xs">{`Written by ${names.written_by}`}{names.changed_by && report.updated_at ? ` · ${`Last changed by ${names.changed_by}, ${stamp(report.updated_at)}`}` : ""}</p>}
     {filled.length ? filled.map(([title, lines]) => <div key={title}>
       <p className="eyebrow muted">{title}</p>
       <ul className="report-lines">{lines.map((line, i) => <li key={i}>{line}</li>)}</ul>
     </div>) : <p className="muted text-sm">Nothing else was added to this report.</p>}
+    <div className="report-actions">
+      <DownloadSheet variant="button" buttonLabel="Print" busyLabel="Preparing the report" label="Download this report to print" build={print} />
+      {canEdit && <button type="button" className="btn secondary" onClick={onEdit}><Pencil size={15} />Edit</button>}
+      {canDelete && !confirming && <button type="button" className="btn secondary" onClick={() => setConfirming(true)}><Trash2 size={15} />Delete</button>}
+    </div>
+    {confirming && <div className="report-confirm" role="alert">
+      <p className="text-sm">Delete this report for good? It can't be brought back.</p>
+      <div className="mt-2 flex gap-2">
+        <button type="button" className="btn" disabled={busy} onClick={() => void remove()}>{busy ? "Deleting…" : "Yes, delete"}</button>
+        <button type="button" className="btn secondary" disabled={busy} onClick={() => setConfirming(false)}>Keep</button>
+      </div>
+    </div>}
+    {error && <p role="alert" className="verdict-bad mt-2 text-sm">{error}</p>}
+  </div>;
+}
+
+// Correcting a past report. What HEAT recorded at the time stays as it was.
+function EditReport({report, onCancel, onSaved}: {report: ShiftReport; onCancel: () => void; onSaved: (message: string) => void}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function save(v: ReportValues) {
+    if (!v.mood) return setError("Choose how the night went.");
+    setBusy(true); setError("");
+    const {data, error} = await supabase!.rpc("update_shift_report", {report_id: report.id, report: payload(v)});
+    setBusy(false);
+    if (error) return setError(error.message.includes("update_shift_report") ? "Editing reports needs database update 046." : error.message);
+    // Newly urgent: managers' phones hear about it now, as they would have on the night.
+    if (data && !report.urgent) notify("urgent_report", report.id);
+    onSaved("Report updated. It now shows you as the last to change it.");
+  }
+  return <div className="report-edit">
+    <p className="eyebrow muted mb-2">{`Editing · ${serviceDay(report.service_date)} · ${report.label}`}</p>
+    <ReportForm initial={valuesOf(report)} busy={busy} error={error} onSubmit={v => void save(v)} onCancel={onCancel} submitText={() => "Save changes"}
+      footer="What HEAT recorded that night (86 list, checklists, who was on the floor) stays as it was." />
   </div>;
 }
 

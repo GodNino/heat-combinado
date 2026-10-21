@@ -2244,6 +2244,9 @@ span.dash-name { text-decoration:none; }
 .report-head b { display:block; font-size:var(--text-sm); }
 .report-head small { display:block; margin-top:2px; color:var(--c-muted); font-size:var(--text-xs); }
 .report-body { display:grid; gap:14px; padding:4px 18px 18px; border-top:1px solid var(--c-line-5); padding-top:14px; }
+.report-actions { display:flex; flex-wrap:wrap; gap:8px; padding-top:4px; border-top:1px solid var(--c-line-5); padding-top:12px; }
+.report-confirm { padding:12px 14px; border-radius:12px; border:1.5px solid var(--c-danger-line-3); background:var(--c-danger-bg); }
+.report-edit { padding:14px 0 4px; }
 .report-recipients { margin:14px 0 0; padding:0; list-style:none; }
 .report-recipients li { display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--c-line-5); font-size:var(--text-sm); }
 .report-handover { display:block; width:100%; margin-bottom:16px; padding:14px 18px; text-align:left; color:inherit; }
