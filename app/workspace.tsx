@@ -1310,6 +1310,34 @@ type TeamAssignment = {id: string; menu_item_id: string; item_name: string; note
 // Suggestions, not a list to choose from: every kitchen names its jobs differently,
 // and a restaurant that calls somebody a captain should be able to type captain.
 const TEAM_ROLES = ["Server", "Server assistant", "Bartender", "Barback", "Host", "Runner", "Busser", "Kitchen", "Sommelier", "Bar Manager", "Manager", "GM"];
+
+// Which job an invite link is for (migration 041). "Anyone" is the restaurant's plain link; each
+// position has a link of its own, and whoever joins with it starts in that position.
+function InviteFor({restaurantId, busy, action, current, onAnyone, onPick}: {restaurantId: string; busy: boolean; action: (work: () => Promise<void>) => Promise<void>; current: string; onAnyone: () => void; onPick: (role: string, token: string) => void}) {
+  const [typing, setTyping] = useState(false);
+  const [custom, setCustom] = useState("");
+  const pick = (role: string, fresh = false) => void action(async () => {
+    if (!supabase) throw new Error("Please reconnect to your workspace.");
+    const result = await supabase.rpc("create_position_invite", {rid: restaurantId, member_role: role, fresh});
+    if (result.error) throw new Error(result.error.message.includes("create_position_invite") ? "Invite links for a position need database update 041." : result.error.message);
+    onPick(role, result.data as string);
+  });
+  const isChip = TEAM_ROLES.some(value => value.toLowerCase() === current.toLowerCase());
+  return <fieldset className="mb-4" disabled={busy}>
+    <legend className="mb-2 block text-sm font-semibold">Link for</legend>
+    <div className="word-chips">
+      <button type="button" className="word-chip" aria-pressed={!current && !typing} onClick={() => {setTyping(false);onAnyone();}}>Anyone</button>
+      {TEAM_ROLES.map(value => <button key={value} type="button" className="word-chip" aria-pressed={!typing && current.toLowerCase() === value.toLowerCase()} onClick={() => {setTyping(false);pick(value);}}>{value}</button>)}
+      <button type="button" className="word-chip" aria-pressed={typing || (!!current && !isChip)} onClick={() => setTyping(true)}><Plus size={14} />Other</button>
+    </div>
+    {typing && <form className="mt-3 flex gap-2" onSubmit={event => {event.preventDefault();if (custom.trim()) {setTyping(false);pick(custom.trim());}}}>
+      <input id="invite-position" aria-label="Position for this link" maxLength={40} value={custom} placeholder="Captain, maître d’, expo…" onChange={e => setCustom(e.target.value)} />
+      <button className="btn secondary shrink-0" disabled={!custom.trim()}>Create link</button>
+    </form>}
+    <p className="muted mt-3 text-sm">{current ? `Whoever joins with this link starts as ${current}.` : "Whoever joins with this link starts as Server until you choose their position below."}</p>
+    {current && <button type="button" className="btn secondary mt-3" onClick={() => pick(current, true)}>Replace this link</button>}
+  </fieldset>;
+}
 function teamLastActive(value: string | null) {
   if (!value) return "Not started yet";
   const date = new Date(value), today = new Date();
@@ -1477,6 +1505,8 @@ function TeamWorkspace({restaurantId, restaurantName, items, itemsLoading, busy,
   const [learnerId, setLearnerId] = useState<string | null>(null);
   const [completions, setCompletions] = useState<Completion[]>([]);
   const [teamQuery, setTeamQuery] = useState("");
+  // Members whose position nobody has chosen yet (041): asked for here instead of assumed to be Server.
+  const [unplaced, setUnplaced] = useState<Set<string>>(new Set());
   // Opening somebody is a screen of its own: the page hides the invite panel while it is up.
   const openMember = (id: string | null) => {
     setLearnerId(id); onViewing(id);
@@ -1496,6 +1526,8 @@ function TeamWorkspace({restaurantId, restaurantName, items, itemsLoading, busy,
       if (request === sequence.current) setMembers(result.data as TeamMember[]);
       const rights = await supabase.rpc("team_access", {rid: restaurantId});
       if (rights.error) throw new Error(rights.error.message);
+      const open = await supabase.rpc("team_without_position", {rid: restaurantId});
+      if (!open.error && request === sequence.current) setUnplaced(new Set((open.data ?? []) as string[]));
       const done = await supabase.rpc("team_completions", {rid: restaurantId});
       if (!done.error && request === sequence.current) setCompletions((done.data ?? []) as Completion[]);
       if (request === sequence.current) {
@@ -1513,23 +1545,25 @@ function TeamWorkspace({restaurantId, restaurantName, items, itemsLoading, busy,
   const member = members.find(row => row.user_id === learnerId);
   if (loading || itemsLoading) return <p role="status" className="muted py-8">Loading team progress…</p>;
   if (error) return <section className="panel my-6 p-5"><p role="alert">{error}</p><button className="btn secondary mt-3" onClick={() => void loadRoster()}>Try again</button></section>;
-  if (member) return <TeamMemberDetail key={member.user_id} restaurantId={restaurantId} restaurantName={restaurantName} member={member} items={items} busy={busy} action={action} setMessage={setMessage} onBack={() => openMember(null)} onReload={loadRoster} onRemoved={async () => {openMember(null);await loadRoster();}} onOpenItem={onOpenItem} access={member.is_owner ? ACCESS_AREAS.map(area => area.key) : (accessRows[member.user_id] || [])} myAccess={myAccess} meId={meId} />;
+  if (member) return <TeamMemberDetail key={member.user_id} restaurantId={restaurantId} restaurantName={restaurantName} member={member} needsPosition={unplaced.has(member.user_id)} items={items} busy={busy} action={action} setMessage={setMessage} onBack={() => openMember(null)} onReload={loadRoster} onRemoved={async () => {openMember(null);await loadRoster();}} onOpenItem={onOpenItem} access={member.is_owner ? ACCESS_AREAS.map(area => area.key) : (accessRows[member.user_id] || [])} myAccess={myAccess} meId={meId} />;
   const needle = teamQuery.trim().toLowerCase();
   const shown = needle ? members.filter(row => row.name.toLowerCase().includes(needle) || row.role.toLowerCase().includes(needle)) : members;
-  return <section className="mt-5" aria-label="Team roster"><div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-xl font-semibold">Your team</h2><button type="button" className="icon-chip" aria-label="Refresh the team" title="Refresh" disabled={busy} onClick={() => void loadRoster()}><RotateCcw size={15} /></button></div>{!!members.length && <div className="team-search"><Search size={18} aria-hidden="true" /><input type="text" aria-label="Search your team" placeholder="Search your team" autoComplete="off" value={teamQuery} onChange={e => setTeamQuery(e.target.value)} />{teamQuery && <button type="button" className="team-search-clear" aria-label="Clear the search" onClick={() => setTeamQuery("")}><X size={16} aria-hidden="true" /></button>}</div>}<div className="space-y-2">{shown.map(row => <button key={row.user_id} className="panel compact-menu-row team-row w-full text-left" disabled={busy} onClick={() => {openMember(row.user_id);setMessage("");}}>
+  return <section className="mt-5" aria-label="Team roster"><div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-xl font-semibold">Your team</h2><button type="button" className="icon-chip" aria-label="Refresh the team" title="Refresh" disabled={busy} onClick={() => void loadRoster()}><RotateCcw size={15} /></button></div>{!!members.length && <div className="team-search"><Search size={18} aria-hidden="true" /><input type="text" aria-label="Search your team" placeholder="Search your team" autoComplete="off" value={teamQuery} onChange={e => setTeamQuery(e.target.value)} />{teamQuery && <button type="button" className="team-search-clear" aria-label="Clear the search" onClick={() => setTeamQuery("")}><X size={16} aria-hidden="true" /></button>}</div>}{unplaced.size > 0 && <p className="notice mb-3">{unplaced.size === 1 ? "1 new person needs a position. Until you choose one, they show as Server on the schedule." : `${unplaced.size} new people need a position. Until you choose one, they show as Server on the schedule.`}</p>}<div className="space-y-2">{shown.map(row => <button key={row.user_id} className="panel compact-menu-row team-row w-full text-left" disabled={busy} onClick={() => {openMember(row.user_id);setMessage("");}}>
     <span className="employee-avatar" aria-hidden="true">{row.name.split(/\s+/).slice(0,2).map(part => part[0]).join("").toUpperCase()}</span>
-    <span className="min-w-0 flex-1"><span className="block break-words font-semibold">{row.name}</span><span className="muted block text-xs">{row.role}{row.is_owner ? " · Owner" : ""}</span></span>
+    <span className="min-w-0 flex-1"><span className="block break-words font-semibold">{row.name}</span><span className="muted block text-xs">{unplaced.has(row.user_id) ? "No position yet" : row.role}{row.is_owner ? " · Owner" : ""}</span></span>
+    {unplaced.has(row.user_id) && <span className="team-review-pill">Choose position</span>}
     {row.needs_review > 0 ? <span className="team-review-pill">{row.needs_review} to review</span> : null}
   </button>)}{!!members.length && !shown.length && <p className="muted py-6 text-center">No one matches “{teamQuery.trim()}”.</p>}</div></section>;
 }
-function TeamMemberDetail({restaurantId, restaurantName, member, items, busy, action, setMessage, onBack, onReload, onRemoved, onOpenItem, access, myAccess, meId}: {restaurantId: string; restaurantName: string; member: TeamMember; items: MenuItem[]; busy: boolean; action: (work: () => Promise<void>) => Promise<void>; setMessage: (text: string) => void; onBack: () => void; onReload: () => Promise<void>; onRemoved: () => Promise<void>; onOpenItem: (item: MenuItem) => void; access: string[]; myAccess: string[]; meId: string}) {
+function TeamMemberDetail({restaurantId, restaurantName, member, needsPosition = false, items, busy, action, setMessage, onBack, onReload, onRemoved, onOpenItem, access, myAccess, meId}: {restaurantId: string; restaurantName: string; member: TeamMember; needsPosition?: boolean; items: MenuItem[]; busy: boolean; action: (work: () => Promise<void>) => Promise<void>; setMessage: (text: string) => void; onBack: () => void; onReload: () => Promise<void>; onRemoved: () => Promise<void>; onOpenItem: (item: MenuItem) => void; access: string[]; myAccess: string[]; meId: string}) {
   const {namesFor, labelFor, rank} = useTaxonomy();
   const [name, setName] = useState(member.name);
   // Name & role and Can change start closed, so what this person studies is the first thing you see.
-  const [openPanel, setOpenPanel] = useState<"" | "profile" | "access">("");
-  const [role, setRole] = useState(member.role);
+  // Someone new with no position yet opens straight on it, with nothing picked for them.
+  const [openPanel, setOpenPanel] = useState<"" | "profile" | "access">(needsPosition ? "profile" : "");
+  const [role, setRole] = useState(needsPosition ? "" : member.role);
   // The box starts hidden unless this person already has a title none of the chips offer.
-  const [typing, setTyping] = useState(!TEAM_ROLES.some(value => value.toLowerCase() === member.role.trim().toLowerCase()));
+  const [typing, setTyping] = useState(!needsPosition && !TEAM_ROLES.some(value => value.toLowerCase() === member.role.trim().toLowerCase()));
   const [attempts, setAttempts] = useState<TeamAttempt[]>([]);
   const [assignments, setAssignments] = useState<TeamAssignment[]>([]);
   const [mids, setMids] = useState<string[]>([]);const [pickFilter, setPickFilter] = useState("");const [pickShow, setPickShow] = useState<"all" | "new" | "practice">("all");
@@ -1583,9 +1617,9 @@ function TeamMemberDetail({restaurantId, restaurantName, member, items, busy, ac
   const assignmentsDone = assignmentRows.filter(row => row.status.done).length;
   return <section className="mt-7">
     <div className="mb-5 flex items-center justify-between gap-3"><button className="btn secondary" disabled={busy} onClick={onBack}><ArrowLeft size={16} />Team</button>{!loading && !error && <DownloadSheet variant="button" buttonLabel="Summary" label="Download employee training summary" build={async () => employeeSheet({name: member.name, role: member.role, owner: member.is_owner, access: ACCESS_AREAS.filter(area => access.includes(area.key)).map(area => area.label), items, results: attempts, assignments}, {restaurant: restaurantName})} />}</div>
-    <div className="mb-5 flex items-start gap-3"><span className="employee-avatar" aria-hidden="true">{member.name.split(/\s+/).slice(0,2).map(part => part[0]).join("").toUpperCase()}</span><div className="min-w-0"><h2 className="text-xl font-semibold break-words">{member.name}</h2><p className="muted mt-1 text-sm">{member.role}{member.is_owner ? " · Owner" : ""}</p><p className="muted mt-1 text-sm">{member.last_attempt_at ? `Last quiz ${teamLastActive(member.last_attempt_at).toLowerCase()}` : "No quizzes yet"}</p>{email && <p className="muted mt-1 text-sm">Signs in with <span className="break-all font-semibold" style={{color: "var(--c-text)"}}>{email}</span></p>}</div></div>
+    <div className="mb-5 flex items-start gap-3"><span className="employee-avatar" aria-hidden="true">{member.name.split(/\s+/).slice(0,2).map(part => part[0]).join("").toUpperCase()}</span><div className="min-w-0"><h2 className="text-xl font-semibold break-words">{member.name}</h2><p className="muted mt-1 text-sm">{needsPosition ? "No position yet" : member.role}{member.is_owner ? " · Owner" : ""}</p><p className="muted mt-1 text-sm">{member.last_attempt_at ? `Last quiz ${teamLastActive(member.last_attempt_at).toLowerCase()}` : "No quizzes yet"}</p>{email && <p className="muted mt-1 text-sm">Signs in with <span className="break-all font-semibold" style={{color: "var(--c-text)"}}>{email}</span></p>}</div></div>
     <div className="team-chips" role="group" aria-label="Edit this person" style={{gap: 12, margin: "0 0 12px"}}>
-      <button type="button" className="team-chip" aria-expanded={openPanel === "profile"} onClick={() => setOpenPanel(openPanel === "profile" ? "" : "profile")}>Name &amp; role<small>{member.role}</small></button>
+      <button type="button" className="team-chip" aria-expanded={openPanel === "profile"} onClick={() => setOpenPanel(openPanel === "profile" ? "" : "profile")}>Name &amp; role<small>{needsPosition ? "Choose position" : member.role}</small></button>
       <button type="button" className="team-chip" aria-expanded={openPanel === "access"} onClick={() => setOpenPanel(openPanel === "access" ? "" : "access")}>Can change<small>{accessSummary(member.is_owner ? ACCESS_AREAS.map(area => area.key) : access)}</small></button>
     </div>
     <div hidden={openPanel !== "profile"}>
@@ -1605,7 +1639,8 @@ function TeamMemberDetail({restaurantId, restaurantName, member, items, busy, ac
           <div className="word-chips">{TEAM_ROLES.map(value => <button key={value} type="button" className="word-chip" aria-pressed={!typing && role.trim().toLowerCase() === value.toLowerCase()} onClick={() => {setTyping(false);setRole(value);}}>{value}</button>)}<button type="button" className="word-chip" aria-pressed={typing} onClick={() => setTyping(true)}><Plus size={14} />Other</button></div>
           {typing && <><input id="team-member-role" className="mt-3" maxLength={40} value={role} placeholder="Captain, maître d’, expo…" onChange={e => setRole(e.target.value)} /><p className="muted mt-2 text-xs">Whatever this restaurant calls the job.</p></>}
         </fieldset>
-        <button className="btn mt-4" type="submit">Save profile</button></fieldset></form></div>
+        {needsPosition && !role.trim() && <p className="muted mt-3 text-xs">Choose a position to save. It's what the schedule uses for their shifts.</p>}
+        <button className="btn mt-4" type="submit" disabled={!role.trim()}>Save profile</button></fieldset></form></div>
     <div hidden={openPanel !== "access"}><AccessPanel restaurantId={restaurantId} member={member} current={access} myAccess={myAccess} meId={meId} busy={busy} action={action} setMessage={setMessage} onSaved={onReload} /></div>
     {loading ? <p role="status" className="muted py-8">Loading member details…</p> : error ? <div className="panel p-5"><p role="alert">{error}</p><button className="btn secondary mt-3" onClick={() => void loadDetail()}>Try again</button></div> : <>
       <details className="panel team-fold" style={{margin: "12px 0"}}><summary>Assign study</summary><div className="team-fold-body"><form onSubmit={event => {event.preventDefault();void action(async () => {
@@ -1750,6 +1785,9 @@ function Workspace({
     setError(""); setMessage("");
   }
   const [inviteLink, setInviteLink] = useState("");
+  // The plain link stays at hand while the manager tries the position links (041).
+  const [generalInvite, setGeneralInvite] = useState("");
+  const [inviteRole, setInviteRole] = useState("");
   const [viewingMember, setViewingMember] = useState<string | null>(null);
   const [teamOpenId, setTeamOpenId] = useState<string | null>(null);
   // Tapping Team while already on Team starts the screen over, so an opened person closes and the roster comes back.
@@ -2116,7 +2154,7 @@ function Workspace({
                   setAdding(false);
                   setEditing(undefined);
                   setEmployeeView(false);
-                  setInviteLink("");
+                  setInviteLink("");setGeneralInvite("");setInviteRole("");
                   setError("");
                   setMessage("");
                 }}
@@ -2384,9 +2422,10 @@ function Workspace({
                               { rid: selected },
                             );
                             if (result.error) throw result.error;
-                            setInviteLink(
-                              `${window.location.origin}/app?invite=${result.data}`,
-                            );
+                            const link = `${window.location.origin}/app?invite=${result.data}`;
+                            setInviteLink(link);
+                            setGeneralInvite(link);
+                            setInviteRole("");
                           })
                         }
                       >
@@ -2410,6 +2449,14 @@ function Workspace({
                       Share this link with your employees. It expires in 7 days.
                       Replacing it disables the previous link.
                     </p>
+                    <InviteFor
+                      restaurantId={restaurant.id}
+                      busy={busy}
+                      action={action}
+                      current={inviteRole}
+                      onAnyone={() => {setInviteRole("");setInviteLink(generalInvite);}}
+                      onPick={(role, token) => {setInviteRole(role);setInviteLink(`${window.location.origin}/app?invite=${token}`);}}
+                    />
                     <label htmlFor="invite-link" className="sr-only">
                       Employee invite link
                     </label>
