@@ -235,7 +235,7 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
   }, []);
 
   const card = (shift: Shift, warnings: Warning[]) => <>
-    <b>{shiftLabel(shift)}</b>
+    <b><Hours shift={shift} /></b>
     <small>{shift.position}{shift.published ? "" : " · Draft"}</small>
     {warnings.length > 0 && <small className="sched-warn"><AlertTriangle size={12} aria-hidden="true" />{WARNING_TEXT[warnings[0]]}</small>}
   </>;
@@ -369,6 +369,12 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
   </div>;
 }
 
+// "4:30p–10:30p" in a narrow day: the end time drops to the next line instead of being cut off.
+function Hours({shift}: {shift: Pick<Shift, "starts_at" | "ends_at">}) {
+  const [from, to] = shiftLabel(shift).split("–");
+  return <>{from}–<wbr />{to}</>;
+}
+
 // The cell under the pointer while dragging: the ghost card ignores the pointer, so this finds the grid.
 function cellAt(x: number, y: number) {
   return (document.elementFromPoint(x, y)?.closest("[data-cell]") as HTMLElement | null)?.dataset.cell ?? null;
@@ -481,7 +487,7 @@ export function MyWeek({restaurantId, userId, onOpen}: {restaurantId: string; us
       return <li key={key} className={`my-week-day ${key === today ? "today" : ""} ${isNext ? "next" : ""} ${theirs.length ? "working" : ""}`} aria-label={dayHeading(day)}>
         <span className="my-week-date"><span>{day.toLocaleDateString("en-US", {weekday: "short"})}</span> <b>{day.getDate()}</b></span>
         {!shifts ? <small className="muted">…</small>
-          : theirs.length ? theirs.map(s => <span key={s.id} className="my-week-shift"><b>{shiftLabel(s)}</b><small>{s.position}</small></span>)
+          : theirs.length ? theirs.map(s => <span key={s.id} className="my-week-shift"><b><Hours shift={s} /></b><small>{s.position}</small></span>)
           : <small className="muted">{away ? "Time off" : "Off"}</small>}
       </li>;
     })}</ol>

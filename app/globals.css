@@ -2295,7 +2295,7 @@ span.dash-name { text-decoration:none; }
 .sched-shift { display:block; width:100%; margin-bottom:4px; padding:5px 8px 5px 10px; border-radius:8px; border:1.5px solid var(--c-heat-bg-2); border-left:4px solid var(--c-heat); background:var(--c-heat-bg); color:var(--c-text); text-align:left; line-height:1.3; touch-action:manipulation; -webkit-touch-callout:none; user-select:none; }
 .sched-shift:not(:disabled) { cursor:grab; }
 .sched-shift:not(:disabled):hover { border-color:var(--c-heat-4); }
-.sched-shift b { display:block; font-size:var(--text-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sched-shift b { display:block; font-size:var(--text-sm); }
 .sched-shift small { display:block; color:var(--c-muted); font-size:var(--text-xs); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sched-shift.draft { background:var(--c-surface); border:1.5px dashed var(--c-line-5); border-left:4px dashed var(--c-heat-4); }
 .sched-shift.warn { border-color:var(--c-warning); border-left-color:var(--c-warning); box-shadow:inset 0 0 0 1px var(--c-warning); }
@@ -2334,7 +2334,7 @@ span.dash-name { text-decoration:none; }
 .my-week-date { font-family:var(--font-mono); font-size:var(--text-xs); letter-spacing:.04em; text-transform:uppercase; color:var(--c-muted); white-space:nowrap; }
 .my-week-date b { font-size:var(--text-sm); color:inherit; }
 .my-week-day:not(.next) .my-week-date b { color:var(--c-text); }
-.my-week-shift b { display:block; font-size:var(--text-sm); white-space:nowrap; }
+.my-week-shift b { display:block; font-size:var(--text-sm); }
 .my-week-shift small, .my-week-day > small { display:block; font-size:var(--text-xs); color:var(--c-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 @media (max-width: 639px) {
   .my-week-head { flex-direction:column; }
