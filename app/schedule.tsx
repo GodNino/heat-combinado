@@ -3,7 +3,7 @@
 // person by person, see hours, overtime and conflicts as they go, and publish; the team sees their
 // shifts and their coworkers', and keeps their own availability and time off.
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Users, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   OVERTIME_HOURS, POSITIONS, WARNING_TEXT, WEEKDAYS, addDays, clock, copiedWeek, dayBlocks, dayKey, dayTotals, formatHours, hoursByPerson,
@@ -416,6 +416,76 @@ export function NextShift({restaurantId, userId, onOpen}: {restaurantId: string;
     <span className="mt-1 block font-semibold">{`${dayHeading(new Date(shift.starts_at))} · ${shiftLabel(shift)}`}</span>
     <span className="muted block text-sm">{shift.position}{shift.note ? ` · ${shift.note}` : ""}</span>
   </button>;
+}
+
+// On a server's Home: their week, Monday to Sunday, with the next shift picked out. It stays out of
+// the way for restaurants that don't use the schedule: nothing shows until a shift is published.
+export function MyWeek({restaurantId, userId, onOpen}: {restaurantId: string; userId: string; onOpen: () => void}) {
+  const [start, setStart] = useState(() => weekStart(new Date()));
+  const [shifts, setShifts] = useState<Shift[] | null>(null);
+  const [off, setOff] = useState<TimeOff[]>([]);
+  const [next, setNext] = useState<Shift | null | undefined>(undefined);
+  useEffect(() => {
+    let live = true;
+    void supabase!.from("schedule_shifts").select("*").eq("restaurant_id", restaurantId).eq("user_id", userId).eq("published", true)
+      .gt("ends_at", new Date().toISOString()).lt("starts_at", addDays(weekStart(new Date()), 14).toISOString()).order("starts_at").limit(1)
+      .then(({data}) => {if (live) setNext((data?.[0] as Shift) ?? null);});
+    return () => {live = false;};
+  }, [restaurantId, userId]);
+  useEffect(() => {
+    let live = true;
+    const end = addDays(start, 7);
+    void Promise.all([
+      supabase!.from("schedule_shifts").select("*").eq("restaurant_id", restaurantId).eq("user_id", userId).eq("published", true)
+        .gte("starts_at", start.toISOString()).lt("starts_at", end.toISOString()).order("starts_at"),
+      supabase!.from("time_off_requests").select("*").eq("restaurant_id", restaurantId).eq("user_id", userId).eq("status", "approved")
+        .lte("starts_on", dayKey(addDays(start, 6))).gte("ends_on", dayKey(start)),
+    ]).then(([week, away]) => {
+      if (!live) return;
+      setShifts((week.data ?? []) as Shift[]);
+      setOff((away.data ?? []) as TimeOff[]);
+    });
+    return () => {live = false;};
+  }, [restaurantId, userId, start]);
+  // On a phone the days scroll sideways: start the strip at today rather than at Monday.
+  const strip = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    const list = strip.current, today = list?.querySelector<HTMLElement>(".today");
+    if (list && today && list.scrollWidth > list.clientWidth) list.scrollLeft = today.offsetLeft - list.offsetLeft - 16;
+  }, [shifts, next]);
+  // Nothing published in this or next week, and nobody has looked further: the schedule isn't in use.
+  if (next === undefined || (next === null && start.getTime() === weekStart(new Date()).getTime() && !shifts?.length)) return null;
+  const today = dayKey(new Date());
+  const started = next ? Date.parse(next.starts_at) <= Date.now() : false;
+  const total = (shifts ?? []).reduce((sum, s) => sum + shiftHours(s), 0);
+  return <section className="panel my-week mb-4" aria-label="Your week">
+    <div className="my-week-head">
+      <div className="min-w-0">
+        <p className="eyebrow muted">{next ? (started ? "On shift now" : "Your next shift") : "Your week"}</p>
+        {next ? <p className="mt-1 font-semibold">{`${dayHeading(new Date(next.starts_at))} · ${shiftLabel(next)}`}<span className="muted font-normal">{` · ${next.position}`}</span></p>
+          : <p className="muted mt-1 text-sm">No shifts coming up yet.</p>}
+      </div>
+      <button type="button" className="btn secondary shrink-0" onClick={onOpen}>Full schedule<ArrowRight size={15} aria-hidden="true" /></button>
+    </div>
+    <div className="my-week-bar">
+      <button type="button" className="sched-icon" aria-label="Previous week" onClick={() => setStart(addDays(start, -7))}><ChevronLeft size={17} /></button>
+      <b>{weekHeading(start)}</b>
+      <button type="button" className="sched-icon" aria-label="Next week" onClick={() => setStart(addDays(start, 7))}><ChevronRight size={17} /></button>
+      <span className="my-week-total">{shifts ? formatHours(total) : ""}</span>
+    </div>
+    <ol ref={strip} className="my-week-days">{weekDays(start).map(day => {
+      const key = dayKey(day);
+      const theirs = (shifts ?? []).filter(s => dayKey(new Date(s.starts_at)) === key);
+      const away = off.some(t => t.starts_on <= key && t.ends_on >= key);
+      const isNext = !!next && theirs.some(s => s.id === next.id);
+      return <li key={key} className={`my-week-day ${key === today ? "today" : ""} ${isNext ? "next" : ""} ${theirs.length ? "working" : ""}`} aria-label={dayHeading(day)}>
+        <span className="my-week-date"><span>{day.toLocaleDateString("en-US", {weekday: "short"})}</span> <b>{day.getDate()}</b></span>
+        {!shifts ? <small className="muted">…</small>
+          : theirs.length ? theirs.map(s => <span key={s.id} className="my-week-shift"><b>{shiftLabel(s)}</b><small>{s.position}</small></span>)
+          : <small className="muted">{away ? "Time off" : "Off"}</small>}
+      </li>;
+    })}</ol>
+  </section>;
 }
 
 // ── Availability ─────────────────────────────────────────────────────────────────────────────

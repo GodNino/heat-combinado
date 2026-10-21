@@ -418,6 +418,7 @@ const PHRASES: Record<string, string> = {
   "Waiting for you": "Esperando tu respuesta", "No requests waiting.": "No hay solicitudes pendientes.", "Coming up": "Próximos",
   "No approved time off coming up.": "No hay días libres aprobados próximamente.", "Approve": "Aprobar", "Deny": "Rechazar",
   "Time off approved.": "Día libre aprobado.", "Time off not approved.": "Día libre rechazado.", "Team member": "Miembro del equipo",
+  "Your week": "Tu semana", "Full schedule": "Horario completo", "Off": "Libre", "No shifts coming up yet.": "Todavía no tienes turnos próximos.",
   "Show conflicts": "Mostrar conflictos", "View by": "Ver por", "First name": "Nombre", "Most hours": "Más horas", "Search the team": "Buscar en el equipo",
   "Hours": "Horas", "People": "Personas", "Unavailable": "No disponible", "Asked off": "Pidió libre", "Copy": "Copiar",
   "Nobody matches that search.": "Nadie coincide con esa búsqueda.", "That person isn't on this team's schedule.": "Esa persona no está en el horario de este equipo.",
