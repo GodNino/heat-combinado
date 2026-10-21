@@ -3,12 +3,12 @@
 // person by person, see hours, overtime and conflicts as they go, and publish; the team sees their
 // shifts and their coworkers', and keeps their own availability and time off.
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { AlertTriangle, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Users, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Settings, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
-  OVERTIME_HOURS, POSITIONS, WARNING_TEXT, WEEKDAYS, addDays, clock, copiedWeek, dayBlocks, dayKey, dayTotals, formatHours, hoursByPerson,
-  initials, movedShift, shiftHours, shiftLabel, shiftTimes, shiftWarnings, weekDays, weekStart,
-  type Shift, type TimeOff, type Unavailability, type Warning,
+  PALETTE, POSITIONS, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, dayBlocks, dayKey,
+  dayTotals, defaultShift, formatHours, hoursByPerson, initials, movedShift, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, weekDays, weekStart,
+  type ScheduleSettings, type Shift, type ShiftPreset, type TimeOff, type Unavailability, type Warning,
 } from "@/lib/schedule";
 import { notify } from "./notifications";
 import { Field, SectionInfo } from "./ui";
@@ -20,8 +20,28 @@ const dayHeading = (day: Date) => day.toLocaleDateString("en-US", {weekday: "sho
 const weekHeading = (start: Date) => `${start.toLocaleDateString("en-US", {month: "short", day: "numeric"})} – ${addDays(start, 6).toLocaleDateString("en-US", {month: "short", day: "numeric"})}`;
 const dateLabel = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"}); };
 
+// The restaurant's schedule settings (migration 044): the defaults until a manager saves some.
+function useScheduleSettings(restaurantId: string) {
+  const [settings, setSettings] = useState<ScheduleSettings | null>(null);
+  const [missing, setMissing] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void supabase!.from("schedule_settings").select("*").eq("restaurant_id", restaurantId).maybeSingle().then(({data, error}) => {
+      if (!live) return;
+      setMissing(!!error);
+      setSettings(readSettings(error ? null : data));
+    });
+    return () => {live = false;};
+  }, [restaurantId]);
+  return {settings, setSettings, missing};
+}
+// The class that paints a shift in its position's colour, or nothing when it has none.
+const paint = (position: string, settings: ScheduleSettings) => { const color = colorFor(position, settings.position_colors); return color ? `pos pos-${color}` : ""; };
+const presetLabel = (preset: ShiftPreset) => { const today = new Date(); return `${shortTime(atTime(today, preset.start))}–${shortTime(atTime(today, preset.end))}`; };
+
 export function Schedule({restaurantId, userId, canManage, setMessage}: {restaurantId: string; userId: string; canManage: boolean; setMessage: (text: string) => void}) {
   const [tab, setTab] = useState<Tab>(canManage ? "week" : "mine");
+  const {settings, setSettings, missing} = useScheduleSettings(restaurantId);
   const [pending, setPending] = useState(0);
   useEffect(() => {
     if (!canManage) return;
@@ -30,17 +50,19 @@ export function Schedule({restaurantId, userId, canManage, setMessage}: {restaur
   }, [canManage, restaurantId, tab]);
   const tabs: [Tab, string][] = canManage
     ? [["week", "Build the week"], ["timeoff", pending ? `Time off · ${pending}` : "Time off"], ["mine", "My shifts"], ["availability", "My availability"]]
-    : [["mine", "My shifts"], ["week", "Team schedule"], ["availability", "My availability"], ["timeoff", "Time off"]];
+    : [["mine", "My shifts"], ...(settings?.team_sees_all === false ? [] : [["week", "Team schedule"] as [Tab, string]]), ["availability", "My availability"], ["timeoff", "Time off"]];
   return <section className="mx-auto max-w-6xl">
     <p className="eyebrow muted">{canManage ? "Manager workspace" : "Your schedule"}</p>
     <h1 className="mt-3 mb-5 text-2xl font-semibold">Schedule</h1>
     <div className="library-switch mb-5" aria-label="Schedule">
       {tabs.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}
     </div>
-    {tab === "week" && <WeekView restaurantId={restaurantId} canManage={canManage} setMessage={setMessage} />}
-    {tab === "mine" && <MyShifts restaurantId={restaurantId} userId={userId} />}
+    {!settings ? <p className="muted" role="status">Loading the schedule…</p> : <>
+    {tab === "week" && (canManage || settings.team_sees_all) && <WeekView restaurantId={restaurantId} canManage={canManage} setMessage={setMessage} settings={settings} settingsMissing={missing} onSettings={setSettings} />}
+    {tab === "mine" && <MyShifts restaurantId={restaurantId} userId={userId} settings={settings} />}
     {tab === "availability" && <Availability restaurantId={restaurantId} userId={userId} />}
     {tab === "timeoff" && (canManage ? <TimeOffDecisions restaurantId={restaurantId} setMessage={setMessage} /> : <TimeOffRequests restaurantId={restaurantId} userId={userId} setMessage={setMessage} />)}
+    </>}
   </section>;
 }
 
@@ -54,8 +76,11 @@ type Press = {shift: Shift; x: number; y: number; dx: number; dy: number; width:
 const BLOCK_TEXT = {unavailable: "Unavailable", time_off: "Time off", time_off_pending: "Asked off"} as const;
 const cellKey = (userId: string, day: Date) => `${userId}|${dayKey(day)}`;
 
-function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; canManage: boolean; setMessage: (text: string) => void}) {
-  const [start, setStart] = useState(() => weekStart(new Date()));
+function WeekView({restaurantId, canManage, setMessage, settings, settingsMissing, onSettings}: {restaurantId: string; canManage: boolean; setMessage: (text: string) => void; settings: ScheduleSettings; settingsMissing: boolean; onSettings: (settings: ScheduleSettings) => void}) {
+  const [start, setStart] = useState(() => weekStart(new Date(), settings.week_start));
+  const [editingSettings, setEditingSettings] = useState(false);
+  // A new first day of the week moves the grid to the week holding the day it showed.
+  useEffect(() => { setStart(current => weekStart(current, settings.week_start)); }, [settings.week_start]);
   const [people, setPeople] = useState<Person[]>([]);
   const [shifts, setShifts] = useState<Shift[] | null>(null);
   const [unavailable, setUnavailable] = useState<Unavailability[]>([]);
@@ -94,9 +119,21 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
   const drafts = (shifts ?? []).filter(s => !s.published).length;
   const warningsOf = useMemo(() => {
     const found = new Map<string, Warning[]>();
-    if (canManage) for (const shift of shifts ?? []) { const w = shiftWarnings(shift, shifts ?? [], unavailable, timeOff); if (w.length) found.set(shift.id, w); }
+    if (canManage) for (const shift of shifts ?? []) { const w = allWarnings(shift, shifts ?? [], unavailable, timeOff, settings.overtime_daily); if (w.length) found.set(shift.id, w); }
     return found;
-  }, [canManage, shifts, unavailable, timeOff]);
+  }, [canManage, shifts, unavailable, timeOff, settings.overtime_daily]);
+  // Every position the colour settings should offer: the usual ones, the team's own, and any on a shift.
+  const positions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const name of [...POSITIONS, ...people.map(p => p.role), ...(shifts ?? []).map(s => s.position), ...Object.keys(settings.position_colors)]) {
+      const clean = name.trim();
+      if (clean && !seen.has(clean.toLowerCase())) seen.set(clean.toLowerCase(), clean);
+    }
+    return [...seen.values()];
+  }, [people, shifts, settings.position_colors]);
+  const legend = useMemo(() => [...new Map((shifts ?? []).map(s => [s.position.trim().toLowerCase(), s.position.trim()])).values()]
+    .map(name => [name, colorFor(name, settings.position_colors)] as const).filter((row): row is readonly [string, string] => !!row[1])
+    .sort((a, b) => a[0].localeCompare(b[0])), [shifts, settings.position_colors]);
   // Employees see only who works this week; managers see the whole team, ready to fill in.
   const rows = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -107,7 +144,7 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
   }, [canManage, people, hours, query, viewBy]);
 
   function openNew(person: Person, day: Date) {
-    setDraft({user_id: person.user_id, position: POSITIONS.includes(person.role) ? person.role : "Server", day: dayKey(day), start: "17:00", end: "23:00", note: ""});
+    setDraft({user_id: person.user_id, position: person.role.trim() || "Server", day: dayKey(day), ...defaultShift(settings), note: ""});
   }
   function openShift(shift: Shift) {
     const from = new Date(shift.starts_at);
@@ -256,7 +293,7 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
   return <div>
     <div className="sched-bar">
       <div className="sched-nav">
-        <button type="button" className="btn secondary" onClick={() => setStart(weekStart(new Date()))}>Today</button>
+        <button type="button" className="btn secondary" onClick={() => setStart(weekStart(new Date(), settings.week_start))}>Today</button>
         <div className="sched-range">
           <button type="button" className="sched-icon" aria-label="Previous week" onClick={() => setStart(addDays(start, -7))}><ChevronLeft size={17} /></button>
           <CalendarDays size={15} aria-hidden="true" className="muted" />
@@ -273,9 +310,11 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
         </label>
         <button type="button" className="btn secondary" disabled={busy} onClick={copyLastWeek}><Copy size={15} />Copy last week</button>
         <button type="button" className="btn" disabled={busy || !drafts} onClick={publish}>{drafts ? `Publish ${drafts} ${drafts === 1 ? "change" : "changes"}` : "Published"}</button>
+        <button type="button" className="btn secondary sched-gear" aria-label="Schedule settings" title="Schedule settings" onClick={() => setEditingSettings(true)}><Settings size={17} /></button>
       </div>}
     </div>
     {error && <p role="alert" className="notice bad mb-4">{error}</p>}
+    {legend.length > 0 && <p className="sched-legend" aria-label="Position colours">{legend.map(([name, color]) => <span key={name} className={`pos-${color}`}><i aria-hidden="true" />{name}</span>)}</p>}
     {!shifts ? <p className="muted" role="status">Loading the schedule…</p>
       : !people.length || (!canManage && !rows.length && !query) ? <p className="panel p-5 muted">{canManage ? "Nobody on the team yet. Invite your team from Team." : "Nothing published for this week yet."}</p>
       : <div className={`sched-scroll ${drag ? "dragging" : ""}`}>
@@ -306,7 +345,7 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
                   <span className="sched-avatar" aria-hidden="true">{initials(person.name)}</span>
                   <span className="min-w-0">
                     <span className="block truncate font-semibold">{person.name}</span>
-                    <span className={`sched-hours ${mine > OVERTIME_HOURS ? "over" : ""}`}>{formatHours(mine)}{mine > OVERTIME_HOURS ? " · Overtime" : ""}</span>
+                    <span className={`sched-hours ${mine > settings.overtime_weekly ? "over" : ""}`}>{formatHours(mine)}{mine > settings.overtime_weekly ? " · Overtime" : ""}</span>
                   </span>
                 </span>
               </th>
@@ -321,7 +360,7 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
                     return <button key={shift.id} type="button" disabled={!canManage}
                       onPointerDown={e => grab(e, shift)} onContextMenu={e => { if (canManage) e.preventDefault(); }}
                       onClick={() => { if (!dragged.current && !shift.id.startsWith("copy-")) openShift(shift); }}
-                      className={`sched-shift ${shift.published ? "" : "draft"} ${warnings.length ? "warn" : ""} ${drag?.shift.id === shift.id && !drag.copy ? "lifting" : ""}`}
+                      className={`sched-shift ${paint(shift.position, settings)} ${shift.published ? "" : "draft"} ${warnings.length ? "warn" : ""} ${drag?.shift.id === shift.id && !drag.copy ? "lifting" : ""}`}
                       title={warnings.map(w => WARNING_TEXT[w]).join(" · ") || undefined}>
                       {card(shift, warnings)}
                     </button>;
@@ -346,7 +385,7 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
     {canManage && shifts && shifts.length > 0 && <p className="muted mt-3 text-xs">{"Drag a shift to move it to another day or person. Hold Alt (Option on a Mac) as you drop to copy it instead; on a phone, hold the shift for a moment to pick it up."}</p>}
     {canManage && shifts && shifts.length > 0 && <p className="muted mt-1 text-xs">{`Dashed shifts are drafts: the team sees them once you publish. Total this week: ${formatHours(total)}.`}</p>}
 
-    {drag && <div className={`sched-shift sched-ghost ${drag.shift.published && !drag.copy ? "" : "draft"}`} aria-hidden="true"
+    {drag && <div className={`sched-shift sched-ghost ${paint(drag.shift.position, settings)} ${drag.shift.published && !drag.copy ? "" : "draft"}`} aria-hidden="true"
       style={{left: drag.x - drag.dx, top: drag.y - drag.dy, width: drag.width}}>
       {card(drag.shift, [])}
       {drag.copy && <em>Copy</em>}
@@ -362,6 +401,8 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
           <Field label="Who"><select id="shift-who" value={draft.user_id} onChange={e => setDraft({...draft, user_id: e.target.value})}>{people.map(p => <option key={p.user_id} value={p.user_id}>{p.name}</option>)}</select></Field>
           <Field label="Position"><select id="shift-position" value={draft.position} onChange={e => setDraft({...draft, position: e.target.value})}>{(POSITIONS.includes(draft.position) ? POSITIONS : [draft.position, ...POSITIONS]).map(p => <option key={p}>{p}</option>)}</select></Field>
           <Field label="Day"><input id="shift-day" type="date" required value={draft.day} onChange={e => setDraft({...draft, day: e.target.value})} /></Field>
+          {settings.shift_presets.length > 0 && <div className="sched-presets" role="group" aria-label="Quick shifts">{settings.shift_presets.map(preset =>
+            <button key={preset.name} type="button" className="word-chip" aria-pressed={draft.start === preset.start && draft.end === preset.end} onClick={() => setDraft({...draft, start: preset.start, end: preset.end})}>{preset.name}<small>{presetLabel(preset)}</small></button>)}</div>}
           <div className="grid grid-cols-2 gap-3">
             <Field label="Starts"><input id="shift-start" type="time" required step={900} value={draft.start} onChange={e => setDraft({...draft, start: e.target.value})} /></Field>
             <Field label="Ends"><input id="shift-end" type="time" required step={900} value={draft.end} onChange={e => setDraft({...draft, end: e.target.value})} /></Field>
@@ -375,6 +416,96 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
         </fieldset>
       </form>
     </div>}
+    {editingSettings && <SettingsSheet restaurantId={restaurantId} settings={settings} positions={positions} missing={settingsMissing}
+      onClose={() => setEditingSettings(false)} onSaved={saved => {onSettings(saved);setEditingSettings(false);setMessage("Schedule settings saved.");}} />}
+  </div>;
+}
+
+// ── The gear: this restaurant's schedule settings ───────────────────────────────────────────────
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+function SettingsSheet({restaurantId, settings, positions, missing, onClose, onSaved}: {restaurantId: string; settings: ScheduleSettings; positions: string[]; missing: boolean; onClose: () => void; onSaved: (settings: ScheduleSettings) => void}) {
+  const [form, setForm] = useState<ScheduleSettings>(settings);
+  const [daily, setDaily] = useState(settings.overtime_daily !== null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(missing ? "Schedule settings need database update 044." : "");
+  const setColor = (position: string, color: string | null) => setForm(current => {
+    const colors = Object.fromEntries(Object.entries(current.position_colors).filter(([name]) => name.toLowerCase() !== position.toLowerCase()));
+    return {...current, position_colors: color ? {...colors, [position]: color} : colors};
+  });
+  const setPreset = (index: number, change: Partial<ShiftPreset>) => setForm(current => ({...current, shift_presets: current.shift_presets.map((p, i) => i === index ? {...p, ...change} : p)}));
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    const presets = form.shift_presets.map(p => ({...p, name: p.name.trim()})).filter(p => p.name);
+    if (new Set(presets.map(p => p.name.toLowerCase())).size !== presets.length) return setError("Give each quick shift a different name.");
+    const row = {
+      restaurant_id: restaurantId, week_start: form.week_start, position_colors: form.position_colors,
+      overtime_weekly: form.overtime_weekly, overtime_daily: daily ? form.overtime_daily ?? 8 : null,
+      shift_presets: presets, team_sees_all: form.team_sees_all,
+    };
+    setBusy(true); setError("");
+    const result = await supabase!.from("schedule_settings").upsert(row);
+    setBusy(false);
+    if (result.error) return setError(/schedule_settings|PGRST205|42P01/.test(result.error.message) ? "Schedule settings need database update 044." : result.error.message);
+    onSaved(readSettings(row));
+  }
+  return <div className="sched-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <form className="panel sched-form sched-settings" onSubmit={save}>
+      <div className="mb-3 flex items-center">
+        <h2 id="settings-title" className="text-lg font-semibold">Schedule settings</h2>
+        <button type="button" className="ml-auto muted" aria-label="Close" onClick={onClose}><X size={18} /></button>
+      </div>
+      <fieldset disabled={busy}>
+        <Field label="The week starts on"><select id="settings-week" value={form.week_start} onChange={e => setForm({...form, week_start: Number(e.target.value)})}>
+          {WEEK_ORDER.map(d => <option key={d} value={d}>{WEEKDAYS[d]}</option>)}
+        </select></Field>
+        <p className="muted -mt-2 mb-5 text-xs">{`Weeks run ${WEEKDAYS[form.week_start]} to ${WEEKDAYS[(form.week_start + 6) % 7]}: the grid, Copy last week, publishing and weekly overtime all follow it.`}</p>
+
+        <fieldset className="mb-5">
+          <legend className="mb-1 flex w-full items-center text-sm font-semibold">Position colours
+            <button type="button" className="ml-auto text-xs underline" onClick={() => setForm({...form, position_colors: Object.fromEntries(positions.map(name => [name, colorFor(name, form.position_colors) ?? colorFor(name, SUGGESTED_COLORS)]).filter(([, c]) => c))})}>Use suggested colours</button>
+          </legend>
+          <p className="muted mb-2 text-xs">A shift takes the colour of its position, so someone who bartends on Friday shows red that day.</p>
+          {positions.map(name => { const current = colorFor(name, form.position_colors); return <div key={name} className="set-row">
+            <b>{name}</b>
+            <span className="set-swatches" role="radiogroup" aria-label={`Colour for ${name}`}>
+              <button type="button" role="radio" aria-checked={!current} className="swatch none" title="No colour" aria-label="No colour" onClick={() => setColor(name, null)} />
+              {Object.entries(PALETTE).map(([key, label]) => <button key={key} type="button" role="radio" aria-checked={current === key} className={`swatch pos-${key}`} title={label} aria-label={label} onClick={() => setColor(name, key)} />)}
+            </span>
+          </div>; })}
+        </fieldset>
+
+        <fieldset className="mb-5">
+          <legend className="mb-2 block text-sm font-semibold">Overtime</legend>
+          <div className="set-inline"><span>After</span><input id="settings-weekly" aria-label="Weekly overtime hours" type="number" min={1} max={100} step={0.5} required value={form.overtime_weekly} onChange={e => setForm({...form, overtime_weekly: Number(e.target.value)})} /><span>hours a week</span></div>
+          <label className="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={daily} onChange={e => {setDaily(e.target.checked);if (e.target.checked && form.overtime_daily === null) setForm({...form, overtime_daily: 8});}} />Also count overtime by the day</label>
+          {daily && <div className="set-inline mt-2"><span>After</span><input id="settings-daily" aria-label="Daily overtime hours" type="number" min={1} max={24} step={0.5} required value={form.overtime_daily ?? 8} onChange={e => setForm({...form, overtime_daily: Number(e.target.value)})} /><span>hours in a day</span></div>}
+        </fieldset>
+
+        <fieldset className="mb-5">
+          <legend className="mb-1 block text-sm font-semibold">Quick shifts</legend>
+          <p className="muted mb-2 text-xs">Offered when you add a shift. The first one is what a new shift starts with.</p>
+          {form.shift_presets.map((preset, i) => <div key={i} className="set-preset">
+            <input aria-label="Quick shift name" maxLength={30} placeholder="Dinner" value={preset.name} onChange={e => setPreset(i, {name: e.target.value})} />
+            <input aria-label="Starts" type="time" step={900} required value={preset.start} onChange={e => setPreset(i, {start: e.target.value})} />
+            <input aria-label="Ends" type="time" step={900} required value={preset.end} onChange={e => setPreset(i, {end: e.target.value})} />
+            <button type="button" className="muted" aria-label={`Remove quick shift ${preset.name}`.trim()} onClick={() => setForm({...form, shift_presets: form.shift_presets.filter((_, j) => j !== i)})}><X size={16} /></button>
+          </div>)}
+          {form.shift_presets.length < 12 && <button type="button" className="btn secondary mt-1" onClick={() => setForm({...form, shift_presets: [...form.shift_presets, {name: "", start: "17:00", end: "23:00"}]})}><Plus size={15} />Add a quick shift</button>}
+        </fieldset>
+
+        <fieldset className="mb-5">
+          <legend className="mb-2 block text-sm font-semibold">What the team sees</legend>
+          <label className="flex items-center gap-2 text-sm"><input type="radio" name="team-sees" checked={form.team_sees_all} onChange={() => setForm({...form, team_sees_all: true})} />Everyone's published shifts</label>
+          <label className="mt-1 flex items-center gap-2 text-sm"><input type="radio" name="team-sees" checked={!form.team_sees_all} onChange={() => setForm({...form, team_sees_all: false})} />Only their own shifts</label>
+        </fieldset>
+
+        {error && <p role="alert" className="verdict-bad mb-3 text-sm">{error}</p>}
+        <div className="flex flex-wrap gap-2">
+          <button className="btn">Save settings</button>
+          <button type="button" className="btn secondary" onClick={onClose}>Cancel</button>
+        </div>
+      </fieldset>
+    </form>
   </div>;
 }
 
@@ -390,7 +521,7 @@ function cellAt(x: number, y: number) {
 }
 
 // ── My shifts ────────────────────────────────────────────────────────────────────────────────
-function MyShifts({restaurantId, userId}: {restaurantId: string; userId: string}) {
+function MyShifts({restaurantId, userId, settings}: {restaurantId: string; userId: string; settings: ScheduleSettings}) {
   const [shifts, setShifts] = useState<Shift[] | null>(null);
   useEffect(() => {
     const from = new Date(); from.setHours(0, 0, 0, 0);
@@ -400,7 +531,7 @@ function MyShifts({restaurantId, userId}: {restaurantId: string; userId: string}
   }, [restaurantId, userId]);
   if (!shifts) return <p className="muted" role="status">Loading your shifts…</p>;
   if (!shifts.length) return <p className="panel p-5 muted">No shifts in the next three weeks yet. Your manager publishes the schedule here.</p>;
-  const thisWeek = shifts.filter(s => weekStart(new Date(s.starts_at)).getTime() === weekStart(new Date()).getTime());
+  const thisWeek = shifts.filter(s => weekStart(new Date(s.starts_at), settings.week_start).getTime() === weekStart(new Date(), settings.week_start).getTime());
   return <div>
     <p className="muted mb-3 text-sm">{`This week: ${formatHours(thisWeek.reduce((sum, s) => sum + shiftHours(s), 0))}`}</p>
     <ul className="space-y-2">{shifts.map(shift => <li key={shift.id} className="panel sched-mine">
@@ -436,17 +567,21 @@ export function NextShift({restaurantId, userId, onOpen}: {restaurantId: string;
 // On a server's Home: their week, Monday to Sunday, with the next shift picked out. It stays out of
 // the way for restaurants that don't use the schedule: nothing shows until a shift is published.
 export function MyWeek({restaurantId, userId, onOpen}: {restaurantId: string; userId: string; onOpen: () => void}) {
+  const {settings} = useScheduleSettings(restaurantId);
+  const startsOn = settings?.week_start ?? 1;
   const [start, setStart] = useState(() => weekStart(new Date()));
+  // The restaurant's own first day of the week, once its settings have loaded.
+  useEffect(() => { setStart(weekStart(new Date(), startsOn)); }, [startsOn]);
   const [shifts, setShifts] = useState<Shift[] | null>(null);
   const [off, setOff] = useState<TimeOff[]>([]);
   const [next, setNext] = useState<Shift | null | undefined>(undefined);
   useEffect(() => {
     let live = true;
     void supabase!.from("schedule_shifts").select("*").eq("restaurant_id", restaurantId).eq("user_id", userId).eq("published", true)
-      .gt("ends_at", new Date().toISOString()).lt("starts_at", addDays(weekStart(new Date()), 14).toISOString()).order("starts_at").limit(1)
+      .gt("ends_at", new Date().toISOString()).lt("starts_at", addDays(weekStart(new Date(), startsOn), 14).toISOString()).order("starts_at").limit(1)
       .then(({data}) => {if (live) setNext((data?.[0] as Shift) ?? null);});
     return () => {live = false;};
-  }, [restaurantId, userId]);
+  }, [restaurantId, userId, startsOn]);
   useEffect(() => {
     let live = true;
     const end = addDays(start, 7);
@@ -469,7 +604,7 @@ export function MyWeek({restaurantId, userId, onOpen}: {restaurantId: string; us
     if (list && today && list.scrollWidth > list.clientWidth) list.scrollLeft = today.offsetLeft - list.offsetLeft - 16;
   }, [shifts, next]);
   // Nothing published in this or next week, and nobody has looked further: the schedule isn't in use.
-  if (next === undefined || (next === null && start.getTime() === weekStart(new Date()).getTime() && !shifts?.length)) return null;
+  if (!settings || next === undefined || (next === null && start.getTime() === weekStart(new Date(), startsOn).getTime() && !shifts?.length)) return null;
   const today = dayKey(new Date());
   const started = next ? Date.parse(next.starts_at) <= Date.now() : false;
   const total = (shifts ?? []).reduce((sum, s) => sum + shiftHours(s), 0);
@@ -496,7 +631,7 @@ export function MyWeek({restaurantId, userId, onOpen}: {restaurantId: string; us
       return <li key={key} className={`my-week-day ${key === today ? "today" : ""} ${isNext ? "next" : ""} ${theirs.length ? "working" : ""}`} aria-label={dayHeading(day)}>
         <span className="my-week-date"><span>{day.toLocaleDateString("en-US", {weekday: "short"})}</span> <b>{day.getDate()}</b></span>
         {!shifts ? <small className="muted">…</small>
-          : theirs.length ? theirs.map(s => <span key={s.id} className="my-week-shift"><b><Hours shift={s} /></b><small>{s.position}</small></span>)
+          : theirs.length ? theirs.map(s => <span key={s.id} className={`my-week-shift ${paint(s.position, settings)}`}><b><Hours shift={s} /></b><small>{s.position}</small></span>)
           : <small className="muted">{away ? "Time off" : "Off"}</small>}
       </li>;
     })}</ol>

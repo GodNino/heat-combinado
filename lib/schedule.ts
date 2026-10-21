@@ -19,10 +19,11 @@ export const OVERTIME_HOURS = 40;
 export const POSITIONS = ["Server", "Server assistant", "Bartender", "Barback", "Host", "Runner", "Busser", "Kitchen", "Sommelier", "Bar Manager", "Manager", "GM"];
 export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-// Weeks run Monday to Sunday, as in most restaurant payroll.
-export function weekStart(day: Date) {
+// The first day of the week `day` falls in. Weeks run Monday to Sunday unless the restaurant's
+// schedule settings say otherwise (startsOn: 0 Sunday … 6 Saturday; Osaka starts on Thursday, 4).
+export function weekStart(day: Date, startsOn = 1) {
   const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  start.setDate(start.getDate() - ((start.getDay() - startsOn + 7) % 7));
   return start;
 }
 export function addDays(day: Date, days: number) {
@@ -65,8 +66,9 @@ export function hoursByPerson(shifts: Shift[]) {
 }
 export const formatHours = (hours: number) => `${Math.round(hours * 10) / 10}h`;
 
-export type Warning = "overlap" | "unavailable" | "time_off" | "time_off_pending";
+export type Warning = "overlap" | "unavailable" | "time_off" | "time_off_pending" | "daily_overtime";
 export const WARNING_TEXT: Record<Warning, string> = {
+  daily_overtime: "Over the daily hours",
   overlap: "Overlaps another shift",
   unavailable: "Marked unavailable",
   time_off: "Approved time off",
@@ -126,4 +128,68 @@ export function copiedWeek(shifts: Shift[]) {
     restaurant_id: s.restaurant_id, user_id: s.user_id, position: s.position, note: s.note,
     starts_at: addDays(new Date(s.starts_at), 7).toISOString(), ends_at: addDays(new Date(s.ends_at), 7).toISOString(),
   }));
+}
+
+// ── Schedule settings (migration 044) ──
+export type ShiftPreset = {name: string; start: string; end: string};
+export type ScheduleSettings = {
+  week_start: number;
+  position_colors: Record<string, string>;
+  overtime_weekly: number;
+  overtime_daily: number | null;
+  shift_presets: ShiftPreset[];
+  team_sees_all: boolean;
+};
+// What a restaurant without saved settings gets: the schedule as it always was.
+export const DEFAULT_SETTINGS: ScheduleSettings = {
+  week_start: 1, position_colors: {}, overtime_weekly: OVERTIME_HOURS, overtime_daily: null, shift_presets: [], team_sees_all: true,
+};
+// Whatever the database row holds, read safely: anything missing or malformed falls back to the default.
+export function readSettings(row: Partial<Record<keyof ScheduleSettings, unknown>> | null | undefined): ScheduleSettings {
+  if (!row) return DEFAULT_SETTINGS;
+  const colors = row.position_colors && typeof row.position_colors === "object" ? row.position_colors as Record<string, unknown> : {};
+  const presets = Array.isArray(row.shift_presets) ? row.shift_presets : [];
+  const time = /^\d\d:\d\d$/;
+  return {
+    week_start: Number.isInteger(Number(row.week_start)) && Number(row.week_start) >= 0 && Number(row.week_start) <= 6 ? Number(row.week_start) : 1,
+    position_colors: Object.fromEntries(Object.entries(colors).filter(([, c]) => typeof c === "string" && c in PALETTE)) as Record<string, string>,
+    overtime_weekly: Number(row.overtime_weekly) > 0 ? Number(row.overtime_weekly) : OVERTIME_HOURS,
+    overtime_daily: row.overtime_daily == null || !(Number(row.overtime_daily) > 0) ? null : Number(row.overtime_daily),
+    shift_presets: presets.filter((p): p is ShiftPreset => !!p && typeof p.name === "string" && time.test(p.start) && time.test(p.end)).slice(0, 12),
+    team_sees_all: row.team_sees_all !== false,
+  };
+}
+
+// The colours a position can have. Names only: the screen turns each into shades that read well in
+// light and dark (globals.css, .pos-<name>).
+export const PALETTE: Record<string, string> = {
+  blue: "Blue", red: "Red", green: "Green", orange: "Orange", purple: "Purple",
+  pink: "Pink", teal: "Teal", yellow: "Yellow", brown: "Brown", gray: "Gray",
+};
+// One click away in settings: a colour for every usual position.
+export const SUGGESTED_COLORS: Record<string, string> = {
+  "Server": "blue", "Server assistant": "teal", "Bartender": "red", "Barback": "orange", "Host": "purple",
+  "Runner": "green", "Busser": "brown", "Kitchen": "yellow", "Sommelier": "pink", "Bar Manager": "red", "Manager": "gray", "GM": "gray",
+};
+// A shift's colour comes from its position, not the person: a server who bartends on Friday is red on Friday.
+export function colorFor(position: string, colors: Record<string, string>) {
+  const key = Object.keys(colors).find(name => name.trim().toLowerCase() === position.trim().toLowerCase());
+  return key ? colors[key] : undefined;
+}
+
+// Hours this person works on the calendar day this shift starts, this shift included.
+export function dayHoursFor(shift: Shift, shifts: Shift[]) {
+  const day = dayKey(new Date(shift.starts_at));
+  return shifts.filter(s => s.user_id === shift.user_id && dayKey(new Date(s.starts_at)) === day).reduce((sum, s) => sum + shiftHours(s), 0);
+}
+// Every warning for a shift, daily overtime included when the restaurant counts it.
+export function allWarnings(shift: Shift, shifts: Shift[], unavailable: Unavailability[], timeOff: TimeOff[], dailyLimit: number | null): Warning[] {
+  const found = shiftWarnings(shift, shifts, unavailable, timeOff);
+  if (dailyLimit && dayHoursFor(shift, shifts) > dailyLimit) found.push("daily_overtime");
+  return found;
+}
+// The time a new shift starts with: the first quick shift, or 17:00–23:00.
+export function defaultShift(settings: ScheduleSettings) {
+  const first = settings.shift_presets[0];
+  return first ? {start: first.start, end: first.end} : {start: "17:00", end: "23:00"};
 }

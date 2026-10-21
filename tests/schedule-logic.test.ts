@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { copiedWeek, dayBlocks, dayKey, dayTotals, hoursByPerson, initials, movedShift, shiftLabel, shiftTimes, shiftWarnings, weekStart, type Shift } from "../lib/schedule.ts";
+import { DEFAULT_SETTINGS, allWarnings, colorFor, copiedWeek, dayBlocks, dayKey, dayTotals, defaultShift, hoursByPerson, initials, movedShift, readSettings, shiftLabel, shiftTimes, shiftWarnings, weekStart, type Shift } from "../lib/schedule.ts";
 
 const shift = (id: string, user: string, from: Date, to: Date): Shift => ({
   id, restaurant_id: "r", user_id: user, position: "Server", note: "", published: false, starts_at: from.toISOString(), ends_at: to.toISOString(),
@@ -44,4 +44,30 @@ test("a dragged shift keeps its hours, and each day shows what blocks it and wha
   assert.deepEqual(dayTotals([close, lunch], new Date(2026, 9, 19)), {hours: 12.5, people: 2});
   assert.equal(initials("Ana María López"), "AM");
   assert.equal(initials("  "), "?");
+});
+
+test("schedule settings: weeks start on the restaurant's day, colours follow the position, daily overtime counts", () => {
+  // Osaka's week runs Thursday to Wednesday.
+  assert.equal(dayKey(weekStart(new Date(2026, 9, 21), 4)), "2026-10-15", "a Wednesday ends the week that began the Thursday before");
+  assert.equal(dayKey(weekStart(new Date(2026, 9, 22), 4)), "2026-10-22", "Thursday begins a new one");
+  assert.equal(dayKey(weekStart(new Date(2026, 9, 25, 23), 0)), "2026-10-25", "a Sunday week starts on Sunday");
+  assert.equal(dayKey(weekStart(new Date(2026, 9, 25))), "2026-10-19", "Monday stays the default");
+
+  assert.equal(colorFor(" bartender ", {Bartender: "red"}), "red", "matched without caring about case or spaces");
+  assert.equal(colorFor("Captain", {Bartender: "red"}), undefined);
+
+  const read = readSettings({week_start: 4, position_colors: {Server: "blue", Host: "neon"}, overtime_weekly: 40, overtime_daily: 8,
+    shift_presets: [{name: "Dinner", start: "17:00", end: "23:00"}, {name: "Broken", start: "5pm", end: "11"}], team_sees_all: false});
+  assert.deepEqual(read.position_colors, {Server: "blue"}, "an unknown colour is dropped");
+  assert.deepEqual(read.shift_presets.map(p => p.name), ["Dinner"], "a malformed quick shift is dropped");
+  assert.equal(read.team_sees_all, false);
+  assert.deepEqual(readSettings(null), DEFAULT_SETTINGS);
+  assert.deepEqual(defaultShift(read), {start: "17:00", end: "23:00"});
+  assert.deepEqual(defaultShift({...read, shift_presets: [{name: "Lunch", start: "11:00", end: "15:00"}]}), {start: "11:00", end: "15:00"});
+
+  const lunch = shift("l", "ana", new Date(2026, 9, 22, 10), new Date(2026, 9, 22, 15));
+  const dinner = shift("d", "ana", new Date(2026, 9, 22, 17), new Date(2026, 9, 22, 22));
+  assert.deepEqual(allWarnings(dinner, [lunch, dinner], [], [], 8), ["daily_overtime"], "10 hours on a day with an 8-hour limit");
+  assert.deepEqual(allWarnings(dinner, [lunch, dinner], [], [], null), [], "no daily limit, no warning");
+  assert.deepEqual(allWarnings(dinner, [lunch, dinner], [], [], 10), [], "exactly the limit is fine");
 });
