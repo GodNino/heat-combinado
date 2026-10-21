@@ -2,13 +2,13 @@
 // The schedule (migration 040), stage 1 of replacing Sling. Managers with Team access build the week
 // person by person, see hours, overtime and conflicts as they go, and publish; the team sees their
 // shifts and their coworkers', and keeps their own availability and time off.
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, Copy, Plus, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { AlertTriangle, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
-  OVERTIME_HOURS, POSITIONS, WARNING_TEXT, WEEKDAYS, addDays, clock, copiedWeek, dayKey, formatHours, hoursByPerson,
-  shiftHours, shiftLabel, shiftTimes, shiftWarnings, weekDays, weekStart,
-  type Shift, type TimeOff, type Unavailability,
+  OVERTIME_HOURS, POSITIONS, WARNING_TEXT, WEEKDAYS, addDays, clock, copiedWeek, dayBlocks, dayKey, dayTotals, formatHours, hoursByPerson,
+  initials, movedShift, shiftHours, shiftLabel, shiftTimes, shiftWarnings, weekDays, weekStart,
+  type Shift, type TimeOff, type Unavailability, type Warning,
 } from "@/lib/schedule";
 import { notify } from "./notifications";
 import { Field, SectionInfo } from "./ui";
@@ -46,6 +46,13 @@ export function Schedule({restaurantId, userId, canManage, setMessage}: {restaur
 
 // ── The week ─────────────────────────────────────────────────────────────────────────────────
 type Draft = {id?: string; user_id: string; position: string; day: string; start: string; end: string; note: string};
+type ViewBy = "name" | "hours" | "position";
+// A shift being dragged: where it was grabbed, where the pointer is now, and the cell under it.
+type Drag = {shift: Shift; x: number; y: number; dx: number; dy: number; width: number; target: string | null; copy: boolean};
+type Press = {shift: Shift; x: number; y: number; dx: number; dy: number; width: number; touch: boolean; timer?: number};
+
+const BLOCK_TEXT = {unavailable: "Unavailable", time_off: "Time off", time_off_pending: "Asked off"} as const;
+const cellKey = (userId: string, day: Date) => `${userId}|${dayKey(day)}`;
 
 function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; canManage: boolean; setMessage: (text: string) => void}) {
   const [start, setStart] = useState(() => weekStart(new Date()));
@@ -56,6 +63,13 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [viewBy, setViewBy] = useState<ViewBy>("name");
+  const [query, setQuery] = useState("");
+  const [showConflicts, setShowConflicts] = useState(true);
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const press = useRef<Press | null>(null);
+  const live = useRef<Drag | null>(null);
+  const dragged = useRef(false);
   const days = useMemo(() => weekDays(start), [start]);
   const end = useMemo(() => addDays(start, 7), [start]);
 
@@ -78,8 +92,19 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
 
   const hours = useMemo(() => hoursByPerson(shifts ?? []), [shifts]);
   const drafts = (shifts ?? []).filter(s => !s.published).length;
+  const warningsOf = useMemo(() => {
+    const found = new Map<string, Warning[]>();
+    if (canManage) for (const shift of shifts ?? []) { const w = shiftWarnings(shift, shifts ?? [], unavailable, timeOff); if (w.length) found.set(shift.id, w); }
+    return found;
+  }, [canManage, shifts, unavailable, timeOff]);
   // Employees see only who works this week; managers see the whole team, ready to fill in.
-  const rows = canManage ? people : people.filter(p => hours.has(p.user_id));
+  const rows = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    const list = (canManage ? people : people.filter(p => hours.has(p.user_id))).filter(p => !search || p.name.toLowerCase().includes(search) || p.role.toLowerCase().includes(search));
+    const byName = (a: Person, b: Person) => a.name.localeCompare(b.name);
+    return [...list].sort(viewBy === "hours" ? (a, b) => (hours.get(b.user_id) ?? 0) - (hours.get(a.user_id) ?? 0) || byName(a, b)
+      : viewBy === "position" ? (a, b) => a.role.localeCompare(b.role) || byName(a, b) : byName);
+  }, [canManage, people, hours, query, viewBy]);
 
   function openNew(person: Person, day: Date) {
     setDraft({user_id: person.user_id, position: POSITIONS.includes(person.role) ? person.role : "Server", day: dayKey(day), start: "17:00", end: "23:00", note: ""});
@@ -126,56 +151,206 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
     await load();
   });
 
+  // Dropping a shift on another cell moves it there, same hours; holding Alt (Option) or Ctrl copies it.
+  // The grid shows the result at once and the database catches up; a refusal puts the week back.
+  const drop = (shift: Shift, target: string, copy: boolean) => {
+    const [userId, key] = target.split("|");
+    const [y, m, d] = key.split("-").map(Number);
+    const times = movedShift(shift, new Date(y, m - 1, d));
+    if (!copy && userId === shift.user_id && times.starts_at === shift.starts_at) return;
+    const name = people.find(p => p.user_id === userId)?.name ?? "Team member";
+    setShifts(list => copy ? [...(list ?? []), {...shift, id: `copy-${Date.now()}`, user_id: userId, ...times, published: false}]
+      : (list ?? []).map(s => s.id === shift.id ? {...s, user_id: userId, ...times, published: false} : s));
+    void act(async () => {
+      const result = copy
+        ? await supabase!.from("schedule_shifts").insert({restaurant_id: restaurantId, user_id: userId, position: shift.position, note: shift.note, ...times})
+        : await supabase!.from("schedule_shifts").update({user_id: userId, ...times}).eq("id", shift.id);
+      if (result.error) { await load(); throw new Error(result.error.message.includes("row-level security") ? "That person isn't on this team's schedule." : result.error.message); }
+      setMessage(`${copy ? "Copied" : "Moved"} to ${name}, ${dayHeading(new Date(y, m - 1, d))}.`);
+      await load();
+    });
+  };
+  const dropRef = useRef(drop);
+  dropRef.current = drop;
+  const liftRef = useRef(lift);
+  liftRef.current = lift;
+
+  function grab(event: ReactPointerEvent<HTMLButtonElement>, shift: Shift) {
+    if (!canManage || busy || event.button !== 0 || shift.id.startsWith("copy-")) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    const touch = event.pointerType === "touch";
+    press.current = {shift, x: event.clientX, y: event.clientY, dx: event.clientX - box.left, dy: event.clientY - box.top, width: box.width, touch};
+    // On a phone a quick swipe scrolls the week; holding a shift for a moment picks it up.
+    if (touch) press.current.timer = window.setTimeout(() => { const p = press.current; if (p) lift(p, p.x, p.y, false); }, 350);
+  }
+  function lift(p: Press, x: number, y: number, copy: boolean) {
+    live.current = {shift: p.shift, x, y, dx: p.dx, dy: p.dy, width: p.width, target: cellAt(x, y), copy};
+    dragged.current = true;
+    setDrag(live.current);
+    if (p.touch) navigator.vibrate?.(10);
+  }
+  useEffect(() => {
+    const move = (x: number, y: number, copy: boolean) => {
+      const p = press.current;
+      if (!p) return;
+      if (live.current) { live.current = {...live.current, x, y, copy, target: cellAt(x, y)}; setDrag(live.current); return; }
+      if (Math.hypot(x - p.x, y - p.y) < (p.touch ? 10 : 5)) return;
+      if (p.touch) { window.clearTimeout(p.timer); press.current = null; return; } // a swipe: the page scrolls
+      liftRef.current(p, x, y, copy);
+    };
+    const finish = (cancel: boolean) => {
+      if (press.current) window.clearTimeout(press.current.timer);
+      press.current = null;
+      const done = live.current;
+      live.current = null;
+      setDrag(null);
+      if (done && !cancel && done.target) dropRef.current(done.shift, done.target, done.copy);
+      // The click that follows a drop shouldn't open the shift.
+      window.setTimeout(() => { dragged.current = false; }, 0);
+    };
+    const onPointerMove = (e: PointerEvent) => { if (e.pointerType !== "touch") move(e.clientX, e.clientY, e.altKey || e.ctrlKey || e.metaKey); };
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!press.current || !t) return;
+      if (live.current) e.preventDefault(); // while a shift is held, the finger moves it instead of the page
+      move(t.clientX, t.clientY, false);
+    };
+    // Copy or move is decided by the keys held at the moment of release, not at the last movement.
+    const onUp = (e: PointerEvent | TouchEvent) => {
+      if (live.current && e instanceof PointerEvent && e.pointerType !== "touch") live.current = {...live.current, copy: e.altKey || e.ctrlKey || e.metaKey};
+      finish(false);
+    };
+    // A cancelled mouse or pen drag ends here, since no pointerup may follow. A finger holding a shift
+    // is the exception: its pointer can be cancelled while the touch goes on, and touchend or touchcancel ends it.
+    const onCancel = (e: PointerEvent) => { if (!live.current || e.pointerType !== "touch") finish(true); };
+    const onTouchCancel = () => finish(true);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") finish(true); };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("touchmove", onTouchMove, {passive: false});
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("touchend", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("touchcancel", onTouchCancel);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("touchend", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("touchcancel", onTouchCancel);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  const card = (shift: Shift, warnings: Warning[]) => <>
+    <b><Hours shift={shift} /></b>
+    <small>{shift.position}{shift.published ? "" : " · Draft"}</small>
+    {warnings.length > 0 && <small className="sched-warn"><AlertTriangle size={12} aria-hidden="true" />{WARNING_TEXT[warnings[0]]}</small>}
+  </>;
+  const conflicts = warningsOf.size;
+  const total = (shifts ?? []).reduce((sum, s) => sum + shiftHours(s), 0);
+  const working = new Set((shifts ?? []).map(s => s.user_id)).size;
+  const today = dayKey(new Date());
+
   return <div>
     <div className="sched-bar">
-      <div className="flex items-center gap-1">
-        <button type="button" className="btn secondary sched-icon" aria-label="Previous week" onClick={() => setStart(addDays(start, -7))}><ChevronLeft size={18} /></button>
-        <button type="button" className="btn secondary" onClick={() => setStart(weekStart(new Date()))}>This week</button>
-        <button type="button" className="btn secondary sched-icon" aria-label="Next week" onClick={() => setStart(addDays(start, 7))}><ChevronRight size={18} /></button>
-        <b className="ml-2 text-sm">{weekHeading(start)}</b>
+      <div className="sched-nav">
+        <button type="button" className="btn secondary" onClick={() => setStart(weekStart(new Date()))}>Today</button>
+        <div className="sched-range">
+          <button type="button" className="sched-icon" aria-label="Previous week" onClick={() => setStart(addDays(start, -7))}><ChevronLeft size={17} /></button>
+          <CalendarDays size={15} aria-hidden="true" className="muted" />
+          <b>{weekHeading(start)}</b>
+          <button type="button" className="sched-icon" aria-label="Next week" onClick={() => setStart(addDays(start, 7))}><ChevronRight size={17} /></button>
+        </div>
       </div>
-      {canManage && <div className="flex flex-wrap items-center gap-2">
+      {canManage && <div className="sched-actions">
+        <label className="sched-toggle">
+          <input type="checkbox" checked={showConflicts} onChange={e => setShowConflicts(e.target.checked)} />
+          <span aria-hidden="true" />
+          Show conflicts
+          {conflicts > 0 && <em>{conflicts}</em>}
+        </label>
         <button type="button" className="btn secondary" disabled={busy} onClick={copyLastWeek}><Copy size={15} />Copy last week</button>
         <button type="button" className="btn" disabled={busy || !drafts} onClick={publish}>{drafts ? `Publish ${drafts} ${drafts === 1 ? "change" : "changes"}` : "Published"}</button>
       </div>}
     </div>
     {error && <p role="alert" className="notice bad mb-4">{error}</p>}
     {!shifts ? <p className="muted" role="status">Loading the schedule…</p>
-      : !rows.length ? <p className="panel p-5 muted">{canManage ? "Nobody on the team yet. Invite your team from Team." : "Nothing published for this week yet."}</p>
-      : <div className="sched-scroll">
+      : !people.length || (!canManage && !rows.length && !query) ? <p className="panel p-5 muted">{canManage ? "Nobody on the team yet. Invite your team from Team." : "Nothing published for this week yet."}</p>
+      : <div className={`sched-scroll ${drag ? "dragging" : ""}`}>
         <table className="sched-grid">
           <thead><tr>
-            <th scope="col">Team</th>
-            {days.map(day => <th key={day.toISOString()} scope="col" className={dayKey(day) === dayKey(new Date()) ? "today" : ""}>{dayHeading(day)}</th>)}
+            <th scope="col">
+              <span className="sched-viewby">
+                <label htmlFor="sched-viewby">View by</label>
+                <select id="sched-viewby" value={viewBy} onChange={e => setViewBy(e.target.value as ViewBy)}>
+                  <option value="name">First name</option>
+                  <option value="hours">Most hours</option>
+                  <option value="position">Position</option>
+                </select>
+              </span>
+              <span className="sched-search">
+                <input type="search" aria-label="Search the team" placeholder="Search the team" value={query} onChange={e => setQuery(e.target.value)} />
+              </span>
+            </th>
+            {days.map(day => <th key={day.toISOString()} scope="col" aria-label={dayHeading(day)}>
+              <span className={`sched-day ${dayKey(day) === today ? "today" : ""}`}><span>{day.toLocaleDateString("en-US", {weekday: "short"})}</span> <b>{day.getDate()}</b></span>
+            </th>)}
           </tr></thead>
-          <tbody>{rows.map(person => {
-            const total = hours.get(person.user_id) ?? 0;
+          <tbody>{rows.length ? rows.map(person => {
+            const mine = hours.get(person.user_id) ?? 0;
             return <tr key={person.user_id}>
               <th scope="row">
-                <span className="block font-semibold">{person.name}</span>
-                <span className={`sched-hours ${total > OVERTIME_HOURS ? "over" : ""}`}>{formatHours(total)}{total > OVERTIME_HOURS ? " · Overtime" : ""}</span>
+                <span className="sched-person">
+                  <span className="sched-avatar" aria-hidden="true">{initials(person.name)}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">{person.name}</span>
+                    <span className={`sched-hours ${mine > OVERTIME_HOURS ? "over" : ""}`}>{formatHours(mine)}{mine > OVERTIME_HOURS ? " · Overtime" : ""}</span>
+                  </span>
+                </span>
               </th>
               {days.map(day => {
-                const mine = (shifts ?? []).filter(s => s.user_id === person.user_id && dayKey(new Date(s.starts_at)) === dayKey(day));
-                return <td key={day.toISOString()}>
-                  {mine.map(shift => {
-                    const warnings = canManage ? shiftWarnings(shift, shifts ?? [], unavailable, timeOff) : [];
-                    return <button key={shift.id} type="button" disabled={!canManage} onClick={() => openShift(shift)}
-                      className={`sched-shift ${shift.published ? "" : "draft"} ${warnings.length ? "warn" : ""}`}
+                const key = cellKey(person.user_id, day);
+                const theirs = (shifts ?? []).filter(s => s.user_id === person.user_id && dayKey(new Date(s.starts_at)) === dayKey(day));
+                const blocks = canManage ? dayBlocks(person.user_id, day, unavailable, timeOff) : [];
+                return <td key={key} data-cell={key} className={drag?.target === key ? "drop" : ""}>
+                  {blocks.map((block, i) => <span key={i} className={`sched-block ${block.kind}`}><b>{BLOCK_TEXT[block.kind]}</b><small>{block.label}</small></span>)}
+                  {theirs.map(shift => {
+                    const warnings = showConflicts ? warningsOf.get(shift.id) ?? [] : [];
+                    return <button key={shift.id} type="button" disabled={!canManage}
+                      onPointerDown={e => grab(e, shift)} onContextMenu={e => { if (canManage) e.preventDefault(); }}
+                      onClick={() => { if (!dragged.current && !shift.id.startsWith("copy-")) openShift(shift); }}
+                      className={`sched-shift ${shift.published ? "" : "draft"} ${warnings.length ? "warn" : ""} ${drag?.shift.id === shift.id && !drag.copy ? "lifting" : ""}`}
                       title={warnings.map(w => WARNING_TEXT[w]).join(" · ") || undefined}>
-                      <b>{shiftLabel(shift)}</b>
-                      <small>{shift.position}{shift.published ? "" : " · Draft"}</small>
-                      {warnings.length > 0 && <small className="sched-warn"><AlertTriangle size={12} aria-hidden="true" />{WARNING_TEXT[warnings[0]]}</small>}
+                      {card(shift, warnings)}
                     </button>;
                   })}
-                  {canManage && <button type="button" className="sched-add" aria-label={`Add a shift for ${person.name} on ${dayHeading(day)}`} onClick={() => openNew(person, day)}><Plus size={14} /></button>}
+                  {canManage && <button type="button" className={`sched-add ${theirs.length || blocks.length ? "" : "empty"}`} aria-label={`Add a shift for ${person.name} on ${dayHeading(day)}`} onClick={() => openNew(person, day)}><Plus size={14} /></button>}
                 </td>;
               })}
             </tr>;
-          })}</tbody>
+          }) : <tr><td colSpan={8} className="muted">Nobody matches that search.</td></tr>}</tbody>
+          <tfoot><tr>
+            <th scope="row">
+              <span className="sched-foot-label"><span>Hours</span><b>{formatHours(total)}</b></span>
+              <span className="sched-foot-label"><span>People</span><b>{working}</b></span>
+            </th>
+            {days.map(day => { const t = dayTotals(shifts ?? [], day); return <td key={day.toISOString()}>
+              <span className="sched-foot"><Users size={13} aria-hidden="true" />{t.people}</span>
+              <span className="sched-foot">{formatHours(t.hours)}</span>
+            </td>; })}
+          </tr></tfoot>
         </table>
       </div>}
-    {canManage && shifts && shifts.length > 0 && <p className="muted mt-3 text-xs">{`Dashed shifts are drafts: the team sees them once you publish. Total this week: ${formatHours((shifts ?? []).reduce((sum, s) => sum + shiftHours(s), 0))}.`}</p>}
+    {canManage && shifts && shifts.length > 0 && <p className="muted mt-3 text-xs">{"Drag a shift to move it to another day or person. Hold Alt (Option on a Mac) as you drop to copy it instead; on a phone, hold the shift for a moment to pick it up."}</p>}
+    {canManage && shifts && shifts.length > 0 && <p className="muted mt-1 text-xs">{`Dashed shifts are drafts: the team sees them once you publish. Total this week: ${formatHours(total)}.`}</p>}
+
+    {drag && <div className={`sched-shift sched-ghost ${drag.shift.published && !drag.copy ? "" : "draft"}`} aria-hidden="true"
+      style={{left: drag.x - drag.dx, top: drag.y - drag.dy, width: drag.width}}>
+      {card(drag.shift, [])}
+      {drag.copy && <em>Copy</em>}
+    </div>}
 
     {draft && <div className="sched-sheet" role="dialog" aria-modal="true" aria-labelledby="shift-title">
       <form className="panel sched-form" onSubmit={save}>
@@ -201,6 +376,17 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
       </form>
     </div>}
   </div>;
+}
+
+// "4:30p–10:30p" in a narrow day: the end time drops to the next line instead of being cut off.
+function Hours({shift}: {shift: Pick<Shift, "starts_at" | "ends_at">}) {
+  const [from, to] = shiftLabel(shift).split("–");
+  return <>{from}–<wbr />{to}</>;
+}
+
+// The cell under the pointer while dragging: the ghost card ignores the pointer, so this finds the grid.
+function cellAt(x: number, y: number) {
+  return (document.elementFromPoint(x, y)?.closest("[data-cell]") as HTMLElement | null)?.dataset.cell ?? null;
 }
 
 // ── My shifts ────────────────────────────────────────────────────────────────────────────────
@@ -245,6 +431,76 @@ export function NextShift({restaurantId, userId, onOpen}: {restaurantId: string;
     <span className="mt-1 block font-semibold">{`${dayHeading(new Date(shift.starts_at))} · ${shiftLabel(shift)}`}</span>
     <span className="muted block text-sm">{shift.position}{shift.note ? ` · ${shift.note}` : ""}</span>
   </button>;
+}
+
+// On a server's Home: their week, Monday to Sunday, with the next shift picked out. It stays out of
+// the way for restaurants that don't use the schedule: nothing shows until a shift is published.
+export function MyWeek({restaurantId, userId, onOpen}: {restaurantId: string; userId: string; onOpen: () => void}) {
+  const [start, setStart] = useState(() => weekStart(new Date()));
+  const [shifts, setShifts] = useState<Shift[] | null>(null);
+  const [off, setOff] = useState<TimeOff[]>([]);
+  const [next, setNext] = useState<Shift | null | undefined>(undefined);
+  useEffect(() => {
+    let live = true;
+    void supabase!.from("schedule_shifts").select("*").eq("restaurant_id", restaurantId).eq("user_id", userId).eq("published", true)
+      .gt("ends_at", new Date().toISOString()).lt("starts_at", addDays(weekStart(new Date()), 14).toISOString()).order("starts_at").limit(1)
+      .then(({data}) => {if (live) setNext((data?.[0] as Shift) ?? null);});
+    return () => {live = false;};
+  }, [restaurantId, userId]);
+  useEffect(() => {
+    let live = true;
+    const end = addDays(start, 7);
+    void Promise.all([
+      supabase!.from("schedule_shifts").select("*").eq("restaurant_id", restaurantId).eq("user_id", userId).eq("published", true)
+        .gte("starts_at", start.toISOString()).lt("starts_at", end.toISOString()).order("starts_at"),
+      supabase!.from("time_off_requests").select("*").eq("restaurant_id", restaurantId).eq("user_id", userId).eq("status", "approved")
+        .lte("starts_on", dayKey(addDays(start, 6))).gte("ends_on", dayKey(start)),
+    ]).then(([week, away]) => {
+      if (!live) return;
+      setShifts((week.data ?? []) as Shift[]);
+      setOff((away.data ?? []) as TimeOff[]);
+    });
+    return () => {live = false;};
+  }, [restaurantId, userId, start]);
+  // On a phone the days scroll sideways: start the strip at today rather than at Monday.
+  const strip = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    const list = strip.current, today = list?.querySelector<HTMLElement>(".today");
+    if (list && today && list.scrollWidth > list.clientWidth) list.scrollLeft = today.offsetLeft - list.offsetLeft - 16;
+  }, [shifts, next]);
+  // Nothing published in this or next week, and nobody has looked further: the schedule isn't in use.
+  if (next === undefined || (next === null && start.getTime() === weekStart(new Date()).getTime() && !shifts?.length)) return null;
+  const today = dayKey(new Date());
+  const started = next ? Date.parse(next.starts_at) <= Date.now() : false;
+  const total = (shifts ?? []).reduce((sum, s) => sum + shiftHours(s), 0);
+  return <section className="panel my-week mb-4" aria-label="Your week">
+    <div className="my-week-head">
+      <div className="min-w-0">
+        <p className="eyebrow muted">{next ? (started ? "On shift now" : "Your next shift") : "Your week"}</p>
+        {next ? <p className="mt-1 font-semibold">{`${dayHeading(new Date(next.starts_at))} · ${shiftLabel(next)}`}<span className="muted font-normal">{` · ${next.position}`}</span></p>
+          : <p className="muted mt-1 text-sm">No shifts coming up yet.</p>}
+      </div>
+      <button type="button" className="btn secondary shrink-0" onClick={onOpen}>Full schedule<ArrowRight size={15} aria-hidden="true" /></button>
+    </div>
+    <div className="my-week-bar">
+      <button type="button" className="sched-icon" aria-label="Previous week" onClick={() => setStart(addDays(start, -7))}><ChevronLeft size={17} /></button>
+      <b>{weekHeading(start)}</b>
+      <button type="button" className="sched-icon" aria-label="Next week" onClick={() => setStart(addDays(start, 7))}><ChevronRight size={17} /></button>
+      <span className="my-week-total">{shifts ? formatHours(total) : ""}</span>
+    </div>
+    <ol ref={strip} className="my-week-days">{weekDays(start).map(day => {
+      const key = dayKey(day);
+      const theirs = (shifts ?? []).filter(s => dayKey(new Date(s.starts_at)) === key);
+      const away = off.some(t => t.starts_on <= key && t.ends_on >= key);
+      const isNext = !!next && theirs.some(s => s.id === next.id);
+      return <li key={key} className={`my-week-day ${key === today ? "today" : ""} ${isNext ? "next" : ""} ${theirs.length ? "working" : ""}`} aria-label={dayHeading(day)}>
+        <span className="my-week-date"><span>{day.toLocaleDateString("en-US", {weekday: "short"})}</span> <b>{day.getDate()}</b></span>
+        {!shifts ? <small className="muted">…</small>
+          : theirs.length ? theirs.map(s => <span key={s.id} className="my-week-shift"><b><Hours shift={s} /></b><small>{s.position}</small></span>)
+          : <small className="muted">{away ? "Time off" : "Off"}</small>}
+      </li>;
+    })}</ol>
+  </section>;
 }
 
 // ── Availability ─────────────────────────────────────────────────────────────────────────────

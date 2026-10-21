@@ -68,7 +68,7 @@ import { Tour, tourSeen, tourSteps } from "./tour";
 import { LastShiftNote, ShiftReports } from "./shift-report";
 import { LanguageSwitch, currentLang, setLang } from "./language";
 import { NotificationSwitch, notify } from "./notifications";
-import { NextShift, Schedule } from "./schedule";
+import { MyWeek, NextShift, Schedule } from "./schedule";
 
 // Every screen the workspace can show. Named once: it used to be spelled out in two places.
 type View = "tostudy" | "home" | "library" | "allergy" | "review" | "progress" | "team" | "preshift" | "words" | "standards" | "story" | "library-settings" | "checklists" | "locations" | "dashboard" | "reports" | "schedule";
@@ -2456,8 +2456,7 @@ function Workspace({
             </section>;
           })() : view === "home" ? (
               <section>
-                {!isManager && <NextShift key={`shift-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />}
-                {!isManager ? <EmployeeHome key={restaurant.id} onProgress={() => navigate("progress")} onChecklists={() => navigate("checklists")} restaurantId={restaurant.id} canDownloadBoard={can("preshift")} restaurantName={restaurant.name} onFocusQuiz={item => {navigate("library", "All", contentTypeOf(item));setDetailItem(item);setQuizEditing(false);setQuizItem(item);}} onBoardItem={item => {navigate("library", "All", contentTypeOf(item));setCameFrom({view: "home", label: "Pre-shift board"});openCard(item);}} user={user} items={items} progress={quizProgress} loading={itemsLoading || progressLoading} error={progressError || error} onRetry={() => {void loadItems();void loadProgress();}} onStudy={(item, mode) => {if(item && mode === "list"){setStudyType(CONTENT_TYPES.find(type => items.some(other => contentTypeOf(other) === type && !takenIds.has(other.id))) ?? "food");navigate("tostudy");return;}navigate("library", item ? categoryOf(item) : "All", item ? contentTypeOf(item) : "food");setHideTaken(false);if(item)setQuery(item.name);}} /> : <>
+                {!isManager ? <EmployeeHome key={restaurant.id} schedule={<MyWeek key={`week-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />} onProgress={() => navigate("progress")} onChecklists={() => navigate("checklists")} restaurantId={restaurant.id} canDownloadBoard={can("preshift")} restaurantName={restaurant.name} onFocusQuiz={item => {navigate("library", "All", contentTypeOf(item));setDetailItem(item);setQuizEditing(false);setQuizItem(item);}} onBoardItem={item => {navigate("library", "All", contentTypeOf(item));setCameFrom({view: "home", label: "Pre-shift board"});openCard(item);}} user={user} items={items} progress={quizProgress} loading={itemsLoading || progressLoading} error={progressError || error} onRetry={() => {void loadItems();void loadProgress();}} onStudy={(item, mode) => {if(item && mode === "list"){setStudyType(CONTENT_TYPES.find(type => items.some(other => contentTypeOf(other) === type && !takenIds.has(other.id))) ?? "food");navigate("tostudy");return;}navigate("library", item ? categoryOf(item) : "All", item ? contentTypeOf(item) : "food");setHideTaken(false);if(item)setQuery(item.name);}} /> : <>
                 <p className="eyebrow muted mb-3">Home · {isManager ? "Manager workspace" : "Ready for service"}</p>
                 <h1 className="text-2xl font-semibold md:text-2xl">{`Welcome to ${restaurant.name}`}</h1>
                 <p className="muted mt-3 max-w-xl">Feel ready for every service.</p>
