@@ -215,14 +215,22 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
       if (live.current) e.preventDefault(); // while a shift is held, the finger moves it instead of the page
       move(t.clientX, t.clientY, false);
     };
-    const onUp = () => finish(false);
-    const onCancel = () => { if (!live.current) finish(true); };
+    // Copy or move is decided by the keys held at the moment of release, not at the last movement.
+    const onUp = (e: PointerEvent | TouchEvent) => {
+      if (live.current && e instanceof PointerEvent && e.pointerType !== "touch") live.current = {...live.current, copy: e.altKey || e.ctrlKey || e.metaKey};
+      finish(false);
+    };
+    // A cancelled mouse or pen drag ends here, since no pointerup may follow. A finger holding a shift
+    // is the exception: its pointer can be cancelled while the touch goes on, and touchend or touchcancel ends it.
+    const onCancel = (e: PointerEvent) => { if (!live.current || e.pointerType !== "touch") finish(true); };
+    const onTouchCancel = () => finish(true);
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") finish(true); };
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("touchmove", onTouchMove, {passive: false});
     window.addEventListener("pointerup", onUp);
     window.addEventListener("touchend", onUp);
     window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("touchcancel", onTouchCancel);
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
@@ -230,6 +238,7 @@ function WeekView({restaurantId, canManage, setMessage}: {restaurantId: string; 
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("touchend", onUp);
       window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("touchcancel", onTouchCancel);
       window.removeEventListener("keydown", onKey);
     };
   }, []);
