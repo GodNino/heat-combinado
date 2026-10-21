@@ -423,7 +423,7 @@ const PHRASES: Record<string, string> = {
   "Whoever joins with this link starts as Server until you choose their position below.": "Quien entre con este enlace empieza como mesero hasta que elijas su puesto abajo.",
   "1 new person needs a position. Until you choose one, they show as Server on the schedule.": "1 persona nueva necesita un puesto. Hasta que elijas uno, aparece como mesero en el horario.",
   "Choose a position to save. It's what the schedule uses for their shifts.": "Elige un puesto para guardar. Es el que usa el horario para sus turnos.",
-  "Invite links for a position need database update 041.": "Los enlaces por puesto necesitan la actualización 041 de la base de datos.",
+  "Invite links for a position need database update 042.": "Los enlaces por puesto necesitan la actualización 042 de la base de datos.",
   "Choose a position for this link.": "Elige un puesto para este enlace.",
   "Your week": "Tu semana", "Full schedule": "Horario completo", "Off": "Libre", "No shifts coming up yet.": "Todavía no tienes turnos próximos.",
   "Show conflicts": "Mostrar conflictos", "View by": "Ver por", "First name": "Nombre", "Most hours": "Más horas", "Search the team": "Buscar en el equipo",

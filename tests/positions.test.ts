@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 
-// Positions (041): any job title saves, newcomers without one are listed for the manager, and an
+// Positions (042): any job title saves, newcomers without one are listed for the manager, and an
 // invite link can carry a position that whoever joins with it starts in.
 test("positions are free text, newcomers are asked for, and a position link places whoever joins", async () => {
   const db = new PGlite();

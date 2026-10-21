@@ -1311,7 +1311,7 @@ type TeamAssignment = {id: string; menu_item_id: string; item_name: string; note
 // and a restaurant that calls somebody a captain should be able to type captain.
 const TEAM_ROLES = ["Server", "Server assistant", "Bartender", "Barback", "Host", "Runner", "Busser", "Kitchen", "Sommelier", "Bar Manager", "Manager", "GM"];
 
-// Which job an invite link is for (migration 041). "Anyone" is the restaurant's plain link; each
+// Which job an invite link is for (migration 042). "Anyone" is the restaurant's plain link; each
 // position has a link of its own, and whoever joins with it starts in that position.
 function InviteFor({restaurantId, busy, action, current, onAnyone, onPick}: {restaurantId: string; busy: boolean; action: (work: () => Promise<void>) => Promise<void>; current: string; onAnyone: () => void; onPick: (role: string, token: string) => void}) {
   const [typing, setTyping] = useState(false);
@@ -1319,7 +1319,7 @@ function InviteFor({restaurantId, busy, action, current, onAnyone, onPick}: {res
   const pick = (role: string, fresh = false) => void action(async () => {
     if (!supabase) throw new Error("Please reconnect to your workspace.");
     const result = await supabase.rpc("create_position_invite", {rid: restaurantId, member_role: role, fresh});
-    if (result.error) throw new Error(result.error.message.includes("create_position_invite") ? "Invite links for a position need database update 041." : result.error.message);
+    if (result.error) throw new Error(result.error.message.includes("create_position_invite") ? "Invite links for a position need database update 042." : result.error.message);
     onPick(role, result.data as string);
   });
   const isChip = TEAM_ROLES.some(value => value.toLowerCase() === current.toLowerCase());
@@ -1505,7 +1505,7 @@ function TeamWorkspace({restaurantId, restaurantName, items, itemsLoading, busy,
   const [learnerId, setLearnerId] = useState<string | null>(null);
   const [completions, setCompletions] = useState<Completion[]>([]);
   const [teamQuery, setTeamQuery] = useState("");
-  // Members whose position nobody has chosen yet (041): asked for here instead of assumed to be Server.
+  // Members whose position nobody has chosen yet (042): asked for here instead of assumed to be Server.
   const [unplaced, setUnplaced] = useState<Set<string>>(new Set());
   // Opening somebody is a screen of its own: the page hides the invite panel while it is up.
   const openMember = (id: string | null) => {
@@ -1785,7 +1785,7 @@ function Workspace({
     setError(""); setMessage("");
   }
   const [inviteLink, setInviteLink] = useState("");
-  // The plain link stays at hand while the manager tries the position links (041).
+  // The plain link stays at hand while the manager tries the position links (042).
   const [generalInvite, setGeneralInvite] = useState("");
   const [inviteRole, setInviteRole] = useState("");
   const [viewingMember, setViewingMember] = useState<string | null>(null);

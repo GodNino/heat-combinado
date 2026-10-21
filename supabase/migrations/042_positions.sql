@@ -1,4 +1,4 @@
--- Run once, after 040. Positions: who does which job.
+-- Run once, after 041 (shift templates). Positions: who does which job.
 --
 -- Three things, all for the manager on the Team screen:
 --   1. A position can be anything the restaurant calls the job (1 to 40 characters). Until now the
