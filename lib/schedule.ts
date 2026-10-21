@@ -139,10 +139,12 @@ export type ScheduleSettings = {
   overtime_daily: number | null;
   shift_presets: ShiftPreset[];
   team_sees_all: boolean;
+  /** Releases, offers and swaps close this many hours before the shift (045). */
+  change_cutoff_hours: number;
 };
 // What a restaurant without saved settings gets: the schedule as it always was.
 export const DEFAULT_SETTINGS: ScheduleSettings = {
-  week_start: 1, position_colors: {}, overtime_weekly: OVERTIME_HOURS, overtime_daily: null, shift_presets: [], team_sees_all: true,
+  week_start: 1, position_colors: {}, overtime_weekly: OVERTIME_HOURS, overtime_daily: null, shift_presets: [], team_sees_all: true, change_cutoff_hours: 24,
 };
 // Whatever the database row holds, read safely: anything missing or malformed falls back to the default.
 export function readSettings(row: Partial<Record<keyof ScheduleSettings, unknown>> | null | undefined): ScheduleSettings {
@@ -157,6 +159,7 @@ export function readSettings(row: Partial<Record<keyof ScheduleSettings, unknown
     overtime_daily: row.overtime_daily == null || !(Number(row.overtime_daily) > 0) ? null : Number(row.overtime_daily),
     shift_presets: presets.filter((p): p is ShiftPreset => !!p && typeof p.name === "string" && time.test(p.start) && time.test(p.end)).slice(0, 12),
     team_sees_all: row.team_sees_all !== false,
+    change_cutoff_hours: Number.isInteger(Number(row.change_cutoff_hours)) && Number(row.change_cutoff_hours) >= 0 ? Number(row.change_cutoff_hours) : 24,
   };
 }
 
@@ -192,4 +195,20 @@ export function allWarnings(shift: Shift, shifts: Shift[], unavailable: Unavaila
 export function defaultShift(settings: ScheduleSettings) {
   const first = settings.shift_presets[0];
   return first ? {start: first.start, end: first.end} : {start: "17:00", end: "23:00"};
+}
+
+// ── Shift changes (migration 045): release, offer, swap, always approved by a manager ──
+export type ChangeStatus = "open" | "asked" | "pending" | "approved" | "denied" | "declined" | "cancelled";
+export type ShiftChange = {
+  id: string; kind: "release" | "offer" | "swap"; status: ChangeStatus; other_area: boolean; note: string;
+  created_at: string; decided_at: string | null;
+  requested_by: string; requester_name: string; taker_id: string | null; taker_name: string | null;
+  shift_id: string; shift_position: string; shift_starts: string; shift_ends: string;
+  swap_shift_id: string | null; swap_position: string | null; swap_starts: string | null; swap_ends: string | null;
+};
+export const LIVE_CHANGES: ChangeStatus[] = ["open", "asked", "pending"];
+export const isLive = (change: Pick<ShiftChange, "status">) => LIVE_CHANGES.includes(change.status);
+// Whether a shift starting then can still be released, offered or swapped.
+export function changeWindowOpen(startsAt: string, cutoffHours: number, now = Date.now()) {
+  return Date.parse(startsAt) > now + cutoffHours * 3_600_000;
 }

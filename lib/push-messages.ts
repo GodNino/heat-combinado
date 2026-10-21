@@ -1,6 +1,7 @@
 // What each phone notification says, in the language the person chose (migration 039 keeps it per
 // device). Short enough for a lock screen: a title and one line.
-export const PUSH_EVENTS = ["preshift_posted", "study_assigned", "urgent_report", "retake_requested", "schedule_published", "time_off_requested", "time_off_decided"] as const;
+export const PUSH_EVENTS = ["preshift_posted", "study_assigned", "urgent_report", "retake_requested", "schedule_published", "time_off_requested", "time_off_decided",
+  "shift_released", "shift_offered", "shift_change_pending", "shift_change_declined", "shift_change_decided"] as const;
 export type PushEvent = typeof PUSH_EVENTS[number];
 
 const MESSAGES: Record<PushEvent, Record<"en" | "es", (place: string) => {title: string; body: string}>> = {
@@ -27,6 +28,26 @@ const MESSAGES: Record<PushEvent, Record<"en" | "es", (place: string) => {title:
   time_off_decided: {
     en: place => ({title: "Time off answered", body: `Your manager at ${place} answered your time off request.`}),
     es: place => ({title: "Respondieron tu día libre", body: `Tu manager en ${place} respondió tu solicitud de día libre.`}),
+  },
+  shift_released: {
+    en: place => ({title: "A shift is up for grabs", body: `Someone in your position at ${place} can't make a shift. Take it in Schedule.`}),
+    es: place => ({title: "Hay un turno disponible", body: `Alguien de tu puesto en ${place} no puede ir a un turno. Tómalo en Horario.`}),
+  },
+  shift_offered: {
+    en: place => ({title: "Can you cover a shift?", body: `A coworker at ${place} asked you to cover or swap a shift. Answer in Schedule.`}),
+    es: place => ({title: "¿Puedes cubrir un turno?", body: `Un compañero en ${place} te pidió cubrir o cambiar un turno. Responde en Horario.`}),
+  },
+  shift_change_pending: {
+    en: place => ({title: "Shift change to approve", body: `A shift change at ${place} is waiting for a manager. Open Schedule.`}),
+    es: place => ({title: "Cambio de turno por aprobar", body: `Un cambio de turno en ${place} espera a un manager. Abre Horario.`}),
+  },
+  shift_change_declined: {
+    en: place => ({title: "They can't cover it", body: `Your coworker at ${place} said no to your shift. The shift is still yours.`}),
+    es: place => ({title: "No pueden cubrirlo", body: `Tu compañero en ${place} dijo que no. El turno sigue siendo tuyo.`}),
+  },
+  shift_change_decided: {
+    en: place => ({title: "Shift change answered", body: `Your manager at ${place} answered a shift change. Check your shifts.`}),
+    es: place => ({title: "Respondieron un cambio de turno", body: `Tu manager en ${place} respondió un cambio de turno. Revisa tus turnos.`}),
   },
   retake_requested: {
     en: place => ({title: "Quiz retake request", body: `Someone at ${place} asked for another quiz attempt. Approve it from Home.`}),
