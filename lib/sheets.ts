@@ -19,6 +19,7 @@ import type { MenuItem } from "./menu.ts";
 import type { CardFieldRow } from "./card-fields.ts";
 import type { CustomTerm } from "./glossary.ts";
 import { contentTypeOf, CONTENT_LABELS } from "./categories.ts";
+import { plainScheduleSheet, type ScheduleSheetInput } from "./schedule-sheet.ts";
 
 /* ---------------------------------------------------------------- shared --- */
 
@@ -209,5 +210,14 @@ export function storySheet(input: StoryInput, context: SheetContext): PrintedShe
   return {
     filename: single ? `${slug(input.topics[0].title)}-our-story.pdf` : `${slug(context.restaurant)}-our-story.pdf`,
     bytes: plainStorySheet({topics: input.topics, photo: input.photo}, header(context, 'Our story', input.updated)),
+  };
+}
+
+/* -------------------------------------------------------------- schedule --- */
+
+export function scheduleSheet(input: ScheduleSheetInput, context: SheetContext): PrintedSheet {
+  return {
+    filename: `${slug(context.restaurant)}-schedule-${input.start}.pdf`,
+    bytes: plainScheduleSheet(input, header(context, "Schedule")),
   };
 }

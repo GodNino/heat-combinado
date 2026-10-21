@@ -10,7 +10,9 @@ import {
   dayTotals, defaultShift, formatHours, hoursByPerson, initials, movedShift, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, weekDays, weekStart,
   type ScheduleSettings, type Shift, type ShiftPreset, type TimeOff, type Unavailability, type Warning,
 } from "@/lib/schedule";
+import { scheduleSheet } from "@/lib/sheets";
 import { notify } from "./notifications";
+import { DownloadSheet } from "./sheet-download";
 import { Field, SectionInfo } from "./ui";
 
 type Person = {user_id: string; name: string; role: string};
@@ -39,7 +41,7 @@ function useScheduleSettings(restaurantId: string) {
 const paint = (position: string, settings: ScheduleSettings) => { const color = colorFor(position, settings.position_colors); return color ? `pos pos-${color}` : ""; };
 const presetLabel = (preset: ShiftPreset) => { const today = new Date(); return `${shortTime(atTime(today, preset.start))}–${shortTime(atTime(today, preset.end))}`; };
 
-export function Schedule({restaurantId, userId, canManage, setMessage}: {restaurantId: string; userId: string; canManage: boolean; setMessage: (text: string) => void}) {
+export function Schedule({restaurantId, restaurantName, userId, canManage, setMessage}: {restaurantId: string; restaurantName: string; userId: string; canManage: boolean; setMessage: (text: string) => void}) {
   const [tab, setTab] = useState<Tab>(canManage ? "week" : "mine");
   const {settings, setSettings, missing} = useScheduleSettings(restaurantId);
   const [pending, setPending] = useState(0);
@@ -58,7 +60,7 @@ export function Schedule({restaurantId, userId, canManage, setMessage}: {restaur
       {tabs.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}
     </div>
     {!settings ? <p className="muted" role="status">Loading the schedule…</p> : <>
-    {tab === "week" && (canManage || settings.team_sees_all) && <WeekView restaurantId={restaurantId} canManage={canManage} setMessage={setMessage} settings={settings} settingsMissing={missing} onSettings={setSettings} />}
+    {tab === "week" && (canManage || settings.team_sees_all) && <WeekView restaurantId={restaurantId} restaurantName={restaurantName} canManage={canManage} setMessage={setMessage} settings={settings} settingsMissing={missing} onSettings={setSettings} />}
     {tab === "mine" && <MyShifts restaurantId={restaurantId} userId={userId} settings={settings} />}
     {tab === "availability" && <Availability restaurantId={restaurantId} userId={userId} />}
     {tab === "timeoff" && (canManage ? <TimeOffDecisions restaurantId={restaurantId} setMessage={setMessage} /> : <TimeOffRequests restaurantId={restaurantId} userId={userId} setMessage={setMessage} />)}
@@ -76,7 +78,7 @@ type Press = {shift: Shift; x: number; y: number; dx: number; dy: number; width:
 const BLOCK_TEXT = {unavailable: "Unavailable", time_off: "Time off", time_off_pending: "Asked off"} as const;
 const cellKey = (userId: string, day: Date) => `${userId}|${dayKey(day)}`;
 
-function WeekView({restaurantId, canManage, setMessage, settings, settingsMissing, onSettings}: {restaurantId: string; canManage: boolean; setMessage: (text: string) => void; settings: ScheduleSettings; settingsMissing: boolean; onSettings: (settings: ScheduleSettings) => void}) {
+function WeekView({restaurantId, restaurantName, canManage, setMessage, settings, settingsMissing, onSettings}: {restaurantId: string; restaurantName: string; canManage: boolean; setMessage: (text: string) => void; settings: ScheduleSettings; settingsMissing: boolean; onSettings: (settings: ScheduleSettings) => void}) {
   const [start, setStart] = useState(() => weekStart(new Date(), settings.week_start));
   const [editingSettings, setEditingSettings] = useState(false);
   // A new first day of the week moves the grid to the week holding the day it showed.
@@ -285,6 +287,32 @@ function WeekView({restaurantId, canManage, setMessage, settings, settingsMissin
     <small>{shift.position}{shift.published ? "" : " · Draft"}</small>
     {warnings.length > 0 && <small className="sched-warn"><AlertTriangle size={12} aria-hidden="true" />{WARNING_TEXT[warnings[0]]}</small>}
   </>;
+  // The week on paper: everyone the screen would list (whatever is typed in the search), in the same order.
+  const printWeek = async () => {
+    const list = (canManage ? people : people.filter(p => hours.has(p.user_id)));
+    const byName = (a: Person, b: Person) => a.name.localeCompare(b.name);
+    const ordered = [...list].sort(viewBy === "hours" ? (a, b) => (hours.get(b.user_id) ?? 0) - (hours.get(a.user_id) ?? 0) || byName(a, b)
+      : viewBy === "position" ? (a, b) => a.role.localeCompare(b.role) || byName(a, b) : byName);
+    const week = shifts ?? [];
+    return scheduleSheet({
+      week: weekHeading(start), start: dayKey(start),
+      days: days.map(day => day.toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"}).replace(",", "")),
+      rows: ordered.map(person => {
+        const mine = hours.get(person.user_id) ?? 0;
+        return {
+          name: person.name, hours: formatHours(mine), overtime: mine > settings.overtime_weekly,
+          days: days.map(day => ({
+            shifts: week.filter(s => s.user_id === person.user_id && dayKey(new Date(s.starts_at)) === dayKey(day))
+              .map(s => ({time: shiftLabel(s), detail: [s.position, s.note].filter(Boolean).join(" · "), draft: !s.published})),
+            notes: canManage ? dayBlocks(person.user_id, day, unavailable, timeOff).map(b => `${BLOCK_TEXT[b.kind]} · ${b.label}`) : [],
+          })),
+        };
+      }),
+      totals: days.map(day => { const t = dayTotals(week, day); return {hours: formatHours(t.hours), people: t.people}; }),
+      total: formatHours(week.reduce((sum, s) => sum + shiftHours(s), 0)),
+      drafts: week.filter(s => !s.published).length,
+    }, {restaurant: restaurantName});
+  };
   const conflicts = warningsOf.size;
   const total = (shifts ?? []).reduce((sum, s) => sum + shiftHours(s), 0);
   const working = new Set((shifts ?? []).map(s => s.user_id)).size;
@@ -300,6 +328,7 @@ function WeekView({restaurantId, canManage, setMessage, settings, settingsMissin
           <b>{weekHeading(start)}</b>
           <button type="button" className="sched-icon" aria-label="Next week" onClick={() => setStart(addDays(start, 7))}><ChevronRight size={17} /></button>
         </div>
+        {shifts && shifts.length > 0 && <DownloadSheet variant="button" buttonLabel="Print" busyLabel="Preparing the schedule" label="Download this week's schedule to print" build={printWeek} />}
       </div>
       {canManage && <div className="sched-actions">
         <label className="sched-toggle">

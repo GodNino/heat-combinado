@@ -418,6 +418,7 @@ const PHRASES: Record<string, string> = {
   "Waiting for you": "Esperando tu respuesta", "No requests waiting.": "No hay solicitudes pendientes.", "Coming up": "Próximos",
   "No approved time off coming up.": "No hay días libres aprobados próximamente.", "Approve": "Aprobar", "Deny": "Rechazar",
   "Time off approved.": "Día libre aprobado.", "Time off not approved.": "Día libre rechazado.", "Team member": "Miembro del equipo",
+  "Print": "Imprimir", "Preparing the schedule": "Preparando el horario", "Download this week's schedule to print": "Descargar el horario de esta semana para imprimir",
   "Schedule settings": "Ajustes del horario", "Schedule settings saved.": "Ajustes del horario guardados.",
   "Schedule settings need database update 044.": "Los ajustes del horario necesitan la actualización 044 de la base de datos.",
   "The week starts on": "La semana empieza el", "Position colours": "Colores por puesto", "Use suggested colours": "Usar colores sugeridos",
