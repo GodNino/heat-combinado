@@ -76,7 +76,7 @@ export function Schedule({restaurantId, restaurantName, userId, canManage, setMe
   return <section className="mx-auto max-w-6xl">
     <p className="eyebrow muted">{canManage ? "Manager workspace" : "Your schedule"}</p>
     <h1 className="mt-3 mb-5 text-2xl font-semibold">Schedule</h1>
-    <div className="library-switch mb-5" aria-label="Schedule">
+    <div className="category-tabs mb-5" role="group" aria-label="Schedule">
       {tabs.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}
     </div>
     {!settings ? <p className="muted" role="status">Loading the schedule…</p> : <>
