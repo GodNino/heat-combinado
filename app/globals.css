@@ -2178,6 +2178,20 @@ button.team-tile span{display:block;margin-top:4px;color:var(--c-muted);font-siz
 .dash-tiles { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; margin-bottom:16px; }
 @media (min-width: 900px) { .dash-tiles { grid-template-columns:repeat(4, minmax(0, 1fr)); } }
 .dash-tile { display:flex; flex-direction:column; gap:2px; padding:16px; border:1px solid var(--c-line-5); border-radius:18px; background:var(--c-surface); min-width:0; }
+.dash-tile.alert { border-color:var(--c-warning); background:var(--c-warning-bg); }
+/* Operations on the dashboard (labor and service). */
+.ops-head { display:flex; align-items:flex-end; gap:12px; margin-bottom:12px; }
+.ops-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; }
+.ops-grid .dash-panel { margin:0; }
+.ops-list { margin:10px 0 0; padding:0; list-style:none; }
+.ops-list li { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--c-line-5); font-size:var(--text-sm); }
+.ops-list li:last-child { border-bottom:0; }
+.ops-list li b { min-width:0; flex:1; font-weight:600; }
+.ops-list li span { color:var(--c-muted); font-family:var(--font-mono); font-size:var(--text-xs); white-space:nowrap; }
+.ops-list li.warn b, .ops-list li.warn span { color:var(--c-text); }
+.ops-list li.warn svg { flex-shrink:0; }
+.ops-position { display:inline-flex; align-items:center; gap:7px; }
+.ops-position i { width:10px; height:10px; border-radius:3px; background:var(--pos, var(--c-raised-4)); }
 .dash-tile b { font-family:var(--font-mono); font-size:1.5rem; font-weight:600; line-height:1.2; }
 .dash-tile span { font-size:var(--text-sm); font-weight:600; }
 .dash-tile small { color:var(--c-muted); font-size:var(--text-xs); line-height:1.4; }
