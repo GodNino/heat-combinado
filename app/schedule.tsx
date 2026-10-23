@@ -119,6 +119,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   const [viewBy, setViewBy] = useState<ViewBy>("name");
   const [query, setQuery] = useState("");
   const [showConflicts, setShowConflicts] = useState(true);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [drag, setDrag] = useState<Drag | null>(null);
   const press = useRef<Press | null>(null);
   const live = useRef<Drag | null>(null);
@@ -360,6 +361,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
         {shifts && shifts.length > 0 && <DownloadSheet variant="button" buttonLabel="Print" busyLabel="Preparing the schedule" label="Download this week's schedule to print" build={printWeek} />}
       </div>
       {canManage && <div className="sched-actions">
+        <div className={`sched-more-items ${moreOpen ? "open" : ""}`}>
         <label className="sched-toggle">
           <input type="checkbox" checked={showConflicts} onChange={e => setShowConflicts(e.target.checked)} />
           <span aria-hidden="true" />
@@ -367,8 +369,10 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
           {conflicts > 0 && <em>{conflicts}</em>}
         </label>
         <button type="button" className="btn secondary" disabled={busy} onClick={copyLastWeek}><Copy size={15} />Copy last week</button>
-        <button type="button" className="btn" disabled={busy || !drafts} onClick={publish}>{drafts ? `Publish ${drafts} ${drafts === 1 ? "change" : "changes"}` : "Published"}</button>
         {access.all && <button type="button" className="btn secondary sched-gear" aria-label="Schedule settings" title="Schedule settings" onClick={() => setEditingSettings(true)}><Settings size={17} /></button>}
+        </div>
+        <button type="button" className="btn" disabled={busy || !drafts} onClick={publish}>{drafts ? `Publish ${drafts} ${drafts === 1 ? "change" : "changes"}` : "Published"}</button>
+        <button type="button" className="btn secondary sched-more-btn" aria-expanded={moreOpen} aria-label="More options" onClick={() => setMoreOpen(open => !open)}><span aria-hidden="true">···</span></button>
       </div>}
     </div>
     {error && <p role="alert" className="notice bad mb-4">{error}</p>}
