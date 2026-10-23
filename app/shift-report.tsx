@@ -105,8 +105,11 @@ function ReportForm({initial, before, busy, error, submitText, footer, onSubmit,
 
     <div className="panel dash-panel">
       <Field label="For the next shift"><textarea id="report-next" rows={3} maxLength={1000} placeholder="What the opening manager needs to know" value={v.next_shift} onChange={e => set({next_shift: e.target.value})} /></Field>
-      <div className="report-chips" role="group" aria-label="Add to the report">{optional.filter(n => !open[n.key]).map(n => <button key={n.key} type="button" className="btn secondary" onClick={() => setOpen(current => ({...current, [n.key]: true}))}><Plus size={14} />{n.label}</button>)}</div>
       {optional.filter(n => open[n.key]).map(n => <Field key={n.key} label={n.label}><textarea id={n.id} rows={n.rows} maxLength={n.max} placeholder={n.hint} value={v[n.key]} onChange={e => set(n.key === "low_stock" ? {low_stock: e.target.value} : n.key === "shoutouts" ? {shoutouts: e.target.value} : {notes: e.target.value})} /></Field>)}
+      {optional.some(n => !open[n.key]) && <div className="report-add">
+        <SectionInfo heading="Want to add more?">Optional. Tap one to add a box for it to this report.</SectionInfo>
+        <div className="report-chips" role="group" aria-label="Add to the report">{optional.filter(n => !open[n.key]).map(n => <button key={n.key} type="button" className="btn secondary" onClick={() => setOpen(current => ({...current, [n.key]: true}))}><Plus size={14} />{n.label}</button>)}</div>
+      </div>}
     </div>
 
     {error && <p role="alert" className="notice bad mb-4">{error}</p>}
