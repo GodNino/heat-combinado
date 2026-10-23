@@ -373,7 +373,6 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     </div>
     {error && <p role="alert" className="notice bad mb-4">{error}</p>}
     {canManage && !access.all && <p className="sched-side muted mb-3 text-sm">{access.kitchen && !access.foh ? "You build the kitchen schedule. Front-of-house shifts are shown for reference." : access.foh && !access.kitchen ? "You build the front-of-house schedule. Kitchen shifts are shown for reference." : ""}</p>}
-    {legend.length > 0 && <p className="sched-legend" aria-label="Position colours">{legend.map(([name, color]) => <span key={name} className={`pos-${color}`}><i aria-hidden="true" />{name}</span>)}</p>}
     {!shifts ? <p className="muted" role="status">Loading the schedule…</p>
       : !people.length || (!canManage && !rows.length && !query) ? <p className="panel p-5 muted">{canManage ? "Nobody on the team yet. Invite your team from Team." : "Nothing published for this week yet."}</p>
       : <div className={`sched-scroll ${drag ? "dragging" : ""}`}>
