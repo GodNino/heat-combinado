@@ -146,7 +146,7 @@ function AllergyView({items, loading, refresh, shift, restaurantName, memory, on
 function Brand() {
   return (
     <a
-      href="/"
+      href="/app"
       className="inline-flex items-center gap-2 text-2xl font-black tracking-tighter"
       aria-label="HEAT home"
     >
