@@ -2733,3 +2733,27 @@ span.dash-name { text-decoration:none; }
   :root:root:root:root:root:root:root .my-week-days { scroll-padding-inline:16px; }
   :root:root:root:root:root:root:root .my-week-bar { padding-right:2px; }
 }
+
+/* Schedule on phones: one day at a time (day picker + list of that day's shifts). On wider screens the week table stays.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .sched-daylist { display:none; }
+@media (max-width: 760px) {
+  :root:root:root:root:root:root:root:root:root .sched-scroll { display:none; }
+  :root:root:root:root:root:root:root .sched-daylist { display:block; }
+  :root:root:root:root:root:root:root .sched-daypick { display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:4px; margin:0 0 12px; }
+  :root:root:root:root:root:root:root .sched-daypick button { display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 0; border:1.5px solid var(--c-line-5); border-radius:14px; background:var(--c-surface); color:var(--c-muted); font-family:var(--font-mono); font-size:10px; font-weight:700; text-transform:uppercase; }
+  :root:root:root:root:root:root:root .sched-daypick button b { font-family:var(--font-sans); font-size:15px; color:var(--c-text); }
+  :root:root:root:root:root:root:root .sched-daypick button.today { border-color:var(--c-text); }
+  :root:root:root:root:root:root:root .sched-daypick button[aria-pressed="true"] { background:var(--c-text); border-color:var(--c-text); color:var(--c-bg); }
+  :root:root:root:root:root:root:root .sched-daypick button[aria-pressed="true"] b { color:var(--c-bg); }
+  :root:root:root:root:root:root:root .sched-dayhead { margin:0 2px 8px; font-size:16px; }
+  :root:root:root:root:root:root:root .sched-dayrow { display:flex; align-items:center; gap:10px; width:100%; margin:0 0 8px; padding:10px 12px; text-align:left; border:1.5px solid var(--c-line-5); border-left:5px solid var(--pos, var(--c-line-5)); border-radius:14px; background:var(--c-surface); color:var(--c-text); }
+  :root:root:root:root:root:root:root .sched-dayrow.draft { border-top-style:dashed; border-right-style:dashed; border-bottom-style:dashed; }
+  :root:root:root:root:root:root:root .sched-dayrow:disabled { opacity:1; }
+  :root:root:root:root:root:root:root .sched-dayname { flex:1; min-width:0; font-size:15px; font-weight:600; }
+  :root:root:root:root:root:root:root .sched-daycard { display:flex; flex-direction:column; align-items:flex-end; text-align:right; font-size:12px; }
+  :root:root:root:root:root:root:root .sched-daycard b { font-size:13px; }
+  :root:root:root:root:root:root:root .sched-daycard small { color:var(--c-muted); font-size:12px; }
+  :root:root:root:root:root:root:root .sched-dayadd { margin-top:14px; }
+  :root:root:root:root:root:root:root .sched-dayadd .category-tabs { flex-wrap:wrap; overflow:visible; padding-bottom:0; margin-top:6px; }
+}
