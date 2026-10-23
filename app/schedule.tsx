@@ -119,6 +119,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   const [viewBy, setViewBy] = useState<ViewBy>("name");
   const [query, setQuery] = useState("");
   const [showConflicts, setShowConflicts] = useState(true);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [drag, setDrag] = useState<Drag | null>(null);
   const press = useRef<Press | null>(null);
   const live = useRef<Drag | null>(null);
@@ -360,6 +361,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
         {shifts && shifts.length > 0 && <DownloadSheet variant="button" buttonLabel="Print" busyLabel="Preparing the schedule" label="Download this week's schedule to print" build={printWeek} />}
       </div>
       {canManage && <div className="sched-actions">
+        <div className={`sched-more-items ${moreOpen ? "open" : ""}`}>
         <label className="sched-toggle">
           <input type="checkbox" checked={showConflicts} onChange={e => setShowConflicts(e.target.checked)} />
           <span aria-hidden="true" />
@@ -367,31 +369,32 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
           {conflicts > 0 && <em>{conflicts}</em>}
         </label>
         <button type="button" className="btn secondary" disabled={busy} onClick={copyLastWeek}><Copy size={15} />Copy last week</button>
-        <button type="button" className="btn" disabled={busy || !drafts} onClick={publish}>{drafts ? `Publish ${drafts} ${drafts === 1 ? "change" : "changes"}` : "Published"}</button>
         {access.all && <button type="button" className="btn secondary sched-gear" aria-label="Schedule settings" title="Schedule settings" onClick={() => setEditingSettings(true)}><Settings size={17} /></button>}
+        </div>
+        <button type="button" className="btn" disabled={busy || !drafts} onClick={publish}>{drafts ? `Publish ${drafts} ${drafts === 1 ? "change" : "changes"}` : "Published"}</button>
+        <button type="button" className="btn secondary sched-more-btn" aria-expanded={moreOpen} aria-label="More options" onClick={() => setMoreOpen(open => !open)}><span aria-hidden="true">···</span></button>
       </div>}
     </div>
     {error && <p role="alert" className="notice bad mb-4">{error}</p>}
     {canManage && !access.all && <p className="sched-side muted mb-3 text-sm">{access.kitchen && !access.foh ? "You build the kitchen schedule. Front-of-house shifts are shown for reference." : access.foh && !access.kitchen ? "You build the front-of-house schedule. Kitchen shifts are shown for reference." : ""}</p>}
-    {legend.length > 0 && <p className="sched-legend" aria-label="Position colours">{legend.map(([name, color]) => <span key={name} className={`pos-${color}`}><i aria-hidden="true" />{name}</span>)}</p>}
     {!shifts ? <p className="muted" role="status">Loading the schedule…</p>
       : !people.length || (!canManage && !rows.length && !query) ? <p className="panel p-5 muted">{canManage ? "Nobody on the team yet. Invite your team from Team." : "Nothing published for this week yet."}</p>
-      : <div className={`sched-scroll ${drag ? "dragging" : ""}`}>
+      : <>
+        <div className="sched-find">
+          <span className="sched-search"><input type="search" aria-label="Search the team" placeholder="Search the team" value={query} onChange={e => setQuery(e.target.value)} /></span>
+          <span className="sched-viewby">
+            <label htmlFor="sched-viewby">View by</label>
+            <select id="sched-viewby" value={viewBy} onChange={e => setViewBy(e.target.value as ViewBy)}>
+              <option value="name">First name</option>
+              <option value="hours">Most hours</option>
+              <option value="position">Position</option>
+            </select>
+          </span>
+        </div>
+        <div className={`sched-scroll ${drag ? "dragging" : ""}`}>
         <table className="sched-grid">
           <thead><tr>
-            <th scope="col">
-              <span className="sched-viewby">
-                <label htmlFor="sched-viewby">View by</label>
-                <select id="sched-viewby" value={viewBy} onChange={e => setViewBy(e.target.value as ViewBy)}>
-                  <option value="name">First name</option>
-                  <option value="hours">Most hours</option>
-                  <option value="position">Position</option>
-                </select>
-              </span>
-              <span className="sched-search">
-                <input type="search" aria-label="Search the team" placeholder="Search the team" value={query} onChange={e => setQuery(e.target.value)} />
-              </span>
-            </th>
+            <th scope="col"><span className="sched-corner">Team</span></th>
             {days.map(day => <th key={day.toISOString()} scope="col" aria-label={dayHeading(day)}>
               <span className={`sched-day ${dayKey(day) === today ? "today" : ""}`}><span>{day.toLocaleDateString("en-US", {weekday: "short"})}</span> <b>{day.getDate()}</b></span>
             </th>)}
@@ -440,7 +443,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
             </td>; })}
           </tr></tfoot>
         </table>
-      </div>}
+      </div></>}
     {canManage && shifts && shifts.length > 0 && <p className="muted mt-3 text-xs">{"Drag a shift to move it to another day or person. Hold Alt (Option on a Mac) as you drop to copy it instead; on a phone, hold the shift for a moment to pick it up."}</p>}
     {canManage && shifts && shifts.length > 0 && <p className="muted mt-1 text-xs">{`Dashed shifts are drafts: the team sees them once you publish. Total this week: ${formatHours(total)}.`}</p>}
 
