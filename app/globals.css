@@ -2717,3 +2717,12 @@ span.dash-name { text-decoration:none; }
    To undo, revert the commit that added this block. */
 :root:root:root:root:root:root:root:root .sched-scroll { position:relative; z-index:0; }
 :root:root:root:root:root:root:root:root .sched-find { position:relative; z-index:5; }
+
+/* Landing page, EN / ES buttons the same size as the Sign in button.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .site-lang .lang-switch { display:flex; gap:8px; padding:0; overflow:visible; }
+:root:root:root:root:root:root:root .site-lang .lang-switch button { flex:none; width:auto; min-width:0; height:30px; min-height:30px; padding:0 14px; font-size:12px; font-weight:600; line-height:1; border-width:1px; }
+@media (max-width: 420px) {
+  :root:root:root:root:root:root:root .site-lang .lang-switch { gap:6px; }
+  :root:root:root:root:root:root:root .site-lang .lang-switch button { padding:0 10px; }
+}
