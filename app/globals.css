@@ -2664,3 +2664,6 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .dash-review .dash-review-name small { color:var(--c-muted); font-size:13px; font-weight:400; }
 :root:root:root:root:root:root:root .dash-review svg { flex:none; color:var(--c-muted); }
 :root:root:root:root:root:root:root .dash-review .dash-badge { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:#f5b02e; color:#1b1c1a; font-size:11px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; }
+
+/* ===== Team search: no square box inside the rounded search field when you type (the field itself keeps the only focus ring, on the rounded edge). To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root:root .team-search input, :root:root:root:root:root:root:root:root .team-search input:focus, :root:root:root:root:root:root:root:root .team-search input:focus-visible { outline:none !important; border-color:transparent; box-shadow:none; background:transparent; }
