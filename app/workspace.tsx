@@ -1237,7 +1237,7 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
         <div className="category-tabs" aria-label="Board audience">
           <button type="button" aria-pressed={audience === "everyone"} onClick={() => {setAudience("everyone");setMessage("");}}>Everyone</button>
           <button type="button" aria-pressed={audience === "working"} onClick={() => {setAudience("working");setMessage("");}}>{`Working today${workingIds.length ? ` · ${workingIds.length}` : ""}`}</button>
-          <button type="button" aria-pressed={audience === "pick"} onClick={() => {setAudience("pick");setMessage("");}}>Pick who's on</button>
+          {audience === "pick" && <button type="button" aria-pressed onClick={() => {setAudience("pick");setMessage("");}}>Pick who's on</button>}
         </div>
         {audience === "everyone" ? <p className="muted mt-3">Every employee will see today's board.</p> : audience === "working" ? (workingIds.length ? <>
           <p className="muted mt-3">Only the people with a published shift today will see it.</p>
