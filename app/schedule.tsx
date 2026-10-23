@@ -474,6 +474,10 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
                 <span className="sched-daycard">{card(shift, warnings)}</span>
               </button>;
             }) : <p className="muted text-sm">No shifts this day.</p>}
+            {canManage && (() => {
+              const away = rows.flatMap(person => dayBlocks(person.user_id, days[pick], unavailable, timeOff).map(block => ({person, block})));
+              return away.length > 0 && <div className="sched-dayaway"><p className="eyebrow muted">Away</p>{away.map(({person, block}, i) => <p key={i} className="text-sm"><b>{person.name}</b><span className="muted">{` · ${BLOCK_TEXT[block.kind]}`}</span></p>)}</div>;
+            })()}
             {canManage && <div className="sched-dayadd">
               <p className="eyebrow muted">Add a shift for</p>
               <div className="category-tabs">{rows.map(person => <button key={person.user_id} type="button" onClick={() => openNew(person, days[pick])}>{person.name}</button>)}</div>
@@ -482,7 +486,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
         })()}
       </div>
       </>}
-    {canManage && shifts && shifts.length > 0 && <p className="muted mt-3 text-xs">{"Drag a shift to move it to another day or person. Hold Alt (Option on a Mac) as you drop to copy it instead; on a phone, hold the shift for a moment to pick it up."}</p>}
+    {canManage && shifts && shifts.length > 0 && <p className="muted mt-3 text-xs sched-dragnote">{"Drag a shift to move it to another day or person. Hold Alt (Option on a Mac) as you drop to copy it instead; on a phone, hold the shift for a moment to pick it up."}</p>}
     {canManage && shifts && shifts.length > 0 && <p className="muted mt-1 text-xs">{`Dashed shifts are drafts: the team sees them once you publish. Total this week: ${formatHours(total)}.`}</p>}
 
     {drag && <div className={`sched-shift sched-ghost ${paint(drag.shift.position, settings)} ${drag.shift.published && !drag.copy ? "" : "draft"}`} aria-hidden="true"
