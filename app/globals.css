@@ -2691,3 +2691,14 @@ span.dash-name { text-decoration:none; }
 @media (min-width:761px) {
   :root:root:root:root:root:root:root .sched-grid th:first-child { width:160px; }
 }
+
+/* ===== Schedule toolbar: on desktop the options sit in the row as before; on phones Show conflicts, Copy last week and Settings open from a ··· button. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .sched-actions .sched-more-items { display:contents; }
+:root:root:root:root:root:root:root .sched-actions .sched-more-btn { display:none; }
+:root:root:root:root:root:root:root .sched-actions .btn:not(.sched-gear):not(.sched-more-btn):not(.secondary) { order:1; }
+:root:root:root:root:root:root:root .sched-actions .sched-gear { order:2; }
+@media (max-width:760px) {
+  :root:root:root:root:root:root:root .sched-actions .sched-more-btn { display:inline-flex; align-items:center; justify-content:center; letter-spacing:.1em; order:2; }
+  :root:root:root:root:root:root:root .sched-actions .sched-more-items { display:none; }
+  :root:root:root:root:root:root:root .sched-actions .sched-more-items.open { display:flex; flex-direction:column; align-items:flex-start; gap:10px; order:3; flex-basis:100%; padding:12px 14px; border:1.5px solid color-mix(in srgb, var(--c-muted) 35%, transparent); border-radius:18px; background:var(--c-surface); }
+}
