@@ -2765,3 +2765,10 @@ span.dash-name { text-decoration:none; }
   :root:root:root:root:root:root:root .sched-dayaway { margin-top:12px; }
   :root:root:root:root:root:root:root .sched-dayaway p:not(.eyebrow) { margin:4px 2px 0; }
 }
+
+/* Schedule on phones: total hours of the day, on the right of the date.
+   To undo, revert the commit that added this block. */
+@media (max-width: 760px) {
+  :root:root:root:root:root:root:root .sched-dayhead { display:flex; align-items:baseline; justify-content:space-between; }
+  :root:root:root:root:root:root:root .sched-dayhead .muted { font-family:var(--font-mono); font-size:var(--text-xs); font-weight:600; }
+}
