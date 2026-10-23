@@ -3,7 +3,7 @@
 // managers and owners. HEAT fills in what it already knows; the manager adds the night in a few taps,
 // and submitting saves it here and emails it (see app/api/shift-report/route.ts).
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Restaurant } from "@/lib/menu";
 import { ISSUE_KINDS, MOODS, SERVICES, URGENT_KINDS, heatLines, money, serviceDate, serviceDay, type FromHeat, type IssueKind, type Mood, type ShiftReport } from "@/lib/shift-report";
@@ -91,7 +91,7 @@ function ReportForm({initial, before, busy, error, submitText, footer, onSubmit,
 
     <div className="panel dash-panel">
       <SectionInfo heading="Anything to flag?">Tap what happened and add a line. Allergy incidents and injuries mark the report urgent.</SectionInfo>
-      <div className="report-chips">{(Object.keys(ISSUE_KINDS) as IssueKind[]).map(kind => <button key={kind} type="button" className="btn secondary" onClick={() => set({issues: [...v.issues, {kind, note: ""}]})}><Plus size={14} />{ISSUE_KINDS[kind]}</button>)}</div>
+      <div className="report-chips report-flags">{(Object.keys(ISSUE_KINDS) as IssueKind[]).map(kind => { const on = v.issues.some(issue => issue.kind === kind); return <button key={kind} type="button" className={`btn secondary${on ? " report-flag-on" : ""}`} aria-pressed={on} onClick={() => set({issues: [...v.issues, {kind, note: ""}]})}>{on ? <Check size={14} /> : <Plus size={14} />}{kind === "complaint" ? "Guest complaint" : ISSUE_KINDS[kind]}</button>; })}</div>
       {v.issues.map((issue, index) => <div key={index} className="report-issue">
         <div className="flex items-center gap-2">
           <b className="text-sm">{ISSUE_KINDS[issue.kind]}</b>
