@@ -151,9 +151,6 @@ function Brand() {
       aria-label="HEAT home"
     >
       <HeatLogo />
-      <span className="ml-2 rounded border border-current/20 px-2 py-1 text-xs font-normal tracking-normal">
-        v0.1
-      </span>
     </a>
   );
 }
@@ -1120,7 +1117,8 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
       setRecipientIds(prefill ? selected : []);
       // A board sent to exactly today's people reopens on "Working today".
       const sameAsToday = selected.length > 0 && selected.length === onToday.length && selected.every(id => onToday.includes(id));
-      setAudience(!prefill || !selected.length ? "everyone" : sameAsToday ? "working" : "pick");
+      // A new board starts on "Working today" when someone has a shift; with nobody scheduled it stays on Everyone.
+      setAudience(!prefill ? (onToday.length ? "working" : "everyone") : !selected.length ? "everyone" : sameAsToday ? "working" : "pick");
       setServiceDate(data.service_date);
       setNote(prefill ? data.board?.note ?? "" : "");
       // A board saved before the focus list existed still has its single item.
@@ -1213,8 +1211,8 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
       <fieldset disabled={busy} className="panel mb-6 p-5">
         <InfoRow info={`Up to ${FOCUS_LIMIT} dishes you want the team to push today.`} className="mb-3"><h2 className="text-lg font-semibold">{`Focus items${focusIds.length ? ` · ${focusIds.length} of ${FOCUS_LIMIT}` : ""}`}</h2></InfoRow>
         <label htmlFor="shift-focus" className="sr-only">Focus items</label>
-        <DishPicker id="shift-focus" items={items} disabled={itemsLoading || focusIds.length >= FOCUS_LIMIT} excludedIds={focusIds} placeholder={focusIds.length >= FOCUS_LIMIT ? "That’s " + FOCUS_LIMIT + " — remove one to add another" : focusIds.length ? "Add another focus item" : "Add a focus item"} onPick={item => {setFocusIds(current => current.includes(item.id) ? current : [...current, item.id]); setMessage("");}} />
-        {focusIds.length ? <ul className="mt-3 space-y-2">{focusIds.map(id => <li key={id} className="flex items-center justify-between gap-3 border-t border-line pt-3"><span className="min-w-0 font-semibold">{items.find(item => item.id === id)?.name ?? "Menu item unavailable"}</span><button type="button" className="icon-chip" disabled={busy} aria-label={`Remove ${items.find(item => item.id === id)?.name ?? "focus item"} from today’s focus`} onClick={() => {setFocusIds(current => current.filter(value => value !== id));setMessage("");}}><X size={14} aria-hidden="true" /></button></li>)}</ul> : <p className="muted mt-2 text-sm">No focus today.</p>}
+        <DishPicker id="shift-focus" items={items} disabled={itemsLoading || focusIds.length >= FOCUS_LIMIT} excludedIds={focusIds} placeholder={focusIds.length >= FOCUS_LIMIT ? "That’s " + FOCUS_LIMIT + " — remove one to add another" : focusIds.length ? "Type another dish" : "Type a dish to add it"} onPick={item => {setFocusIds(current => current.includes(item.id) ? current : [...current, item.id]); setMessage("");}} />
+        {focusIds.length ? <div className="mt-3 flex flex-wrap gap-2">{focusIds.map(id => <button key={id} type="button" className="dish-chip" disabled={busy} aria-label={`Remove ${items.find(item => item.id === id)?.name ?? "focus item"} from today’s focus`} onClick={() => {setFocusIds(current => current.filter(value => value !== id));setMessage("");}}>{items.find(item => item.id === id)?.name ?? "Menu item unavailable"}<X size={13} aria-hidden="true" /></button>)}</div> : <p className="muted mt-2 text-sm">No focus today.</p>}
         {itemsLoading && <p role="status" className="muted mt-2">Loading menu items…</p>}
       </fieldset>
       <section className="panel mb-6 p-5" aria-label="86 board">

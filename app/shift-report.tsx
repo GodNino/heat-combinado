@@ -73,8 +73,8 @@ function ReportForm({initial, before, busy, error, submitText, footer, onSubmit,
         <Field label="Covers"><input id="report-covers" type="number" inputMode="numeric" min={0} max={100000} placeholder="e.g. 180" value={v.covers} onChange={e => set({covers: e.target.value})} /></Field>
         <Field label="Sales (optional)"><input id="report-sales" type="number" inputMode="decimal" min={0} step="0.01" placeholder="e.g. 14250" value={v.sales} onChange={e => set({sales: e.target.value})} /></Field>
       </div>
-      <p className="report-label">How did the night go?</p>
-      <div className="library-switch" role="radiogroup" aria-label="How did the night go?">
+      <p className="report-label">How did the service go?</p>
+      <div className="library-switch" role="radiogroup" aria-label="How did the service go?">
         {(Object.keys(MOODS) as Mood[]).map(key => <button key={key} type="button" role="radio" aria-checked={v.mood === key} aria-pressed={v.mood === key} onClick={() => set({mood: key})}>{MOODS[key]}</button>)}
       </div>
     </div>
@@ -95,7 +95,7 @@ function ReportForm({initial, before, busy, error, submitText, footer, onSubmit,
 
     <div className="panel dash-panel">
       <Field label="Low stock / to order"><textarea id="report-low" rows={2} maxLength={1000} placeholder="e.g. Uni, yuzu, Albariño" value={v.low_stock} onChange={e => set({low_stock: e.target.value})} /></Field>
-      <Field label="Shout-outs"><textarea id="report-shout" rows={2} maxLength={1000} placeholder="Who did great tonight" value={v.shoutouts} onChange={e => set({shoutouts: e.target.value})} /></Field>
+      <Field label="Shout-outs"><textarea id="report-shout" rows={2} maxLength={1000} placeholder="Who did great today" value={v.shoutouts} onChange={e => set({shoutouts: e.target.value})} /></Field>
       <Field label="For the next shift"><textarea id="report-next" rows={2} maxLength={1000} placeholder="What the opening manager needs to know" value={v.next_shift} onChange={e => set({next_shift: e.target.value})} /></Field>
       <Field label="Anything else"><textarea id="report-notes" rows={4} maxLength={4000} placeholder="Write it the way you always have" value={v.notes} onChange={e => set({notes: e.target.value})} /></Field>
     </div>
