@@ -23,7 +23,9 @@ function Tile({value, label, note, alert = false}: {value: string; label: string
   return <div className={`dash-tile ${alert ? "alert" : ""}`}><b>{value}</b><span>{label}</span>{note && <small>{note}</small>}</div>;
 }
 
-export function OperationsDashboard({restaurantId, onOpenSchedule, onOpenReports}: {restaurantId: string; onOpenSchedule?: () => void; onOpenReports?: () => void}) {
+// view: show one part (Labor, Service or Training) when a page puts chips above it; without it, show everything.
+export type OpsView = "labor" | "service" | "training";
+export function OperationsDashboard({restaurantId, onOpenSchedule, onOpenReports, view}: {restaurantId: string; onOpenSchedule?: () => void; onOpenReports?: () => void; view?: OpsView}) {
   const [data, setData] = useState<Loaded | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -72,6 +74,7 @@ export function OperationsDashboard({restaurantId, onOpenSchedule, onOpenReports
   const missing = service.byDay.filter(d => d.day < today && !d.reports).length;
 
   return <div className="ops-dash">
+    {(!view || view === "labor") && <>
     {/* ── Labor ── */}
     <div className="ops-head">
       <div className="min-w-0 flex-1">
@@ -109,6 +112,9 @@ export function OperationsDashboard({restaurantId, onOpenSchedule, onOpenReports
       </ul>
     </div>}
 
+    </>}
+
+    {(!view || view === "service") && <>
     {/* ── Service ── */}
     <div className="ops-head mt-8">
       <div className="min-w-0 flex-1">
@@ -157,11 +163,13 @@ export function OperationsDashboard({restaurantId, onOpenSchedule, onOpenReports
       </div>
     </div>
 
-    <div className="ops-head mt-8">
+    </>}
+
+    {!view && <div className="ops-head mt-8">
       <div className="min-w-0 flex-1">
         <p className="eyebrow muted">Menu knowledge</p>
         <h2 className="text-xl font-semibold">Training</h2>
       </div>
-    </div>
+    </div>}
   </div>;
 }
