@@ -33,7 +33,7 @@ export function ShiftReports({restaurant, restaurants, brand, ownsBrand, canWrit
   return <section className="mx-auto max-w-3xl">
     <p className="eyebrow muted">{`Shift report · ${restaurant.name}`}</p>
     <h1 className="mt-3 mb-5 text-2xl font-semibold">End of shift</h1>
-    {tabs.length > 1 && <div className="library-switch mb-5" aria-label="Shift report">
+    {tabs.length > 1 && <div className="library-switch report-switch mb-5" aria-label="Shift report">
       {tabs.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}
     </div>}
     {tab === "tonight" && <TonightReport restaurant={restaurant} setMessage={setMessage} onSent={() => setTab("past")} />}
@@ -84,7 +84,7 @@ function ReportForm({initial, before, busy, error, submitText, footer, onSubmit,
         <Field label="Sales (optional)"><input id="report-sales" type="number" inputMode="decimal" min={0} step="0.01" placeholder="e.g. 14250" value={v.sales} onChange={e => set({sales: e.target.value})} /></Field>
       </div>
       <p className="report-label">How did the service go?</p>
-      <div className="library-switch" role="radiogroup" aria-label="How did the service go?">
+      <div className="library-switch report-switch" role="radiogroup" aria-label="How did the service go?">
         {(Object.keys(MOODS) as Mood[]).map(key => <button key={key} type="button" role="radio" aria-checked={v.mood === key} aria-pressed={v.mood === key} onClick={() => set({mood: key})}>{MOODS[key]}</button>)}
       </div>
     </div>
@@ -105,8 +105,11 @@ function ReportForm({initial, before, busy, error, submitText, footer, onSubmit,
 
     <div className="panel dash-panel">
       <Field label="For the next shift"><textarea id="report-next" rows={3} maxLength={1000} placeholder="What the opening manager needs to know" value={v.next_shift} onChange={e => set({next_shift: e.target.value})} /></Field>
-      <div className="report-chips" role="group" aria-label="Add to the report">{optional.filter(n => !open[n.key]).map(n => <button key={n.key} type="button" className="btn secondary" onClick={() => setOpen(current => ({...current, [n.key]: true}))}><Plus size={14} />{n.label}</button>)}</div>
       {optional.filter(n => open[n.key]).map(n => <Field key={n.key} label={n.label}><textarea id={n.id} rows={n.rows} maxLength={n.max} placeholder={n.hint} value={v[n.key]} onChange={e => set(n.key === "low_stock" ? {low_stock: e.target.value} : n.key === "shoutouts" ? {shoutouts: e.target.value} : {notes: e.target.value})} /></Field>)}
+      {optional.some(n => !open[n.key]) && <div className="report-add">
+        <SectionInfo heading="Want to add more?">Optional. Tap one to add a box for it to this report.</SectionInfo>
+        <div className="report-chips" role="group" aria-label="Add to the report">{optional.filter(n => !open[n.key]).map(n => <button key={n.key} type="button" className="btn secondary" onClick={() => setOpen(current => ({...current, [n.key]: true}))}><Plus size={14} />{n.label}</button>)}</div>
+      </div>}
     </div>
 
     {error && <p role="alert" className="notice bad mb-4">{error}</p>}
@@ -202,7 +205,7 @@ function PastReports({restaurant, restaurants, brand, canEdit, canDeleteAny, can
   }, [restaurant.id, scope, brand, reload]);
   const nameOf = (id: string) => restaurants.find(r => r.id === id)?.name ?? "";
   return <div>
-    {brand && <div className="library-switch mb-4" aria-label="Which reports">
+    {brand && <div className="library-switch report-switch mb-4" aria-label="Which reports">
       <button type="button" aria-pressed={scope === "location"} onClick={() => setScope("location")}>{restaurant.name}</button>
       <button type="button" aria-pressed={scope === "brand"} onClick={() => setScope("brand")}>All {brand.name} locations</button>
     </div>}
