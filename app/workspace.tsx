@@ -68,7 +68,8 @@ import { Tour, tourSeen, tourSteps } from "./tour";
 import { LastShiftNote, ShiftReports } from "./shift-report";
 import { LanguageSwitch, currentLang, setLang } from "./language";
 import { NotificationSwitch, notify } from "./notifications";
-import { MyWeek, NextShift, Schedule } from "./schedule";
+import { MyWeek, NextShift, Schedule, ShiftChangesWaiting, WhoWorksToday, type ScheduleTab } from "./schedule";
+import { ManagerAttention, type AttentionTarget } from "./home-cards";
 
 // Every screen the workspace can show. Named once: it used to be spelled out in two places.
 type View = "tostudy" | "home" | "library" | "allergy" | "review" | "progress" | "team" | "preshift" | "words" | "standards" | "story" | "library-settings" | "checklists" | "locations" | "dashboard" | "reports" | "schedule";
@@ -1782,7 +1783,17 @@ function Workspace({
     if (next !== "allergy" || view !== "allergy") setAllergyPick(ALLERGY_START);
     setDetailItem(null);setView(next); setContentType(nextType); setCategory(nextCategory); setQuery(""); setCameFrom(null);
     setQuizItem(null); setAdding(false); setEditing(undefined); setCreating(false); setNavOpen(false); setViewingMember(null);
-    setError(""); setMessage("");
+    setError(""); setMessage(""); setScheduleTab(null);
+  }
+  // Schedule straight on one of its tabs, from a chip on Home.
+  const [scheduleTab, setScheduleTab] = useState<ScheduleTab | null>(null);
+  function openSchedule(tab: ScheduleTab) { navigate("schedule"); setScheduleTab(tab); }
+  function openAttention(target: AttentionTarget) {
+    if (target === "shift_changes" || target === "released") openSchedule("requests");
+    else if (target === "time_off") openSchedule("timeoff");
+    else if (target === "positions") navigate("team");
+    else if (target === "urgent") navigate("reports");
+    else document.getElementById("retake-requests")?.scrollIntoView({behavior: "smooth", block: "start"});
   }
   const [inviteLink, setInviteLink] = useState("");
   // The plain link stays at hand while the manager tries the position links (042).
@@ -2410,7 +2421,7 @@ function Workspace({
               {dashboardScope === "brand" && ownsBrand && brand
                 ? <BrandDashboard key={brand.id} organization={brand} currentId={restaurant.id} onOpen={id => {setSelected(id);setDashboardScope("location");window.scrollTo(0, 0);}} />
                 : <ManagerDashboard key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} />}
-            </section> : null) : view === "schedule" ? <Schedule key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} userId={user.id} canManage={can("team") && !employeeView} setMessage={setMessage} /> : view === "reports" ? (can("preshift") || can("team") ? <ShiftReports key={restaurant.id} restaurant={restaurant} restaurants={restaurants} brand={brand} ownsBrand={ownsBrand} canWrite={can("preshift")} canManageRecipients={can("team")} setMessage={setMessage} /> : null) : view === "locations" ? (can("library") ? <Locations key={restaurant.id} userId={user.id} restaurant={restaurant} restaurants={restaurants} organizations={organizations} items={items} canImport={can("library")} busy={busy} action={action} setMessage={setMessage} onChanged={loadRestaurants} onItemsChanged={loadItems} onOpen={id => {setDetailItem(null);setSelected(id);setCategory("All");setQuery("");setNavOpen(false);setEmployeeView(false);setInviteLink("");window.scrollTo(0, 0);}} /> : null) : view === "words" ? <WordsManager key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} custom={customTerms} onChanged={loadGlossary} canEdit={can("words")} /> : view === "story" ? <Story key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} canEdit={can("words")} /> : view === "standards" ? <Standards key={restaurant.id} restaurantId={restaurant.id} canEdit={can("standards")} restaurantName={restaurant.name} /> : view === "checklists" ? <Checklists key={restaurant.id} restaurantId={restaurant.id} canManage={can("preshift")} /> : view === "team" ? (can("team") ? <section className="mx-auto max-w-3xl"><p className="eyebrow muted">Manager workspace · {restaurant.name}</p>{!viewingMember && <h1 className="mt-3 text-2xl font-semibold">Team</h1>}{!viewingMember && <><section className="panel mt-5 mb-5 p-5"><InfoRow info={<>Create an invitation link and share it through WhatsApp, text, or email. Employees can create an account or sign in to join {restaurant.name}.<br /><br />Links expire after 7 days. Creating a replacement disables the previous link.</>}><h2 className="text-xl font-semibold">Invite an employee</h2></InfoRow>                    {can("team") && (
+            </section> : null) : view === "schedule" ? <Schedule key={`${restaurant.id}-${scheduleTab ?? ""}`} initialTab={scheduleTab} restaurantId={restaurant.id} restaurantName={restaurant.name} userId={user.id} canManage={can("team") && !employeeView} setMessage={setMessage} /> : view === "reports" ? (can("preshift") || can("team") ? <ShiftReports key={restaurant.id} restaurant={restaurant} restaurants={restaurants} brand={brand} ownsBrand={ownsBrand} canWrite={can("preshift")} canManageRecipients={can("team")} setMessage={setMessage} /> : null) : view === "locations" ? (can("library") ? <Locations key={restaurant.id} userId={user.id} restaurant={restaurant} restaurants={restaurants} organizations={organizations} items={items} canImport={can("library")} busy={busy} action={action} setMessage={setMessage} onChanged={loadRestaurants} onItemsChanged={loadItems} onOpen={id => {setDetailItem(null);setSelected(id);setCategory("All");setQuery("");setNavOpen(false);setEmployeeView(false);setInviteLink("");window.scrollTo(0, 0);}} /> : null) : view === "words" ? <WordsManager key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} custom={customTerms} onChanged={loadGlossary} canEdit={can("words")} /> : view === "story" ? <Story key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} canEdit={can("words")} /> : view === "standards" ? <Standards key={restaurant.id} restaurantId={restaurant.id} canEdit={can("standards")} restaurantName={restaurant.name} /> : view === "checklists" ? <Checklists key={restaurant.id} restaurantId={restaurant.id} canManage={can("preshift")} /> : view === "team" ? (can("team") ? <section className="mx-auto max-w-3xl"><p className="eyebrow muted">Manager workspace · {restaurant.name}</p>{!viewingMember && <h1 className="mt-3 text-2xl font-semibold">Team</h1>}{!viewingMember && <><section className="panel mt-5 mb-5 p-5"><InfoRow info={<>Create an invitation link and share it through WhatsApp, text, or email. Employees can create an account or sign in to join {restaurant.name}.<br /><br />Links expire after 7 days. Creating a replacement disables the previous link.</>}><h2 className="text-xl font-semibold">Invite an employee</h2></InfoRow>                    {can("team") && (
                       <button
                         disabled={busy}
                         className="btn mt-6"
@@ -2503,7 +2514,7 @@ function Workspace({
             </section>;
           })() : view === "home" ? (
               <section>
-                {!isManager ? <EmployeeHome key={restaurant.id} schedule={<MyWeek key={`week-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />} onProgress={() => navigate("progress")} onChecklists={() => navigate("checklists")} restaurantId={restaurant.id} canDownloadBoard={can("preshift")} restaurantName={restaurant.name} onFocusQuiz={item => {navigate("library", "All", contentTypeOf(item));setDetailItem(item);setQuizEditing(false);setQuizItem(item);}} onBoardItem={item => {navigate("library", "All", contentTypeOf(item));setCameFrom({view: "home", label: "Pre-shift board"});openCard(item);}} user={user} items={items} progress={quizProgress} loading={itemsLoading || progressLoading} error={progressError || error} onRetry={() => {void loadItems();void loadProgress();}} onStudy={(item, mode) => {if(item && mode === "list"){setStudyType(CONTENT_TYPES.find(type => items.some(other => contentTypeOf(other) === type && !takenIds.has(other.id))) ?? "food");navigate("tostudy");return;}navigate("library", item ? categoryOf(item) : "All", item ? contentTypeOf(item) : "food");setHideTaken(false);if(item)setQuery(item.name);}} /> : <>
+                {!isManager ? <EmployeeHome key={restaurant.id} waiting={<ShiftChangesWaiting key={`waiting-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => openSchedule("mine")} setMessage={setMessage} />} schedule={<MyWeek key={`week-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />} onProgress={() => navigate("progress")} onChecklists={() => navigate("checklists")} restaurantId={restaurant.id} canDownloadBoard={can("preshift")} restaurantName={restaurant.name} onFocusQuiz={item => {navigate("library", "All", contentTypeOf(item));setDetailItem(item);setQuizEditing(false);setQuizItem(item);}} onBoardItem={item => {navigate("library", "All", contentTypeOf(item));setCameFrom({view: "home", label: "Pre-shift board"});openCard(item);}} user={user} items={items} progress={quizProgress} loading={itemsLoading || progressLoading} error={progressError || error} onRetry={() => {void loadItems();void loadProgress();}} onStudy={(item, mode) => {if(item && mode === "list"){setStudyType(CONTENT_TYPES.find(type => items.some(other => contentTypeOf(other) === type && !takenIds.has(other.id))) ?? "food");navigate("tostudy");return;}navigate("library", item ? categoryOf(item) : "All", item ? contentTypeOf(item) : "food");setHideTaken(false);if(item)setQuery(item.name);}} /> : <>
                 <p className="eyebrow muted mb-3">Home · {isManager ? "Manager workspace" : "Ready for service"}</p>
                 <h1 className="text-2xl font-semibold md:text-2xl">{`Welcome to ${restaurant.name}`}</h1>
                 <p className="muted mt-3 max-w-xl">Feel ready for every service.</p>
@@ -2511,9 +2522,11 @@ function Workspace({
                   {can("team") && <button className="btn secondary" style={{fontWeight: 700, border: "1.5px solid var(--c-text)"}} onClick={() => navigate("team")}>Assign study</button>}
                   <button className={can("team") ? "btn secondary" : "btn"} style={can("team") ? {fontWeight: 700, border: "1.5px solid var(--c-text)"} : undefined} onClick={() => navigate("library")}>Open library</button>
                 </div>}
+                {(can("team") || can("preshift") || can("library")) && restaurant && <ManagerAttention key={`attention-${restaurant.id}`} restaurantId={restaurant.id} canTeam={can("team")} canReports={can("preshift") || can("team")} onOpen={openAttention} />}
                 {itemsLoading ? <p role="status" className="muted py-10">Loading your library…</p> : <>
                   {restaurant && <NextShift key={`shift-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />}
                   {(can("preshift") || can("team")) && restaurant && <LastShiftNote key={`last-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => navigate("reports")} />}
+                  {(can("preshift") || can("team")) && restaurant && <WhoWorksToday key={`today-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => openSchedule("week")} />}
                   {can("team") && restaurant && <TeamSnapshot key={`team-${restaurant.id}`} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenTeam={() => navigate("team")} />}
                   {can("team") && restaurant && <RecentCompletions key={`recent-${restaurant.id}`} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} />}
                   {can("preshift") && restaurant && <MyJobCard key={`job-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => navigate("checklists")} manager />}
@@ -2521,7 +2534,7 @@ function Workspace({
                   <h2 className="mb-4 text-xl font-semibold">Explore your menu</h2>
                   <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">{counts.filter(c => c.count > 0).map(c => <button key={c.name} className="panel category-card flex items-center gap-2 p-3 text-left" onClick={() => navigate("library", c.name, contentType)}><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{c.name}</span><span className="muted mt-1 block text-xs">{c.count} {c.count === 1 ? wordsIn(taxonomy, contentType).item_one : wordsIn(taxonomy, contentType).item_many}</span></span><ArrowRight size={15} className="muted shrink-0" /></button>)}</div></>}
                   {!items.length && <p className="panel muted mt-4 p-6">{can("library") ? "Add your first dish to start building the library." : "Your manager hasn’t added content yet."}</p>}
-                  {can("library") && restaurant && <RetakeRequests restaurantId={restaurant.id} />}
+                  {can("library") && restaurant && <div id="retake-requests"><RetakeRequests restaurantId={restaurant.id} /></div>}
                   {isManager && <AccountName user={user} />}
                 </>}
                 </>}

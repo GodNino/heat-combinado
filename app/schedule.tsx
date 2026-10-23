@@ -58,8 +58,9 @@ const changeError = (message: string) => /shift_change|function .* does not exis
 const paint = (position: string, settings: ScheduleSettings) => { const color = colorFor(position, settings.position_colors); return color ? `pos pos-${color}` : ""; };
 const presetLabel = (preset: ShiftPreset) => { const today = new Date(); return `${shortTime(atTime(today, preset.start))}–${shortTime(atTime(today, preset.end))}`; };
 
-export function Schedule({restaurantId, restaurantName, userId, canManage, setMessage}: {restaurantId: string; restaurantName: string; userId: string; canManage: boolean; setMessage: (text: string) => void}) {
-  const [tab, setTab] = useState<Tab>(canManage ? "week" : "mine");
+export type ScheduleTab = Tab;
+export function Schedule({restaurantId, restaurantName, userId, canManage, setMessage, initialTab}: {restaurantId: string; restaurantName: string; userId: string; canManage: boolean; setMessage: (text: string) => void; initialTab?: Tab | null}) {
+  const [tab, setTab] = useState<Tab>(initialTab ?? (canManage ? "week" : "mine"));
   const {settings, setSettings, missing} = useScheduleSettings(restaurantId);
   const {changes, reload: reloadChanges} = useShiftChanges(restaurantId);
   const awaitingManager = changes.filter(c => c.status === "pending").length;
@@ -1021,4 +1022,90 @@ function TimeOffDecisions({restaurantId, setMessage}: {restaurantId: string; set
     <p className="eyebrow muted mb-2">Coming up</p>
     {approved.length ? <ul className="space-y-2">{approved.map(r => row(r, false))}</ul> : <p className="panel p-5 muted">No approved time off coming up.</p>}
   </div>;
+}
+
+// ── On Home ──────────────────────────────────────────────────────────────────────────────────────
+// The manager's "who works today": today's shifts by position, in the restaurant's colours, with
+// drafts and shifts that are changing hands marked.
+export function WhoWorksToday({restaurantId, onOpen}: {restaurantId: string; onOpen: () => void}) {
+  const {settings} = useScheduleSettings(restaurantId);
+  const {changes} = useShiftChanges(restaurantId);
+  const [shifts, setShifts] = useState<Shift[] | null>(null);
+  const [names, setNames] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    let live = true;
+    const from = new Date(); from.setHours(0, 0, 0, 0);
+    void Promise.all([
+      supabase!.from("schedule_shifts").select("*").eq("restaurant_id", restaurantId).gte("starts_at", from.toISOString()).lt("starts_at", addDays(from, 1).toISOString()).order("starts_at"),
+      supabase!.rpc("schedule_team", {rid: restaurantId}),
+    ]).then(([today, team]) => {
+      if (!live) return;
+      setShifts(today.error ? [] : (today.data ?? []) as Shift[]);
+      setNames(new Map(((team.data ?? []) as Person[]).map(p => [p.user_id, p.name || "Team member"])));
+    });
+    return () => {live = false;};
+  }, [restaurantId]);
+  if (!shifts || !settings) return null;
+  const groups = [...new Map(shifts.map(s => [s.position.trim().toLowerCase(), s.position.trim()])).values()].sort((a, b) => a.localeCompare(b));
+  const people = new Set(shifts.map(s => s.user_id)).size;
+  const hours = shifts.reduce((sum, s) => sum + shiftHours(s), 0);
+  const changing = (shift: Shift) => changes.some(c => isLive(c) && (c.shift_id === shift.id || c.swap_shift_id === shift.id));
+  return <section className="panel today-floor mb-4" aria-label="Working today">
+    <div className="flex items-center gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="eyebrow muted">Working today</p>
+        <p className="mt-1 font-semibold">{shifts.length ? `${people} ${people === 1 ? "person" : "people"} · ${formatHours(hours)}` : "Nobody is scheduled today."}</p>
+      </div>
+      <button type="button" className="btn secondary shrink-0" onClick={onOpen}>{shifts.length ? "Schedule" : "Build the week"}<ArrowRight size={15} aria-hidden="true" /></button>
+    </div>
+    {groups.length > 0 && <div className="today-groups">{groups.map(group => <div key={group}>
+      <p className={`today-position ${paint(group, settings)}`}><i aria-hidden="true" />{group}</p>
+      <ul>{shifts.filter(s => s.position.trim().toLowerCase() === group.toLowerCase()).map(s => <li key={s.id} className={s.published ? "" : "draft"}>
+        <span className="min-w-0 flex-1 truncate">{names.get(s.user_id) ?? "Team member"}</span>
+        <span className="today-time">{shiftLabel(s)}</span>
+        {!s.published && <small className="muted">Draft</small>}
+        {changing(s) && <ArrowLeftRight size={13} aria-label="Change asked" />}
+      </li>)}</ul>
+    </div>)}</div>}
+  </section>;
+}
+
+// An employee's "waiting for you": shifts a coworker asked them to cover or swap, shifts up for grabs
+// in their position, and what happened to their own requests lately. Nothing to show, nothing shown.
+export function ShiftChangesWaiting({restaurantId, userId, onOpen, setMessage}: {restaurantId: string; userId: string; onOpen: () => void; setMessage: (text: string) => void}) {
+  const {changes, reload} = useShiftChanges(restaurantId);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  async function act(id: string, call: PromiseLike<{error: {message: string} | null}>, done: string, event: PushEvent) {
+    setBusy(id); setError("");
+    const {error} = await call;
+    setBusy("");
+    if (error) return setError(changeError(error.message));
+    notify(event, id);
+    setMessage(done);
+    await reload();
+  }
+  const forMe = changes.filter(c => c.status === "asked" && c.taker_id === userId);
+  const upForGrabs = changes.filter(c => c.status === "open" && c.requested_by !== userId);
+  const recent = Date.now() - 2 * 86_400_000;
+  const answered = changes.filter(c => c.requested_by === userId && (c.status === "approved" || c.status === "denied" || c.status === "declined")
+    && Date.parse(c.decided_at ?? c.created_at) > recent);
+  if (!forMe.length && !upForGrabs.length && !answered.length) return null;
+  return <section className="panel dash-panel waiting-card mb-4" aria-label="Shifts waiting for you">
+    <div className="mb-2 flex items-center gap-3">
+      <p className="eyebrow muted min-w-0 flex-1">Shifts waiting for you</p>
+      <button type="button" className="text-sm underline" onClick={onOpen}>My shifts</button>
+    </div>
+    {error && <p role="alert" className="verdict-bad mb-2 text-sm">{error}</p>}
+    <ul className="space-y-2">
+      {forMe.map(c => <ChangeCard key={c.id} change={c}>
+        <button type="button" className="btn" disabled={!!busy} onClick={() => void act(c.id, supabase!.rpc("answer_shift_change", {change: c.id, accept: true}), "Done. Your manager approves it next.", "shift_change_pending")}>{c.kind === "swap" ? "Swap" : "I'll cover it"}</button>
+        <button type="button" className="btn secondary" disabled={!!busy} onClick={() => void act(c.id, supabase!.rpc("answer_shift_change", {change: c.id, accept: false}), "You said no.", "shift_change_declined")}>No</button>
+      </ChangeCard>)}
+      {upForGrabs.map(c => <ChangeCard key={c.id} change={c}>
+        <button type="button" className="btn" disabled={!!busy} onClick={() => void act(c.id, supabase!.rpc("take_released_shift", {change: c.id}), "It's yours once your manager approves.", "shift_change_pending")}>Take it</button>
+      </ChangeCard>)}
+      {answered.map(c => <ChangeCard key={c.id} change={c} />)}
+    </ul>
+  </section>;
 }
