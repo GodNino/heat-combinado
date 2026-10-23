@@ -7,6 +7,7 @@
 // questions, review below 80%. Charts are one series in the app's own ink; numbers are always
 // written out next to the bars, so nothing depends on reading a colour.
 import { createContext, useContext, useEffect, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { MenuItem } from "@/lib/menu";
 import { CONTENT_TYPES, categoryOf, contentTypeOf, type ContentType } from "@/lib/categories";
@@ -118,6 +119,10 @@ export function ManagerDashboard({restaurantId, restaurantName, onOpenMember, on
   return <section aria-label={`${restaurantName} dashboard`}>
     {!sample && <div className="category-tabs mb-4" role="group" aria-label="Dashboard view">{([["labor", "Labor"], ["service", "Service"], ["training", "Training"]] as [OpsView, string][]).map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => setView(key)}>{label}{key === "training" && !loading && review > 0 && <span className="dash-badge" aria-label={`${review} to review`}>{review}</span>}</button>)}</div>}
     {!sample && <OperationsDashboard restaurantId={restaurantId} onOpenSchedule={onOpenSchedule} onOpenReports={onOpenReports} view={view} />}
+    {!sample && view === "training" && !loading && people.some(p => Number(p.needs_review) > 0) && <div className="panel dash-panel">
+      <SectionInfo heading="Needs review">Dishes where the latest quiz score is under 80%. Tap a name to open them.</SectionInfo>
+      <ul className="dash-review">{[...people].filter(p => Number(p.needs_review) > 0).sort((a, b) => Number(b.needs_review) - Number(a.needs_review) || a.name.localeCompare(b.name)).map(p => <li key={p.user_id}><button type="button" onClick={() => onOpenMember(p.user_id)}><span className="dash-review-name">{p.name}<small>{`${p.needs_review} ${Number(p.needs_review) === 1 ? "dish" : "dishes"} under 80%`}</small></span><span className="dash-badge">{p.needs_review}</span><ChevronRight size={18} aria-hidden="true" /></button></li>)}</ul>
+    </div>}
     {(sample || view === "training") && <>
     <div className="dash-tiles">
       <Tile value={loading ? "…" : String(learners)} label="Team members" />
