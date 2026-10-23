@@ -375,22 +375,22 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     {canManage && !access.all && <p className="sched-side muted mb-3 text-sm">{access.kitchen && !access.foh ? "You build the kitchen schedule. Front-of-house shifts are shown for reference." : access.foh && !access.kitchen ? "You build the front-of-house schedule. Kitchen shifts are shown for reference." : ""}</p>}
     {!shifts ? <p className="muted" role="status">Loading the schedule…</p>
       : !people.length || (!canManage && !rows.length && !query) ? <p className="panel p-5 muted">{canManage ? "Nobody on the team yet. Invite your team from Team." : "Nothing published for this week yet."}</p>
-      : <div className={`sched-scroll ${drag ? "dragging" : ""}`}>
+      : <>
+        <div className="sched-find">
+          <span className="sched-search"><input type="search" aria-label="Search the team" placeholder="Search the team" value={query} onChange={e => setQuery(e.target.value)} /></span>
+          <span className="sched-viewby">
+            <label htmlFor="sched-viewby">View by</label>
+            <select id="sched-viewby" value={viewBy} onChange={e => setViewBy(e.target.value as ViewBy)}>
+              <option value="name">First name</option>
+              <option value="hours">Most hours</option>
+              <option value="position">Position</option>
+            </select>
+          </span>
+        </div>
+        <div className={`sched-scroll ${drag ? "dragging" : ""}`}>
         <table className="sched-grid">
           <thead><tr>
-            <th scope="col">
-              <span className="sched-viewby">
-                <label htmlFor="sched-viewby">View by</label>
-                <select id="sched-viewby" value={viewBy} onChange={e => setViewBy(e.target.value as ViewBy)}>
-                  <option value="name">First name</option>
-                  <option value="hours">Most hours</option>
-                  <option value="position">Position</option>
-                </select>
-              </span>
-              <span className="sched-search">
-                <input type="search" aria-label="Search the team" placeholder="Search the team" value={query} onChange={e => setQuery(e.target.value)} />
-              </span>
-            </th>
+            <th scope="col"><span className="sched-corner">Team</span></th>
             {days.map(day => <th key={day.toISOString()} scope="col" aria-label={dayHeading(day)}>
               <span className={`sched-day ${dayKey(day) === today ? "today" : ""}`}><span>{day.toLocaleDateString("en-US", {weekday: "short"})}</span> <b>{day.getDate()}</b></span>
             </th>)}
@@ -439,7 +439,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
             </td>; })}
           </tr></tfoot>
         </table>
-      </div>}
+      </div></>}
     {canManage && shifts && shifts.length > 0 && <p className="muted mt-3 text-xs">{"Drag a shift to move it to another day or person. Hold Alt (Option on a Mac) as you drop to copy it instead; on a phone, hold the shift for a moment to pick it up."}</p>}
     {canManage && shifts && shifts.length > 0 && <p className="muted mt-1 text-xs">{`Dashed shifts are drafts: the team sees them once you publish. Total this week: ${formatHours(total)}.`}</p>}
 
