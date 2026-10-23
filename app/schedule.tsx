@@ -465,7 +465,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
           const dayList = rows.flatMap(person => (shifts ?? []).filter(s => s.user_id === person.user_id && dayKey(new Date(s.starts_at)) === dayKey(days[pick])).map(shift => ({person, shift})));
           return <>
             <div className="sched-daypick" role="group" aria-label="Day">{days.map((day, i) => <button key={day.toISOString()} type="button" aria-pressed={i === pick} className={dayKey(day) === today ? "today" : ""} onClick={() => setPhoneDay(i)}><span>{day.toLocaleDateString("en-US", {weekday: "short"})}</span><b>{day.getDate()}</b></button>)}</div>
-            <p className="sched-dayhead"><b>{dayHeading(days[pick])}</b></p>
+            <p className="sched-dayhead"><b>{dayHeading(days[pick])}</b>{dayList.length > 0 && <span className="muted">{formatHours(dayList.reduce((sum, {shift}) => sum + shiftHours(shift), 0))}</span>}</p>
             {dayList.length ? dayList.map(({person, shift}) => {
               const warnings = showConflicts ? warningsOf.get(shift.id) ?? [] : [];
               return <button key={shift.id} type="button" disabled={!mayEdit(shift.position)} onClick={() => { if (!shift.id.startsWith("copy-")) openShift(shift); }} className={`sched-dayrow ${paint(shift.position, settings)} ${shift.published ? "" : "draft"}`}>
