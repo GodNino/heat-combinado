@@ -1117,7 +1117,8 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
       setRecipientIds(prefill ? selected : []);
       // A board sent to exactly today's people reopens on "Working today".
       const sameAsToday = selected.length > 0 && selected.length === onToday.length && selected.every(id => onToday.includes(id));
-      setAudience(!prefill || !selected.length ? "everyone" : sameAsToday ? "working" : "pick");
+      // A new board starts on "Working today" when someone has a shift; with nobody scheduled it stays on Everyone.
+      setAudience(!prefill ? (onToday.length ? "working" : "everyone") : !selected.length ? "everyone" : sameAsToday ? "working" : "pick");
       setServiceDate(data.service_date);
       setNote(prefill ? data.board?.note ?? "" : "");
       // A board saved before the focus list existed still has its single item.
