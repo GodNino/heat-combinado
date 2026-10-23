@@ -14,7 +14,7 @@ import type { ProgressRow } from "./quiz";
 import type { Organization } from "./locations";
 import { useTaxonomy } from "./taxonomy";
 import { SectionInfo } from "./ui";
-import { OperationsDashboard } from "./ops-dashboard";
+import { OperationsDashboard, type OpsView } from "./ops-dashboard";
 
 type Week = {week_start: string; quizzes: number; learners: number};
 type LibraryStats = {content_type: ContentType; items: number; learners: number; taken: number; correct: number; total: number; needs_review: number; active_7d: number};
@@ -101,6 +101,8 @@ export function ManagerDashboard({restaurantId, restaurantName, onOpenMember, on
   const libraries = useRpc<LibraryStats>("location_summary", {rid: restaurantId});
   const weeks = useRpc<Week>("location_activity", {rid: restaurantId, weeks: 8});
   const roster = useRpc<Person>("team_learning_roster", {rid: restaurantId});
+  // One part at a time: Labor and Service from the schedule and reports, Training from the quizzes.
+  const [view, setView] = useState<OpsView>("labor");
   if (libraries.error) return <p className="panel p-5 muted">{NEEDS_UPDATE}</p>;
   const libs = libraries.data ?? [];
   const learners = libs[0]?.learners ?? 0;
@@ -114,7 +116,9 @@ export function ManagerDashboard({restaurantId, restaurantName, onOpenMember, on
     .sort((a, b) => a.covered - b.covered || a.name.localeCompare(b.name));
   const loading = !libraries.data;
   return <section aria-label={`${restaurantName} dashboard`}>
-    {!sample && <OperationsDashboard restaurantId={restaurantId} onOpenSchedule={onOpenSchedule} onOpenReports={onOpenReports} />}
+    {!sample && <div className="category-tabs mb-4" role="group" aria-label="Dashboard view">{([["labor", "Labor"], ["service", "Service"], ["training", "Training"]] as [OpsView, string][]).map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => setView(key)}>{label}</button>)}</div>}
+    {!sample && <OperationsDashboard restaurantId={restaurantId} onOpenSchedule={onOpenSchedule} onOpenReports={onOpenReports} view={view} />}
+    {(sample || view === "training") && <>
     <div className="dash-tiles">
       <Tile value={loading ? "…" : String(learners)} label="Team members" />
       <Tile value={loading ? "…" : shown(covered)} label="Menu covered" note="Items each person has quizzed on" />
@@ -160,6 +164,7 @@ export function ManagerDashboard({restaurantId, restaurantName, onOpenMember, on
           </tr>)}</tbody>
         </table>}
     </div>
+    </>}
   </section>;
 }
 
