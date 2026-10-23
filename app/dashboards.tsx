@@ -116,8 +116,7 @@ export function ManagerDashboard({restaurantId, restaurantName, onOpenMember, on
     .sort((a, b) => a.covered - b.covered || a.name.localeCompare(b.name));
   const loading = !libraries.data;
   return <section aria-label={`${restaurantName} dashboard`}>
-    {!sample && <div className="category-tabs mb-4" role="group" aria-label="Dashboard view">{([["labor", "Labor"], ["service", "Service"], ["training", "Training"]] as [OpsView, string][]).map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => setView(key)}>{label}</button>)}</div>}
-    {!sample && !loading && review > 0 && view !== "training" && <div className="dash-needs" role="status"><div className="dash-needs-text"><b>Needs you</b><span>{`${review} quiz ${review === 1 ? "result" : "results"} to review`}</span></div><button type="button" className="btn secondary" onClick={() => setView("training")}>Review</button></div>}
+    {!sample && <div className="category-tabs mb-4" role="group" aria-label="Dashboard view">{([["labor", "Labor"], ["service", "Service"], ["training", "Training"]] as [OpsView, string][]).map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => setView(key)}>{label}{key === "training" && !loading && review > 0 && <span className="dash-badge" aria-label={`${review} to review`}>{review}</span>}</button>)}</div>}
     {!sample && <OperationsDashboard restaurantId={restaurantId} onOpenSchedule={onOpenSchedule} onOpenReports={onOpenReports} view={view} />}
     {(sample || view === "training") && <>
     <div className="dash-tiles">
