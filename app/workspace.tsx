@@ -69,6 +69,7 @@ import { LastShiftNote, ShiftReports } from "./shift-report";
 import { LanguageSwitch, currentLang, setLang } from "./language";
 import { NotificationSwitch, notify } from "./notifications";
 import { MyWeek, NextShift, Schedule, ShiftChangesWaiting, WhoWorksToday, type ScheduleTab } from "./schedule";
+import { POSITIONS } from "@/lib/schedule";
 import { ManagerAttention, type AttentionTarget } from "./home-cards";
 
 // Every screen the workspace can show. Named once: it used to be spelled out in two places.
@@ -1310,7 +1311,7 @@ type TeamAttempt = {attempt_count: number; menu_item_id: string; item_name: stri
 type TeamAssignment = {id: string; menu_item_id: string; item_name: string; note: string; due_on: string | null; created_at: string};
 // Suggestions, not a list to choose from: every kitchen names its jobs differently,
 // and a restaurant that calls somebody a captain should be able to type captain.
-const TEAM_ROLES = ["Server", "Server assistant", "Bartender", "Barback", "Host", "Runner", "Busser", "Kitchen", "Sommelier", "Bar Manager", "Manager", "GM"];
+const TEAM_ROLES = POSITIONS;
 
 // Which job an invite link is for (migration 042). "Anyone" is the restaurant's plain link; each
 // position has a link of its own, and whoever joins with it starts in that position.
@@ -1358,7 +1359,11 @@ const ACCESS_AREAS: {key: string; label: string}[] = [
   {key: "standards", label: "Standards"},
   {key: "preshift", label: "Pre-shift"},
   {key: "team", label: "Team"},
+  {key: "schedule_foh", label: "Schedule: front of house"},
+  {key: "schedule_boh", label: "Schedule: kitchen"},
 ];
+// Team access builds the whole schedule, so it can also hand out the two schedule chips (048).
+const canGive = (key: string, mine: string[]) => mine.includes(key) || (key.startsWith("schedule_") && mine.includes("team"));
 function accessSummary(held: string[]) {
   if (held.length >= ACCESS_AREAS.length) return "Full access";
   if (!held.length) return "Read only";
@@ -1373,16 +1378,17 @@ function AccessPanel({restaurantId, member, current, myAccess, meId, busy, actio
   useEffect(() => {setPicked(current);}, [saved, member.user_id]);
   const firstName = member.name.trim().split(/\s+/)[0] || "They";
   const self = member.user_id === meId;
-  const missing = ACCESS_AREAS.some(area => !myAccess.includes(area.key));
+  const missing = ACCESS_AREAS.some(area => !canGive(area.key, myAccess));
   if (member.is_owner) return <section className="panel my-5 p-5"><h3 className="text-lg font-semibold">Can change</h3><p className="muted mt-2 text-sm">Everything. The owner&rsquo;s access is not a setting, so there is nothing here to switch off.</p></section>;
   return <section className="panel my-5 p-5">
     <h3 className="text-lg font-semibold">Can change</h3>
     <p className="muted mt-2 text-sm">{firstName} reads everything either way. Tick where they can add, edit and delete.</p>
     <div className="word-chips mt-4">{ACCESS_AREAS.map(area => {
       const held = picked.includes(area.key);
-      return <button key={area.key} type="button" className="word-chip" aria-pressed={held} disabled={busy || self || !myAccess.includes(area.key)} onClick={() => setPicked(held ? picked.filter(key => key !== area.key) : [...picked, area.key])}>{area.label}</button>;
+      return <button key={area.key} type="button" className="word-chip" aria-pressed={held} disabled={busy || self || !canGive(area.key, myAccess)} onClick={() => setPicked(held ? picked.filter(key => key !== area.key) : [...picked, area.key])}>{area.label}</button>;
     })}</div>
     <p className="muted mt-4 text-sm"><strong>Content library</strong> covers dishes, cocktails, wine &amp; sake &mdash; and their allergens. Anyone with it can change what a guest with an allergy is told.</p>
+    <p className="muted mt-2 text-sm"><strong>Schedule</strong>: a floor manager gets front of house, the head chef or sous chef gets kitchen. They build, publish and approve changes and time off for their side only. Team builds both.</p>
     {self && <p className="muted mt-2 text-sm">This is you. Nobody can change their own access &mdash; ask the owner or a GM.</p>}
     {!self && missing && <p className="muted mt-2 text-sm">Dimmed areas are ones you do not hold yourself. You can only hand out access you have.</p>}
     {!self && <button className="btn mt-4" disabled={busy || [...picked].sort().join(",") === saved} onClick={() => void action(async () => {
@@ -2421,7 +2427,7 @@ function Workspace({
               {dashboardScope === "brand" && ownsBrand && brand
                 ? <BrandDashboard key={brand.id} organization={brand} currentId={restaurant.id} onOpen={id => {setSelected(id);setDashboardScope("location");window.scrollTo(0, 0);}} />
                 : <ManagerDashboard key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenSchedule={() => openSchedule("week")} onOpenReports={() => navigate("reports")} />}
-            </section> : null) : view === "schedule" ? <Schedule key={`${restaurant.id}-${scheduleTab ?? ""}`} initialTab={scheduleTab} restaurantId={restaurant.id} restaurantName={restaurant.name} userId={user.id} canManage={can("team") && !employeeView} setMessage={setMessage} /> : view === "reports" ? (can("preshift") || can("team") ? <ShiftReports key={restaurant.id} restaurant={restaurant} restaurants={restaurants} brand={brand} ownsBrand={ownsBrand} canWrite={can("preshift")} canManageRecipients={can("team")} setMessage={setMessage} /> : null) : view === "locations" ? (can("library") ? <Locations key={restaurant.id} userId={user.id} restaurant={restaurant} restaurants={restaurants} organizations={organizations} items={items} canImport={can("library")} busy={busy} action={action} setMessage={setMessage} onChanged={loadRestaurants} onItemsChanged={loadItems} onOpen={id => {setDetailItem(null);setSelected(id);setCategory("All");setQuery("");setNavOpen(false);setEmployeeView(false);setInviteLink("");window.scrollTo(0, 0);}} /> : null) : view === "words" ? <WordsManager key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} custom={customTerms} onChanged={loadGlossary} canEdit={can("words")} /> : view === "story" ? <Story key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} canEdit={can("words")} /> : view === "standards" ? <Standards key={restaurant.id} restaurantId={restaurant.id} canEdit={can("standards")} restaurantName={restaurant.name} /> : view === "checklists" ? <Checklists key={restaurant.id} restaurantId={restaurant.id} canManage={can("preshift")} /> : view === "team" ? (can("team") ? <section className="mx-auto max-w-3xl"><p className="eyebrow muted">Manager workspace · {restaurant.name}</p>{!viewingMember && <h1 className="mt-3 text-2xl font-semibold">Team</h1>}{!viewingMember && <><section className="panel mt-5 mb-5 p-5"><InfoRow info={<>Create an invitation link and share it through WhatsApp, text, or email. Employees can create an account or sign in to join {restaurant.name}.<br /><br />Links expire after 7 days. Creating a replacement disables the previous link.</>}><h2 className="text-xl font-semibold">Invite an employee</h2></InfoRow>                    {can("team") && (
+            </section> : null) : view === "schedule" ? <Schedule key={`${restaurant.id}-${scheduleTab ?? ""}`} initialTab={scheduleTab} restaurantId={restaurant.id} restaurantName={restaurant.name} userId={user.id} canManage={(can("team") || can("schedule_foh") || can("schedule_boh")) && !employeeView} access={{all: can("team"), foh: can("schedule_foh"), kitchen: can("schedule_boh")}} setMessage={setMessage} /> : view === "reports" ? (can("preshift") || can("team") ? <ShiftReports key={restaurant.id} restaurant={restaurant} restaurants={restaurants} brand={brand} ownsBrand={ownsBrand} canWrite={can("preshift")} canManageRecipients={can("team")} setMessage={setMessage} /> : null) : view === "locations" ? (can("library") ? <Locations key={restaurant.id} userId={user.id} restaurant={restaurant} restaurants={restaurants} organizations={organizations} items={items} canImport={can("library")} busy={busy} action={action} setMessage={setMessage} onChanged={loadRestaurants} onItemsChanged={loadItems} onOpen={id => {setDetailItem(null);setSelected(id);setCategory("All");setQuery("");setNavOpen(false);setEmployeeView(false);setInviteLink("");window.scrollTo(0, 0);}} /> : null) : view === "words" ? <WordsManager key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} custom={customTerms} onChanged={loadGlossary} canEdit={can("words")} /> : view === "story" ? <Story key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} canEdit={can("words")} /> : view === "standards" ? <Standards key={restaurant.id} restaurantId={restaurant.id} canEdit={can("standards")} restaurantName={restaurant.name} /> : view === "checklists" ? <Checklists key={restaurant.id} restaurantId={restaurant.id} canManage={can("preshift")} /> : view === "team" ? (can("team") ? <section className="mx-auto max-w-3xl"><p className="eyebrow muted">Manager workspace · {restaurant.name}</p>{!viewingMember && <h1 className="mt-3 text-2xl font-semibold">Team</h1>}{!viewingMember && <><section className="panel mt-5 mb-5 p-5"><InfoRow info={<>Create an invitation link and share it through WhatsApp, text, or email. Employees can create an account or sign in to join {restaurant.name}.<br /><br />Links expire after 7 days. Creating a replacement disables the previous link.</>}><h2 className="text-xl font-semibold">Invite an employee</h2></InfoRow>                    {can("team") && (
                       <button
                         disabled={busy}
                         className="btn mt-6"
@@ -2522,11 +2528,11 @@ function Workspace({
                   {can("team") && <button className="btn secondary" style={{fontWeight: 700, border: "1.5px solid var(--c-text)"}} onClick={() => navigate("team")}>Assign study</button>}
                   <button className={can("team") ? "btn secondary" : "btn"} style={can("team") ? {fontWeight: 700, border: "1.5px solid var(--c-text)"} : undefined} onClick={() => navigate("library")}>Open library</button>
                 </div>}
-                {(can("team") || can("preshift") || can("library")) && restaurant && <ManagerAttention key={`attention-${restaurant.id}`} restaurantId={restaurant.id} canTeam={can("team")} canReports={can("preshift") || can("team")} onOpen={openAttention} />}
+                {(can("team") || can("preshift") || can("library") || can("schedule_foh") || can("schedule_boh")) && restaurant && <ManagerAttention key={`attention-${restaurant.id}`} restaurantId={restaurant.id} canTeam={can("team")} canSchedule={can("team") || can("schedule_foh") || can("schedule_boh")} canReports={can("preshift") || can("team")} onOpen={openAttention} />}
                 {itemsLoading ? <p role="status" className="muted py-10">Loading your library…</p> : <>
                   {restaurant && <NextShift key={`shift-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />}
                   {(can("preshift") || can("team")) && restaurant && <LastShiftNote key={`last-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => navigate("reports")} />}
-                  {(can("preshift") || can("team")) && restaurant && <WhoWorksToday key={`today-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => openSchedule("week")} />}
+                  {(can("preshift") || can("team") || can("schedule_foh") || can("schedule_boh")) && restaurant && <WhoWorksToday key={`today-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => openSchedule("week")} />}
                   {can("team") && restaurant && <TeamSnapshot key={`team-${restaurant.id}`} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenTeam={() => navigate("team")} />}
                   {can("team") && restaurant && <RecentCompletions key={`recent-${restaurant.id}`} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} />}
                   {can("preshift") && restaurant && <MyJobCard key={`job-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => navigate("checklists")} manager />}

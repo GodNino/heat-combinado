@@ -9,8 +9,8 @@ import { supabase } from "@/lib/supabase";
 export type AttentionTarget = "shift_changes" | "released" | "time_off" | "positions" | "retakes" | "urgent";
 type Counts = Record<AttentionTarget, number>;
 
-export function ManagerAttention({restaurantId, canTeam, canReports, onOpen}: {
-  restaurantId: string; canTeam: boolean; canReports: boolean; onOpen: (target: AttentionTarget) => void;
+export function ManagerAttention({restaurantId, canTeam, canSchedule = canTeam, canReports, onOpen}: {
+  restaurantId: string; canTeam: boolean; canSchedule?: boolean; canReports: boolean; onOpen: (target: AttentionTarget) => void;
 }) {
   const [counts, setCounts] = useState<Counts | null>(null);
   useEffect(() => {
@@ -19,11 +19,11 @@ export function ManagerAttention({restaurantId, canTeam, canReports, onOpen}: {
     const since = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
     // Anything that fails (an update not run yet, no access) counts as nothing rather than breaking Home.
     const count = async (work: () => PromiseLike<number>) => { try { return await work(); } catch { return 0; } };
-    const changes = canTeam ? Promise.resolve(db.rpc("shift_change_list", {rid: restaurantId})).then(({data, error}) => error ? [] : (data ?? []) as {status: string}[], () => []) : Promise.resolve([] as {status: string}[]);
+    const changes = canSchedule ? Promise.resolve(db.rpc("shift_change_list", {rid: restaurantId})).then(({data, error}) => error ? [] : (data ?? []) as {status: string}[], () => []) : Promise.resolve([] as {status: string}[]);
     void Promise.all([
       changes.then(list => list.filter(c => c.status === "pending").length),
       changes.then(list => list.filter(c => c.status === "open").length),
-      canTeam ? count(async () => { const {count, error} = await db.from("time_off_requests").select("id", {count: "exact", head: true}).eq("restaurant_id", restaurantId).eq("status", "pending"); return error ? 0 : count ?? 0; }) : 0,
+      canSchedule ? count(async () => { const {count, error} = await db.from("time_off_requests").select("id", {count: "exact", head: true}).eq("restaurant_id", restaurantId).eq("status", "pending"); return error ? 0 : count ?? 0; }) : 0,
       canTeam ? count(async () => { const {data, error} = await db.rpc("team_without_position", {rid: restaurantId}); return error ? 0 : (data ?? []).length; }) : 0,
       count(async () => { const {data, error} = await db.rpc("quiz_retake_requests", {rid: restaurantId}); return error ? 0 : (data ?? []).length; }),
       canReports ? count(async () => { const {count, error} = await db.from("shift_reports").select("id", {count: "exact", head: true}).eq("restaurant_id", restaurantId).eq("urgent", true).gte("service_date", since); return error ? 0 : count ?? 0; }) : 0,
@@ -31,7 +31,7 @@ export function ManagerAttention({restaurantId, canTeam, canReports, onOpen}: {
       if (live) setCounts({shift_changes, released, time_off, positions, retakes, urgent});
     });
     return () => {live = false;};
-  }, [restaurantId, canTeam, canReports]);
+  }, [restaurantId, canTeam, canSchedule, canReports]);
   if (!counts) return null;
   const chips: [AttentionTarget, number, string, React.ReactNode][] = ([
     ["urgent", counts.urgent, counts.urgent === 1 ? "urgent shift report" : "urgent shift reports", <AlertTriangle key="i" size={16} aria-hidden="true" />],
