@@ -2712,3 +2712,17 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root:root .sched-find .sched-viewby-title { padding:6px 10px 4px; font-family:ui-monospace,Menlo,monospace; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--c-muted); }
 :root:root:root:root:root:root:root:root .sched-find .sched-viewby-menu button { display:flex; align-items:center; justify-content:space-between; width:100%; height:40px; padding:0 10px; border:0; border-radius:12px; background:transparent; color:var(--c-text); font-size:14px; font-weight:600; text-align:left; cursor:pointer; }
 :root:root:root:root:root:root:root:root .sched-find .sched-viewby-menu button.on { background:var(--c-text); color:var(--c-bg); }
+
+/* Schedule, keep the View by menu above the sticky day headers.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root:root .sched-scroll { position:relative; z-index:0; }
+:root:root:root:root:root:root:root:root .sched-find { position:relative; z-index:5; }
+
+/* Landing page, EN / ES buttons the same size as the Sign in button.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .site-lang .lang-switch { display:flex; gap:8px; padding:0; overflow:visible; }
+:root:root:root:root:root:root:root .site-lang .lang-switch button { flex:none; width:auto; min-width:0; height:30px; min-height:30px; padding:0 14px; font-size:12px; font-weight:600; line-height:1; border-width:1px; }
+@media (max-width: 420px) {
+  :root:root:root:root:root:root:root .site-lang .lang-switch { gap:6px; }
+  :root:root:root:root:root:root:root .site-lang .lang-switch button { padding:0 10px; }
+}
