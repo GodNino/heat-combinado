@@ -95,7 +95,7 @@ const PHRASES: Record<string, string> = {
   "86'd": "86", "Low count": "Quedan pocos", "Changed": "Cambió", "New": "Nuevo", "Your learning progress": "Tu progreso de aprendizaje",
   "Quiz completion and accuracy · Target: 80%": "Quizzes completados y precisión · Meta: 80%", "Loading progress…": "Cargando progreso…",
   "Progress could not load.": "No se pudo cargar el progreso.", "Not completed": "Sin completar", "Updated - review needed": "Actualizado, hay que repasar",
-  "At target": "En la meta", "Needs practice": "Falta práctica", "Needs you": "Necesita tu atención", "Updated, review needed": "Actualizado, hay que repasar", "Needs review": "Para repasar",
+  "At target": "En la meta", "Needs practice": "Falta práctica", "Needs you": "Necesita tu atención", "On track · goal 80%": "En camino · meta 80%", "Below the 80% goal": "Por debajo de la meta de 80%", "Updated, review needed": "Actualizado, hay que repasar", "Needs review": "Para repasar",
   "Your learning": "Tu aprendizaje", "Back to Home": "Volver al inicio", "Still to study": "Por estudiar", "Feel ready for every service.": "Siéntete listo para cada servicio.",
   "You have taken every quiz. Nice work.": "Ya hiciste todos los quizzes. ¡Buen trabajo!", "No quizzes yet": "Todavía no hay quizzes",
   "Quizzes below 80% or with updated questions. Your previous scores are saved. Study the details before your next attempt.": "Quizzes por debajo de 80% o con preguntas nuevas. Tus resultados anteriores quedan guardados. Repasa los detalles antes de tu próximo intento.",
