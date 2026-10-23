@@ -166,7 +166,7 @@ function TonightReport({restaurant, setMessage, onSent}: {restaurant: Restaurant
 
   const known = draft ? heatLines(draft) : [];
   return <ReportForm initial={emptyReport()} busy={busy} error={error} onSubmit={v => void submit(v)}
-    submitText={label => `Submit ${label.toLowerCase()} report`}
+    submitText={() => "Submit report"}
     footer={`Goes to the owners and everyone who manages ${restaurant.name}. Sending again tonight replaces it.`}
     before={<div className="panel dash-panel">
       <SectionInfo heading="Already in HEAT tonight">Taken from tonight's pre-shift, checklists and quizzes when you submit. Nothing to type.</SectionInfo>
