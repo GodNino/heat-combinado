@@ -123,7 +123,7 @@ export function ManagerDashboard({restaurantId, restaurantName, onOpenMember, on
     <div className="dash-tiles">
       <Tile value={loading ? "…" : String(learners)} label="Team members" />
       <Tile value={loading ? "…" : shown(covered)} label="Menu covered" note="Items each person has quizzed on" />
-      <Tile value={loading ? "…" : shown(accuracy)} label="Quiz accuracy" note="Latest results · target 80%" />
+      <Tile value={loading ? "…" : shown(accuracy)} label="Quiz accuracy" note={accuracy === null || loading ? "Latest results · target 80%" : accuracy >= 80 ? "On track · goal 80%" : "Below the 80% goal"} />
       <Tile value={loading ? "…" : `${libs[0]?.active_7d ?? 0} of ${learners}`} label="Active this week" note={review ? `${review} ${review === 1 ? "result needs" : "results need"} review` : undefined} />
     </div>
 
