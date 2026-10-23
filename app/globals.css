@@ -2667,3 +2667,38 @@ span.dash-name { text-decoration:none; }
 
 /* ===== Team search: no square box inside the rounded search field when you type (the field itself keeps the only focus ring, on the rounded edge). To undo, revert the commit that added this block. ===== */
 :root:root:root:root:root:root:root:root .team-search input, :root:root:root:root:root:root:root:root .team-search input:focus, :root:root:root:root:root:root:root:root .team-search input:focus-visible { outline:none !important; border-color:transparent; box-shadow:none; background:transparent; }
+
+/* ===== Schedule, compact: the search and View by sit in their own row above the grid; the grid corner only says Team; a lower header, lower rows, and a shift shows on one line (time, then position) when it fits, two lines when it does not. On phones the day columns are 112px wide so a time like 10:30a-4:15p reads in full. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .sched-find { display:flex; align-items:center; gap:8px; margin:0 0 10px; }
+:root:root:root:root:root:root:root .sched-find .sched-search { display:block; flex:1; min-width:0; margin:0; }
+:root:root:root:root:root:root:root .sched-find .sched-viewby { flex:none; flex-direction:row; align-items:center; gap:6px; }
+:root:root:root:root:root:root:root .sched-find .sched-viewby select { width:auto; min-height:36px; padding:0 30px 0 12px; border-radius:999px; border:1.5px solid var(--c-text); background-color:var(--c-surface); font-size:16px; font-weight:600; }
+:root:root:root:root:root:root:root .sched-grid .sched-corner { font-family:var(--font-mono); font-size:var(--text-xs); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--c-muted); }
+:root:root:root:root:root:root:root .sched-grid thead th { padding:6px; }
+:root:root:root:root:root:root:root .sched-grid td { height:52px; padding:5px; }
+:root:root:root:root:root:root:root .sched-grid .sched-shift { margin-bottom:3px; padding:4px 8px 4px 9px; }
+:root:root:root:root:root:root:root .sched-grid .sched-shift b { display:inline; font-size:12px; }
+:root:root:root:root:root:root:root .sched-grid .sched-shift { display:flex; flex-wrap:wrap; align-items:baseline; column-gap:5px; }
+:root:root:root:root:root:root:root .sched-grid .sched-shift small { display:inline; min-width:0; max-width:100%; }
+:root:root:root:root:root:root:root .sched-grid .sched-shift small.sched-change, :root:root:root:root:root:root:root .sched-grid .sched-shift small.sched-warn { flex-basis:100%; }
+@media (max-width:760px) {
+  :root:root:root:root:root:root:root .sched-grid { min-width:884px; }
+  :root:root:root:root:root:root:root .sched-grid th:first-child { width:100px; }
+  :root:root:root:root:root:root:root .sched-grid .sched-shift { display:block; }
+  :root:root:root:root:root:root:root .sched-grid .sched-shift b { display:block; }
+  :root:root:root:root:root:root:root .sched-grid .sched-shift small { display:block; }
+}
+@media (min-width:761px) {
+  :root:root:root:root:root:root:root .sched-grid th:first-child { width:160px; }
+}
+
+/* ===== Schedule toolbar: on desktop the options sit in the row as before; on phones Show conflicts, Copy last week and Settings open from a ··· button. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .sched-actions .sched-more-items { display:contents; }
+:root:root:root:root:root:root:root .sched-actions .sched-more-btn { display:none; }
+:root:root:root:root:root:root:root .sched-actions .btn:not(.sched-gear):not(.sched-more-btn):not(.secondary) { order:1; }
+:root:root:root:root:root:root:root .sched-actions .sched-gear { order:2; }
+@media (max-width:760px) {
+  :root:root:root:root:root:root:root .sched-actions .sched-more-btn { display:inline-flex; align-items:center; justify-content:center; letter-spacing:.1em; order:2; }
+  :root:root:root:root:root:root:root .sched-actions .sched-more-items { display:none; }
+  :root:root:root:root:root:root:root .sched-actions .sched-more-items.open { display:flex; flex-direction:column; align-items:flex-start; gap:10px; order:3; flex-basis:100%; padding:12px 14px; border:1.5px solid color-mix(in srgb, var(--c-muted) 35%, transparent); border-radius:18px; background:var(--c-surface); }
+}
