@@ -2645,6 +2645,13 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .library-switch.report-switch { padding:3px; gap:3px; }
 :root:root:root:root:root:root:root .library-switch.report-switch button { min-height:30px; padding:0 10px; font-size:12px; font-weight:600; line-height:1; white-space:nowrap; }
 
-/* ===== Shift report: the "Want to add more?" area under the notes, set apart with a thin line and a title. To undo, revert the commit that added this block. ===== */
-:root:root:root:root:root:root:root .report-add { margin-top:16px; padding-top:14px; border-top:1px solid color-mix(in srgb, var(--c-muted) 30%, transparent); }
-:root:root:root:root:root:root:root .report-add .report-chips { margin-top:10px; }
+/* ===== Shift report: the six flag buttons in two equal columns (a flag already added shows dark with a check), and the optional notes as rows that open with an arrow. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .report-chips.report-flags { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+:root:root:root:root:root:root:root .report-flags .btn { display:flex; align-items:center; justify-content:flex-start; gap:6px; width:100%; padding:0 12px; white-space:nowrap; }
+:root:root:root:root:root:root:root .report-flags .btn.report-flag-on { background:var(--c-text); border-color:var(--c-text); color:var(--c-bg); }
+:root:root:root:root:root:root:root .report-folds { margin-top:14px; }
+:root:root:root:root:root:root:root .report-fold { border-top:1px solid color-mix(in srgb, var(--c-muted) 30%, transparent); }
+:root:root:root:root:root:root:root .report-fold-head { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:48px; padding:0 2px; background:transparent; color:var(--c-text); font-size:15px; font-weight:600; text-align:left; }
+:root:root:root:root:root:root:root .report-fold-head svg { flex:none; color:var(--c-muted); transition:transform .15s; }
+:root:root:root:root:root:root:root .report-fold-head[aria-expanded="true"] svg { transform:rotate(180deg); }
+:root:root:root:root:root:root:root .report-fold textarea { margin:0 0 14px; }
