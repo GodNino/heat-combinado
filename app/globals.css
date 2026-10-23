@@ -2158,6 +2158,8 @@ button.team-tile span{display:block;margin-top:4px;color:var(--c-muted);font-siz
 .site-features { display:grid; gap:16px; margin-top:40px; }
 @media (min-width: 640px) { .site-features { grid-template-columns:repeat(2, 1fr); } }
 @media (min-width: 1000px) { .site-features { grid-template-columns:repeat(3, 1fr); } }
+.site-subheading { margin:48px 0 0; font-size:1.05rem; font-weight:600; }
+.site-features.site-features-tight { margin-top:16px; }
 .site-groups { display:grid; gap:32px; align-items:center; }
 @media (min-width: 900px) { .site-groups { grid-template-columns:1fr 1fr; gap:64px; } }
 .site-list { display:grid; gap:10px; margin:0; padding:0; list-style:none; }
