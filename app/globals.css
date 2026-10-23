@@ -2639,3 +2639,8 @@ span.dash-name { text-decoration:none; }
 /* ===== Dashboard charts: past bars in a soft grey made from the muted token, so the current bar (lime) is the one you see. To undo, revert the commit that added this block. ===== */
 :root:root:root:root:root:root:root .dash-col:not(.current) .dash-col-bar { background:color-mix(in srgb, var(--c-muted) 45%, var(--c-surface)); }
 :root:root:root:root:root:root:root .dash-col:not(.current):hover .dash-col-bar, :root:root:root:root:root:root:root .dash-col:not(.current):focus-visible .dash-col-bar { background:var(--c-text); }
+
+/* ===== Shift report form: Service chips on their own row, Covers and Sales side by side (two columns on phones too). To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .report-row.report-row-2 { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0 12px; }
+:root:root:root:root:root:root:root .report-service { margin-bottom:14px; }
+:root:root:root:root:root:root:root .report-service .category-tabs { padding-bottom:0; }
