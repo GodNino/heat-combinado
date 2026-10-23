@@ -15,7 +15,7 @@ export const ISSUE_KINDS = {
 export type IssueKind = keyof typeof ISSUE_KINDS;
 export const URGENT_KINDS: readonly IssueKind[] = ["allergy", "injury"];
 
-export const SERVICES = ["Breakfast", "Brunch", "Lunch", "Dinner", "Late night", "All day"] as const;
+export const SERVICES = ["Brunch", "Lunch", "Dinner"] as const;
 
 export type FromHeat = {
   eighty_six?: {name: string; status: string; detail?: string}[];
