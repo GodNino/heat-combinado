@@ -494,6 +494,7 @@ function SettingsSheet({restaurantId, settings, positions, missing, onClose, onS
       restaurant_id: restaurantId, week_start: form.week_start, position_colors: form.position_colors,
       overtime_weekly: form.overtime_weekly, overtime_daily: daily ? form.overtime_daily ?? 8 : null,
       shift_presets: presets, team_sees_all: form.team_sees_all, change_cutoff_hours: form.change_cutoff_hours,
+      time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
     };
     setBusy(true); setError("");
     const result = await supabase!.from("schedule_settings").upsert(row);
@@ -599,6 +600,8 @@ function ChangeCard({change, children}: {change: ShiftChange; children?: React.R
       {change.kind === "swap" && change.swap_starts && change.swap_ends && <span className="block text-sm"><ArrowLeftRight size={12} aria-hidden="true" className="mr-1 inline" />{`${when(change.swap_starts, change.swap_ends)} · ${change.swap_position}`}</span>}
       <small className="muted mt-1 block">{`Asked by ${change.requester_name || "Team member"}`}{change.taker_id ? ` · ${change.kind === "swap" ? `Swaps with ${change.taker_name || "Team member"}` : `Covering: ${change.taker_name || "Team member"}`}` : ""}</small>
       {change.note && <small className="muted block">{`“${change.note}”`}</small>}
+      {isLive(change) && change.taker_overtime && change.taker_name !== undefined && <small className="sched-overtime"><AlertTriangle size={12} aria-hidden="true" />{`If approved, ${change.taker_name || "they"} will have ${formatHours(Number(change.taker_hours))} that week: overtime`}</small>}
+      {isLive(change) && change.requester_overtime && <small className="sched-overtime"><AlertTriangle size={12} aria-hidden="true" />{`If approved, ${change.requester_name || "they"} will have ${formatHours(Number(change.requester_hours))} that week: overtime`}</small>}
     </span>
     {children && <span className="flex shrink-0 flex-wrap gap-2">{children}</span>}
   </li>;
@@ -683,8 +686,10 @@ function MyShifts({restaurantId, userId, settings, changes, reloadChanges, setMe
   </div>;
 }
 
-type Person2 = {user_id: string; name: string; role: string; same_area: boolean; busy: boolean};
-type SwapChoice = {shift_id: string; user_id: string; name: string; role: string; shift_position: string; starts_at: string; ends_at: string; same_area: boolean};
+type Person2 = {user_id: string; name: string; role: string; same_area: boolean; busy: boolean; hours?: number | string; overtime?: boolean};
+type SwapChoice = {shift_id: string; user_id: string; name: string; role: string; shift_position: string; starts_at: string; ends_at: string; same_area: boolean; hours?: number | string; overtime?: boolean};
+// "· 42h that week · Overtime": what taking the shift does to someone's week, when the database says.
+const weekNote = (hours?: number | string, overtime?: boolean) => hours === undefined || hours === null ? "" : ` · ${formatHours(Number(hours))} that week${overtime ? " · Overtime" : ""}`;
 
 // "Can't make it?": release to the area, give it to someone, or swap. Same area first; the rest of
 // the team appears only when asked for, and the manager sees that it crosses areas.
@@ -738,17 +743,18 @@ function ChangeSheet({shift, onClose, onDone}: {shift: Shift; onClose: () => voi
         {kind !== "release" && (!people || !choices ? <p className="muted mb-4" role="status">Loading your team…</p> : <>
           <ul className="sched-pick mb-2" role="radiogroup" aria-label={kind === "offer" ? "Who covers it" : "Which shift you take instead"}>
             {kind === "offer" && visiblePeople.map(p => <li key={p.user_id}>
-              <label className={p.busy ? "muted" : ""}><input type="radio" name="pick" value={p.user_id} disabled={p.busy} checked={pick === p.user_id} onChange={() => setPick(p.user_id)} />
-                <span className="min-w-0 flex-1"><b className="block">{p.name}</b><small className="muted">{p.role}{p.busy ? " · Working then" : ""}{!p.same_area ? " · Other area" : ""}</small></span></label>
+              <label className={`${p.busy ? "muted" : ""} ${p.overtime ? "overtime" : ""}`}><input type="radio" name="pick" value={p.user_id} disabled={p.busy} checked={pick === p.user_id} onChange={() => setPick(p.user_id)} />
+                <span className="min-w-0 flex-1"><b className="block">{p.name}</b><small className="muted">{p.role}{p.busy ? " · Working then" : weekNote(p.hours, p.overtime)}{!p.same_area ? " · Other area" : ""}</small></span></label>
             </li>)}
             {kind === "swap" && visibleChoices.map(c => <li key={c.shift_id}>
-              <label><input type="radio" name="pick" value={c.shift_id} checked={pick === c.shift_id} onChange={() => setPick(c.shift_id)} />
-                <span className="min-w-0 flex-1"><b className="block">{c.name}</b><small className="muted">{`${when(c.starts_at, c.ends_at)} · ${c.shift_position}`}{!c.same_area ? " · Other area" : ""}</small></span></label>
+              <label className={c.overtime ? "overtime" : ""}><input type="radio" name="pick" value={c.shift_id} checked={pick === c.shift_id} onChange={() => setPick(c.shift_id)} />
+                <span className="min-w-0 flex-1"><b className="block">{c.name}</b><small className="muted">{`${when(c.starts_at, c.ends_at)} · ${c.shift_position}`}{weekNote(c.hours, c.overtime)}{!c.same_area ? " · Other area" : ""}</small></span></label>
             </li>)}
             {(kind === "offer" ? visiblePeople : visibleChoices).length === 0 && <li className="muted text-sm">{kind === "offer" ? "Nobody else in your area yet." : "No shifts in your area to swap for in the next four weeks."}</li>}
           </ul>
           {!others && hiddenCount > 0 && <button type="button" className="mb-4 text-sm underline" onClick={() => setOthers(true)}>Someone from another area will cover?</button>}
           {others && <p className="muted mb-4 text-xs">Someone from another area is marked for your manager, who decides.</p>}
+          {(kind === "offer" ? visiblePeople : visibleChoices).some(p => p.overtime) && <p className="muted mb-4 text-xs">People who'd go into overtime with this shift are last. Your manager sees it before approving.</p>}
         </>)}
         <Field label="Note (optional)"><input id="change-note" maxLength={300} value={note} placeholder="e.g. Family dinner" onChange={e => setNote(e.target.value)} /></Field>
         {error && <p role="alert" className="verdict-bad mb-3 text-sm">{error}</p>}

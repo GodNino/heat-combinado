@@ -205,6 +205,9 @@ export type ShiftChange = {
   requested_by: string; requester_name: string; taker_id: string | null; taker_name: string | null;
   shift_id: string; shift_position: string; shift_starts: string; shift_ends: string;
   swap_shift_id: string | null; swap_position: string | null; swap_starts: string | null; swap_ends: string | null;
+  /** The hours whoever takes the shift would have that week, and whether that's overtime (047). In a swap, the same for whoever asked. */
+  taker_hours?: number | string | null; taker_overtime?: boolean | null;
+  requester_hours?: number | string | null; requester_overtime?: boolean | null;
 };
 export const LIVE_CHANGES: ChangeStatus[] = ["open", "asked", "pending"];
 export const isLive = (change: Pick<ShiftChange, "status">) => LIVE_CHANGES.includes(change.status);

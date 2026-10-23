@@ -2394,6 +2394,10 @@ span.dash-name { text-decoration:none; }
 .sched-pick label.muted { cursor:not-allowed; }
 .sched-pick input { width:auto; flex-shrink:0; }
 .sched-pick li.muted { padding:12px; }
+.sched-pick label.overtime small { color:var(--c-text); }
+.sched-pick label.overtime { background:var(--c-warning-bg); }
+.sched-overtime { display:flex !important; align-items:flex-start; gap:5px; margin-top:4px; padding:4px 8px; border-radius:8px; border:1px solid var(--c-warning); background:var(--c-warning-bg); font-size:var(--text-xs); font-weight:600; }
+.sched-overtime svg { flex-shrink:0; margin-top:2px; }
 /* Home: what waits for a manager, who works today, and an employee's shifts waiting for them. */
 .attention { padding:14px 16px; }
 .attention-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:8px; margin:10px 0 0; padding:0; list-style:none; }
