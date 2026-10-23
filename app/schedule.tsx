@@ -3,7 +3,7 @@
 // person by person, see hours, overtime and conflicts as they go, and publish; the team sees their
 // shifts and their coworkers', and keeps their own availability and time off.
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Settings, Users, X } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Check, ChevronDown, Copy, Plus, Settings, SlidersHorizontal, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   PALETTE, POSITIONS, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, dayBlocks, dayKey,
@@ -120,12 +120,23 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   const [query, setQuery] = useState("");
   const [showConflicts, setShowConflicts] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
+  const viewRef = useRef<HTMLSpanElement | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const press = useRef<Press | null>(null);
   const live = useRef<Drag | null>(null);
   const dragged = useRef(false);
   const days = useMemo(() => weekDays(start), [start]);
   const end = useMemo(() => addDays(start, 7), [start]);
+
+  useEffect(() => {
+    if (!viewOpen) return;
+    const away = (e: Event) => { if (viewRef.current && !viewRef.current.contains(e.target as Node)) setViewOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setViewOpen(false); };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
+  }, [viewOpen]);
 
   const load = useCallback(async () => {
     setError("");
@@ -382,13 +393,16 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
       : <>
         <div className="sched-find">
           <span className="sched-search"><input type="search" aria-label="Search the team" placeholder="Search the team" value={query} onChange={e => setQuery(e.target.value)} /></span>
-          <span className="sched-viewby">
-            <label htmlFor="sched-viewby">View by</label>
-            <select id="sched-viewby" value={viewBy} onChange={e => setViewBy(e.target.value as ViewBy)}>
-              <option value="name">First name</option>
-              <option value="hours">Most hours</option>
-              <option value="position">Position</option>
-            </select>
+          <span className="sched-viewby" ref={viewRef}>
+            <button type="button" className={`sched-viewby-btn ${viewOpen ? "open" : ""}`} aria-haspopup="menu" aria-expanded={viewOpen} onClick={() => setViewOpen(o => !o)}>
+              <SlidersHorizontal size={14} aria-hidden="true" />
+              <span>{viewBy === "name" ? "First name" : viewBy === "hours" ? "Most hours" : "Position"}</span>
+              <ChevronDown size={14} aria-hidden="true" />
+            </button>
+            {viewOpen && <div className="sched-viewby-menu" role="menu" aria-label="View by">
+              <span className="sched-viewby-title">View by</span>
+              {([["name", "First name"], ["hours", "Most hours"], ["position", "Position"]] as const).map(([key, label]) => <button key={key} type="button" role="menuitemradio" aria-checked={viewBy === key} className={viewBy === key ? "on" : ""} onClick={() => { setViewBy(key); setViewOpen(false); }}>{label}{viewBy === key && <Check size={14} aria-hidden="true" />}</button>)}
+            </div>}
           </span>
         </div>
         <div className={`sched-scroll ${drag ? "dragging" : ""}`}>
