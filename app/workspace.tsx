@@ -147,7 +147,7 @@ function Brand() {
       aria-label="HEAT home"
     >
       <HeatLogo />
-      <span className="ml-2 rounded border border-current/20 px-2 py-1 text-xs font-normal tracking-normal">
+      <span className="ml-2 hidden rounded border border-current/20 px-2 py-1 text-xs font-normal tracking-normal sm:inline-block">
         v0.1
       </span>
     </a>
