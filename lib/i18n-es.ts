@@ -491,6 +491,7 @@ const PHRASES: Record<string, string> = {
   "Executive Chef": "Chef ejecutivo", "Head Chef": "Jefe de cocina", "Sous Chef": "Sous chef", "Chef de Partie": "Jefe de partida",
   "Line Cook": "Cocinero de línea", "Prep Cook": "Cocinero de preparación", "Pastry Chef": "Pastelero", "Sushi Chef": "Sushiman",
   "Expo": "Expo", "Dishwasher": "Lavaplatos", "Kitchen Manager": "Gerente de cocina",
+  "Front of house": "Salón",
   "Schedule: front of house": "Horario: salón", "Schedule: kitchen": "Horario: cocina", "Kitchen positions": "Puestos de cocina",
   "The head chef or sous chef builds these (Schedule: kitchen); everything else is front of house (Schedule: front of house). Team access builds both.": "Estos los arma el jefe de cocina o el sous chef (Horario: cocina); todo lo demás es salón (Horario: salón). Con acceso de Equipo se arman los dos.",
   "You build the kitchen schedule. Front-of-house shifts are shown for reference.": "Tú armas el horario de cocina. Los turnos del salón se muestran solo como referencia.",
