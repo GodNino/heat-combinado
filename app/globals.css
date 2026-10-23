@@ -2740,6 +2740,16 @@ span.dash-name { text-decoration:none; }
   :root:root:root:root:root:root:root .site-lang .lang-switch button { padding:0 8px; }
 }
 
+/* Landing page top bar on phones: no text wrapping in the buttons, smaller logo so everything fits on one line.
+   To undo, revert the commit that added this block. */
+@media (max-width: 420px) {
+  :root:root:root:root:root:root:root .site-actions .btn { white-space:nowrap; flex:none; }
+  :root:root:root:root:root:root:root .site-nav .site-logo { width:76px; flex:none; }
+  :root:root:root:root:root:root:root .site-nav .heat-logo, :root:root:root:root:root:root:root .site-nav .heat-logo img { width:100%; height:auto; }
+  :root:root:root:root:root:root:root .site-lang .lang-switch button { padding:0 8px; }
+  :root:root:root:root:root:root:root .site-nav-inner { gap:6px; }
+}
+
 /* Home, "Your next shift" week strip: keep the 16px margin when it scrolls on a phone, so the first day does not stick to the card edge.
    To undo, revert the commit that added this block. */
 @media (max-width: 639px) {
