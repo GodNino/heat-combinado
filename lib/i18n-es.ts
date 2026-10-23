@@ -214,6 +214,10 @@ const PHRASES: Record<string, string> = {
   "Remove chosen item": "Quitar el plato elegido", "Type a dish name": "Escribe el nombre de un plato", "Add row": "Agregar fila",
   "Choose who sees today’s board: everyone, or only the people you pick.": "Elige quién ve el pre-turno de hoy: todos o solo los que elijas.", "Board audience": "Quién lo ve",
   "Posted": "Publicado", "Write": "Escribir", "Could not load the pre-shift board.": "No se pudo cargar el pre-turno.", "The board could not be taken down. Please try again.": "No se pudo quitar el pre-turno. Intenta de nuevo.",
+  "Choose who sees today’s board: everyone, the people on today’s published schedule, or only the people you pick.": "Elige quién ve el pre-turno de hoy: todos, los que tienen turno publicado hoy o solo los que elijas.",
+  "Only the people with a published shift today will see it.": "Solo lo verán quienes tienen un turno publicado hoy.",
+  "No one has a published shift today. Publish today's schedule first, or send it to everyone.": "Nadie tiene un turno publicado hoy. Publica primero el horario de hoy o envíalo a todos.",
+  "No one has a published shift today. Send it to everyone, or pick who's on.": "Nadie tiene un turno publicado hoy. Envíalo a todos o elige quién está.",
   "Posted to the whole team.": "Publicado para todo el equipo.", "The board could not be posted. Please try again.": "No se pudo publicar el pre-turno. Intenta de nuevo.",
   "Add another focus item": "Agregar otro plato a impulsar", "Add a focus item": "Agregar un plato a impulsar", "Chosen item": "Plato elegido", "Posting…": "Publicando…",
   "Post to the floor": "Publicar al piso", "Could not load menu items.": "No se pudieron cargar los platos.",
@@ -565,6 +569,8 @@ const lower = (text: string) => (translateCore(text) ?? text).toLowerCase();
 
 // Sentences with a name or a number inside: the automatic quiz's questions, and a few counters.
 const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/^Working today · (\d+)$/, m => `Trabajan hoy · ${m[1]}`],
+  [/^Posted to the (\d+) (?:person|people) working today\.$/, m => m[1] === "1" ? "Publicado para la persona que trabaja hoy." : `Publicado para las ${m[1]} personas que trabajan hoy.`],
   [/^Which menu category contains (.+)\?$/, m => `¿En qué categoría del menú está ${m[1]}?`],
   [/^Which recorded description belongs to (.+)\?$/, m => `¿Qué descripción corresponde a ${m[1]}?`],
   [/^Which ingredient list is recorded for (.+)\?$/, m => `¿Qué ingredientes tiene ${m[1]}?`],

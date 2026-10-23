@@ -1091,28 +1091,36 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [teamOptions, setTeamOptions] = useState<{user_id: string; name: string}[]>([]);
-  const [audience, setAudience] = useState<"everyone" | "pick">("everyone");
+  const [audience, setAudience] = useState<"everyone" | "working" | "pick">("everyone");
   const [recipientIds, setRecipientIds] = useState<string[]>([]);
+  // Who has a published shift today: one tap sends the board to just them.
+  const [workingIds, setWorkingIds] = useState<string[]>([]);
   const sequence = useRef(0);
   const loadBoard = useCallback(async (prefill = false) => {
     const request = ++sequence.current;
     setLoading(true);setError("");setMessage("");
     try {
       if (!supabase) throw new Error("Please connect to your workspace and try again.");
-      const [result, team] = await Promise.all([
+      const [result, team, working] = await Promise.all([
         supabase.rpc("get_preshift_board", {rid: restaurant.id}),
         supabase.rpc("shift_team_options", {rid: restaurant.id}),
+        supabase.rpc("preshift_working_today", {rid: restaurant.id}),
       ]);
       if (result.error) throw new Error(result.error.message);
       if (team.error) throw new Error(team.error.message);
+      if (working.error) throw new Error(working.error.message);
       const data = result.data as ShiftBoardResponse;
       const recipients = data.board ? await supabase.rpc("shift_recipients", {note_id: data.board.id}) : {data: [], error: null};
       if (recipients.error) throw new Error(recipients.error.message);
       if (request !== sequence.current) return;
       const selected = (recipients.data as {user_id: string; name: string}[]).map(person => person.user_id);
+      const onToday = (working.data as {user_id: string}[]).map(person => person.user_id);
       setTeamOptions(team.data as {user_id: string; name: string}[]);
+      setWorkingIds(onToday);
       setRecipientIds(prefill ? selected : []);
-      setAudience(prefill && selected.length ? "pick" : "everyone");
+      // A board sent to exactly today's people reopens on "Working today".
+      const sameAsToday = selected.length > 0 && selected.length === onToday.length && selected.every(id => onToday.includes(id));
+      setAudience(!prefill || !selected.length ? "everyone" : sameAsToday ? "working" : "pick");
       setServiceDate(data.service_date);
       setNote(prefill ? data.board?.note ?? "" : "");
       // A board saved before the focus list existed still has its single item.
@@ -1154,6 +1162,7 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
     if (!supabase || busy || loading || !serviceDate) return;
     if (itemId || detail.trim()) {setError("Add the pending row or clear its fields before posting.");return;}
     if (!note.trim() && !focusIds.length && !entries.length) {setError("Write a note or add something first. To remove today’s board, use Delete.");return;}
+    if (audience === "working" && !workingIds.length) {setError("No one has a published shift today. Send it to everyone, or pick who's on.");return;}
     setBusy(true);setError("");setMessage("");
     try {
       const result = await supabase.rpc("save_preshift_board", {
@@ -1162,7 +1171,7 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
         board_entries: entries.map(entry => ({menu_item_id: entry.menu_item_id, status: entry.status, detail: entry.detail})),
       });
       if (result.error) throw new Error(result.error.message);
-      const selected = audience === "everyone" ? [] : recipientIds;
+      const selected = audience === "everyone" ? [] : audience === "working" ? workingIds : recipientIds;
       try {
         const saved = await supabase.rpc("set_shift_recipients", {note_id: result.data, learner_ids: selected});
         if (saved.error) throw new Error(saved.error.message);
@@ -1173,7 +1182,7 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
       const recipients = names.length <= 2 ? names.join(" and ") : `${names.slice(0, 2).join(", ")} and ${names.length - 2} ${names.length === 3 ? "other" : "others"}`;
       await loadBoard();
       notify("preshift_posted", result.data as string);
-      setMessage(names.length ? `Posted to ${recipients}.` : "Posted to the whole team.");
+      setMessage(audience === "working" ? `Posted to the ${selected.length} ${selected.length === 1 ? "person" : "people"} working today.` : names.length ? `Posted to ${recipients}.` : "Posted to the whole team.");
       onPosted();
     } catch (e) {
       setError(e instanceof Error ? e.message : "The board could not be posted. Please try again.");
@@ -1226,12 +1235,16 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
         </li>)}</ul>}
       </section>
       <fieldset disabled={busy} className="panel mb-6 p-5" aria-labelledby="shift-audience-heading">
-        <InfoRow info="Choose who sees today’s board: everyone, or only the people you pick." className="mb-3"><h2 id="shift-audience-heading" className="text-lg font-semibold">Who's working today</h2></InfoRow>
+        <InfoRow info="Choose who sees today’s board: everyone, the people on today’s published schedule, or only the people you pick." className="mb-3"><h2 id="shift-audience-heading" className="text-lg font-semibold">Who gets it</h2></InfoRow>
         <div className="category-tabs" aria-label="Board audience">
           <button type="button" aria-pressed={audience === "everyone"} onClick={() => {setAudience("everyone");setMessage("");}}>Everyone</button>
+          <button type="button" aria-pressed={audience === "working"} onClick={() => {setAudience("working");setMessage("");}}>{`Working today${workingIds.length ? ` · ${workingIds.length}` : ""}`}</button>
           <button type="button" aria-pressed={audience === "pick"} onClick={() => {setAudience("pick");setMessage("");}}>Pick who's on</button>
         </div>
-        {audience === "everyone" ? <p className="muted mt-3">Every employee will see today's board.</p> : <>
+        {audience === "everyone" ? <p className="muted mt-3">Every employee will see today's board.</p> : audience === "working" ? (workingIds.length ? <>
+          <p className="muted mt-3">Only the people with a published shift today will see it.</p>
+          <div className="board-pills mt-3">{workingIds.map(id => <span key={id} className="board-pill">{teamOptions.find(person => person.user_id === id)?.name || "Team member"}</span>)}</div>
+        </> : <p className="muted mt-3">No one has a published shift today. Publish today's schedule first, or send it to everyone.</p>) : <>
           <div className="my-3 flex gap-2">
             <button type="button" className="btn secondary" onClick={() => {setRecipientIds(teamOptions.map(person => person.user_id));setMessage("");}}>Select all</button>
             <button type="button" className="btn secondary" onClick={() => {setRecipientIds([]);setMessage("");}}>Clear</button>
