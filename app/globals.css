@@ -2757,3 +2757,11 @@ span.dash-name { text-decoration:none; }
   :root:root:root:root:root:root:root .sched-dayadd { margin-top:14px; }
   :root:root:root:root:root:root:root .sched-dayadd .category-tabs { flex-wrap:wrap; overflow:visible; padding-bottom:0; margin-top:6px; }
 }
+
+/* Schedule on phones: "Away" list under the day's shifts, and no drag note (nothing to drag on a phone).
+   To undo, revert the commit that added this block. */
+@media (max-width: 760px) {
+  :root:root:root:root:root:root:root .sched-dragnote { display:none; }
+  :root:root:root:root:root:root:root .sched-dayaway { margin-top:12px; }
+  :root:root:root:root:root:root:root .sched-dayaway p:not(.eyebrow) { margin:4px 2px 0; }
+}
