@@ -10,11 +10,11 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
-export type TourView = "home" | "library" | "allergy" | "preshift" | "team" | "dashboard" | "progress" | "reports";
+export type TourView = "home" | "library" | "allergy" | "preshift" | "team" | "dashboard" | "progress" | "reports" | "schedule";
 type Step = {title: string; body: string; view?: TourView; target?: string; cta?: {label: string; href: string}};
 
 // Bump when the tour changes enough that everyone should see it again.
-export const TOUR_VERSION = 1;
+export const TOUR_VERSION = 2;
 const STORAGE_KEY = "heat-tour-seen";
 
 export function tourSeen(user: User) {
@@ -38,7 +38,8 @@ export function tourSteps({manager, demo, restaurantName}: {manager: boolean; de
     : {title: "You're all set", body: manager ? "Start with your menu: the rest of HEAT builds on it." : "Good luck at your next service."};
   if (!manager) return [
     {title: "Welcome to HEAT", body: `A quick tour of how to get ready for service at ${restaurantName}. It takes about a minute.`},
-    {title: "Your home", body: "What to study next, tonight's pre-shift and your progress, all on one screen.", view: "home"},
+    {title: "Your home", body: "Your next shifts, tonight's pre-shift, what to study next and your progress, all on one screen.", view: "home", target: '[aria-label="Your week"]'},
+    {title: "Your schedule", body: "My shifts shows your week. Can't make one? Release it, offer it to someone or swap it; your manager approves. Mark when you can't work in My availability, and ask for days off in Time off.", view: "schedule", target: '.library-switch[aria-label="Schedule"]'},
     {title: "The menu", body: "Every dish, cocktail and wine. Tap one to see its card: ingredients, allergens and how it's served.", view: "library", target: ".menu-list > .compact-menu-row:first-child"},
     {title: "Quiz yourself", body: "Every card ends with QUIZ ME: a few questions, checked as you answer. 80% means you know it."},
     {title: "Allergy check", body: "Pick a guest's allergies to see what to avoid and what to confirm with the kitchen. HEAT never calls a dish safe: the kitchen always confirms.", view: "allergy", target: ".allergy-picker"},
@@ -48,16 +49,19 @@ export function tourSteps({manager, demo, restaurantName}: {manager: boolean; de
   ];
   return [
     {title: "Welcome to HEAT", body: demo
-      ? "This is your own copy of a sample restaurant. Change anything you like: it's yours for 7 days. This 2-minute tour shows you around."
-      : `A 2-minute tour of the things you'll use every day at ${restaurantName}. Skip it now and replay it any time.`},
-    {title: "Everything is here", body: "The menu takes you to the library, the allergy check, pre-shift, checklists, your team and more.", view: "home", target: '[data-tour="nav"]'},
+      ? "This is your own copy of a sample restaurant. Change anything you like: it's yours for 7 days. This short tour shows you around."
+      : `A short tour of the things you'll use every day at ${restaurantName}. Skip it now and replay it any time.`},
+    {title: "Everything is here", body: "The menu takes you to the schedule, the library, the allergy check, pre-shift, checklists, your team and more.", view: "home", target: '[data-tour="nav"]'},
+    {title: "What's waiting for you", body: "Your home starts with what needs a decision: time off, shift changes, urgent reports, quiz retakes. Tap one to go straight to it. Below, who's working today.", view: "home", target: ".attention"},
     {title: "Add a dish", body: "Every dish, cocktail and wine lives in the library. Tap Add menu item: a name, ingredients, allergens and a photo is all it takes.", view: "library", target: '[data-tour="add-item"]'},
     {title: "Open any dish", body: "Tap a dish to see the card your team studies, with a QUIZ ME button at the end. The quiz writes itself from the card.", view: "library", target: ".menu-list > .compact-menu-row:first-child"},
     {title: "Allergy check", body: "Pick a guest's allergies to see what to avoid, what to confirm with the kitchen and what has no listed match. HEAT never calls a dish safe.", view: "allergy", target: ".allergy-picker"},
-    {title: "Pre-shift", body: "Before service, post tonight's 86 list, the dishes to push and a note. Your team reads it on their phones.", view: "preshift"},
-    {title: "Invite your team", body: "Tap Invite employees, copy the link and send it. Whoever opens it joins this restaurant, ready to study.", view: "team", target: '[data-tour="invite"]'},
-    {title: "See how it's going", body: "Menu covered, quiz accuracy and weekly activity for your team, and for every location if you run a brand.", view: "dashboard", target: ".dash-tiles"},
-    {title: "End-of-shift report", body: "After service, send the night's report from here. HEAT fills in the 86 list and checklists; you add covers, issues and notes, and it goes to the GM, managers and owners.", view: "reports", target: '[data-tour="nav-reports"]'},
+    {title: "Pre-shift", body: "Before service, post tonight's 86 list, the dishes to push and a note. Send it to everyone, or only to who's working today: it reaches their phones.", view: "preshift"},
+    {title: "Build the week", body: "Drag shifts between days and people, copy last week, and see hours, overtime and conflicts as you go. Publish and everyone gets their shifts; Print gives you a sheet for the wall.", view: "schedule", target: ".sched-grid"},
+    {title: "Requests and time off", body: "Releases, swaps and covers always wait for a manager, with overtime flagged before you approve. A floor manager runs the front of house; the head chef or sous chef runs the kitchen.", view: "schedule", target: '.library-switch[aria-label="Schedule"]'},
+    {title: "Invite your team", body: "Tap Invite employees, copy the link and send it. Pick a position under FOH or BOH; whoever opens the link joins this restaurant, ready to study. Each person's access decides what they can change, schedules included.", view: "team", target: '[data-tour="invite"]'},
+    {title: "See how it's going", body: "Labor and service first: hours, overtime, covers and the issues from shift reports, next to the same days last week. Your team's training sits underneath.", view: "dashboard", target: ".ops-dash > .ops-head"},
+    {title: "End-of-shift report", body: "After service, send the night's report from here. HEAT fills in the 86 list and checklists; you add covers, issues and notes, and it goes to the GM, managers and owners. Reports can be edited, printed or deleted, and show who wrote and changed them.", view: "reports", target: '[data-tour="nav-reports"]'},
     replay,
     finish,
   ];

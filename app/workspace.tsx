@@ -11,10 +11,12 @@ import {
   useState,
   type FormEvent,
   type TouchEvent,
+  type ReactNode,
 } from "react";
 import { HeatLogo, HeatIcon } from "./heat-logo";
 import type { User } from "@supabase/supabase-js";
 import {
+  ChevronDown,
   RotateCcw,
   BarChart3,
   LayoutDashboard,
@@ -68,7 +70,9 @@ import { Tour, tourSeen, tourSteps } from "./tour";
 import { LastShiftNote, ShiftReports } from "./shift-report";
 import { LanguageSwitch, currentLang, setLang } from "./language";
 import { NotificationSwitch, notify } from "./notifications";
-import { MyWeek, NextShift, Schedule } from "./schedule";
+import { MyWeek, NextShift, Schedule, ShiftChangesWaiting, WhoWorksToday, type ScheduleTab } from "./schedule";
+import { FOH_POSITIONS, KITCHEN_POSITIONS, POSITIONS } from "@/lib/schedule";
+import { ManagerAttention, type AttentionTarget } from "./home-cards";
 
 // Every screen the workspace can show. Named once: it used to be spelled out in two places.
 type View = "tostudy" | "home" | "library" | "allergy" | "review" | "progress" | "team" | "preshift" | "words" | "standards" | "story" | "library-settings" | "checklists" | "locations" | "dashboard" | "reports" | "schedule";
@@ -1084,28 +1088,36 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [teamOptions, setTeamOptions] = useState<{user_id: string; name: string}[]>([]);
-  const [audience, setAudience] = useState<"everyone" | "pick">("everyone");
+  const [audience, setAudience] = useState<"everyone" | "working" | "pick">("everyone");
   const [recipientIds, setRecipientIds] = useState<string[]>([]);
+  // Who has a published shift today: one tap sends the board to just them.
+  const [workingIds, setWorkingIds] = useState<string[]>([]);
   const sequence = useRef(0);
   const loadBoard = useCallback(async (prefill = false) => {
     const request = ++sequence.current;
     setLoading(true);setError("");setMessage("");
     try {
       if (!supabase) throw new Error("Please connect to your workspace and try again.");
-      const [result, team] = await Promise.all([
+      const [result, team, working] = await Promise.all([
         supabase.rpc("get_preshift_board", {rid: restaurant.id}),
         supabase.rpc("shift_team_options", {rid: restaurant.id}),
+        supabase.rpc("preshift_working_today", {rid: restaurant.id}),
       ]);
       if (result.error) throw new Error(result.error.message);
       if (team.error) throw new Error(team.error.message);
+      if (working.error) throw new Error(working.error.message);
       const data = result.data as ShiftBoardResponse;
       const recipients = data.board ? await supabase.rpc("shift_recipients", {note_id: data.board.id}) : {data: [], error: null};
       if (recipients.error) throw new Error(recipients.error.message);
       if (request !== sequence.current) return;
       const selected = (recipients.data as {user_id: string; name: string}[]).map(person => person.user_id);
+      const onToday = (working.data as {user_id: string}[]).map(person => person.user_id);
       setTeamOptions(team.data as {user_id: string; name: string}[]);
+      setWorkingIds(onToday);
       setRecipientIds(prefill ? selected : []);
-      setAudience(prefill && selected.length ? "pick" : "everyone");
+      // A board sent to exactly today's people reopens on "Working today".
+      const sameAsToday = selected.length > 0 && selected.length === onToday.length && selected.every(id => onToday.includes(id));
+      setAudience(!prefill || !selected.length ? "everyone" : sameAsToday ? "working" : "pick");
       setServiceDate(data.service_date);
       setNote(prefill ? data.board?.note ?? "" : "");
       // A board saved before the focus list existed still has its single item.
@@ -1147,6 +1159,7 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
     if (!supabase || busy || loading || !serviceDate) return;
     if (itemId || detail.trim()) {setError("Add the pending row or clear its fields before posting.");return;}
     if (!note.trim() && !focusIds.length && !entries.length) {setError("Write a note or add something first. To remove today’s board, use Delete.");return;}
+    if (audience === "working" && !workingIds.length) {setError("No one has a published shift today. Send it to everyone, or pick who's on.");return;}
     setBusy(true);setError("");setMessage("");
     try {
       const result = await supabase.rpc("save_preshift_board", {
@@ -1155,7 +1168,7 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
         board_entries: entries.map(entry => ({menu_item_id: entry.menu_item_id, status: entry.status, detail: entry.detail})),
       });
       if (result.error) throw new Error(result.error.message);
-      const selected = audience === "everyone" ? [] : recipientIds;
+      const selected = audience === "everyone" ? [] : audience === "working" ? workingIds : recipientIds;
       try {
         const saved = await supabase.rpc("set_shift_recipients", {note_id: result.data, learner_ids: selected});
         if (saved.error) throw new Error(saved.error.message);
@@ -1166,7 +1179,7 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
       const recipients = names.length <= 2 ? names.join(" and ") : `${names.slice(0, 2).join(", ")} and ${names.length - 2} ${names.length === 3 ? "other" : "others"}`;
       await loadBoard();
       notify("preshift_posted", result.data as string);
-      setMessage(names.length ? `Posted to ${recipients}.` : "Posted to the whole team.");
+      setMessage(audience === "working" ? `Posted to the ${selected.length} ${selected.length === 1 ? "person" : "people"} working today.` : names.length ? `Posted to ${recipients}.` : "Posted to the whole team.");
       onPosted();
     } catch (e) {
       setError(e instanceof Error ? e.message : "The board could not be posted. Please try again.");
@@ -1219,12 +1232,16 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
         </li>)}</ul>}
       </section>
       <fieldset disabled={busy} className="panel mb-6 p-5" aria-labelledby="shift-audience-heading">
-        <InfoRow info="Choose who sees today’s board: everyone, or only the people you pick." className="mb-3"><h2 id="shift-audience-heading" className="text-lg font-semibold">Who's working today</h2></InfoRow>
+        <InfoRow info="Choose who sees today’s board: everyone, the people on today’s published schedule, or only the people you pick." className="mb-3"><h2 id="shift-audience-heading" className="text-lg font-semibold">Who gets it</h2></InfoRow>
         <div className="category-tabs" aria-label="Board audience">
           <button type="button" aria-pressed={audience === "everyone"} onClick={() => {setAudience("everyone");setMessage("");}}>Everyone</button>
+          <button type="button" aria-pressed={audience === "working"} onClick={() => {setAudience("working");setMessage("");}}>{`Working today${workingIds.length ? ` · ${workingIds.length}` : ""}`}</button>
           <button type="button" aria-pressed={audience === "pick"} onClick={() => {setAudience("pick");setMessage("");}}>Pick who's on</button>
         </div>
-        {audience === "everyone" ? <p className="muted mt-3">Every employee will see today's board.</p> : <>
+        {audience === "everyone" ? <p className="muted mt-3">Every employee will see today's board.</p> : audience === "working" ? (workingIds.length ? <>
+          <p className="muted mt-3">Only the people with a published shift today will see it.</p>
+          <div className="board-pills mt-3">{workingIds.map(id => <span key={id} className="board-pill">{teamOptions.find(person => person.user_id === id)?.name || "Team member"}</span>)}</div>
+        </> : <p className="muted mt-3">No one has a published shift today. Publish today's schedule first, or send it to everyone.</p>) : <>
           <div className="my-3 flex gap-2">
             <button type="button" className="btn secondary" onClick={() => {setRecipientIds(teamOptions.map(person => person.user_id));setMessage("");}}>Select all</button>
             <button type="button" className="btn secondary" onClick={() => {setRecipientIds([]);setMessage("");}}>Clear</button>
@@ -1306,7 +1323,36 @@ type TeamAttempt = {attempt_count: number; menu_item_id: string; item_name: stri
 type TeamAssignment = {id: string; menu_item_id: string; item_name: string; note: string; due_on: string | null; created_at: string};
 // Suggestions, not a list to choose from: every kitchen names its jobs differently,
 // and a restaurant that calls somebody a captain should be able to type captain.
-const TEAM_ROLES = ["Server", "Server assistant", "Bartender", "Barback", "Host", "Runner", "Busser", "Kitchen", "Sommelier", "Bar Manager", "Manager", "GM"];
+const TEAM_ROLES = POSITIONS;
+const POSITION_GROUPS = [
+  {key: "foh", label: "FOH", title: "Front of house", positions: FOH_POSITIONS},
+  {key: "boh", label: "BOH", title: "Kitchen", positions: KITCHEN_POSITIONS},
+] as const;
+const samePosition = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+// Positions in two short groups: FOH and BOH. Tapping one shows its positions; the group holding the
+// chosen position starts open and says which one it is. "Other" is for whatever this restaurant calls the job.
+function PositionChips({value, otherOn, onPick, onOther, before}: {value: string; otherOn: boolean; onPick: (position: string) => void; onOther: () => void; before?: ReactNode}) {
+  const holder = POSITION_GROUPS.find(g => g.positions.some(p => samePosition(p, value)));
+  const [open, setOpen] = useState<"foh" | "boh" | null>(holder?.key ?? null);
+  const shown = POSITION_GROUPS.find(g => g.key === open);
+  return <>
+    <div className="word-chips">
+      {before}
+      {POSITION_GROUPS.map(group => {
+        const picked = group.positions.find(p => samePosition(p, value));
+        return <button key={group.key} type="button" className="word-chip position-group" aria-expanded={open === group.key} aria-pressed={!!picked && !otherOn} title={group.title}
+          onClick={() => setOpen(open === group.key ? null : group.key)}>
+          <b>{group.label}</b>{picked && !otherOn ? <span>{` · ${picked}`}</span> : <small>{group.title}</small>}<ChevronDown size={14} aria-hidden="true" className={open === group.key ? "rotate-180" : ""} />
+        </button>;
+      })}
+      <button type="button" className="word-chip" aria-pressed={otherOn} onClick={onOther}><Plus size={14} />Other</button>
+    </div>
+    {shown && <div className="word-chips position-list" role="group" aria-label={shown.title}>
+      {shown.positions.map(position => <button key={position} type="button" className="word-chip" aria-pressed={!otherOn && samePosition(position, value)} onClick={() => onPick(position)}>{position}</button>)}
+    </div>}
+  </>;
+}
 
 // Which job an invite link is for (migration 042). "Anyone" is the restaurant's plain link; each
 // position has a link of its own, and whoever joins with it starts in that position.
@@ -1322,11 +1368,8 @@ function InviteFor({restaurantId, busy, action, current, onAnyone, onPick}: {res
   const isChip = TEAM_ROLES.some(value => value.toLowerCase() === current.toLowerCase());
   return <fieldset className="mb-4" disabled={busy}>
     <legend className="mb-2 block text-sm font-semibold">Link for</legend>
-    <div className="word-chips">
-      <button type="button" className="word-chip" aria-pressed={!current && !typing} onClick={() => {setTyping(false);onAnyone();}}>Anyone</button>
-      {TEAM_ROLES.map(value => <button key={value} type="button" className="word-chip" aria-pressed={!typing && current.toLowerCase() === value.toLowerCase()} onClick={() => {setTyping(false);pick(value);}}>{value}</button>)}
-      <button type="button" className="word-chip" aria-pressed={typing || (!!current && !isChip)} onClick={() => setTyping(true)}><Plus size={14} />Other</button>
-    </div>
+    <PositionChips value={current} otherOn={typing || (!!current && !isChip)} onPick={value => {setTyping(false);pick(value);}} onOther={() => setTyping(true)}
+      before={<button type="button" className="word-chip" aria-pressed={!current && !typing} onClick={() => {setTyping(false);onAnyone();}}>Anyone</button>} />
     {typing && <form className="mt-3 flex gap-2" onSubmit={event => {event.preventDefault();if (custom.trim()) {setTyping(false);pick(custom.trim());}}}>
       <input id="invite-position" aria-label="Position for this link" maxLength={40} value={custom} placeholder="Captain, maître d’, expo…" onChange={e => setCustom(e.target.value)} />
       <button className="btn secondary shrink-0" disabled={!custom.trim()}>Create link</button>
@@ -1354,7 +1397,11 @@ const ACCESS_AREAS: {key: string; label: string}[] = [
   {key: "standards", label: "Standards"},
   {key: "preshift", label: "Pre-shift"},
   {key: "team", label: "Team"},
+  {key: "schedule_foh", label: "Schedule: front of house"},
+  {key: "schedule_boh", label: "Schedule: kitchen"},
 ];
+// Team access builds the whole schedule, so it can also hand out the two schedule chips (048).
+const canGive = (key: string, mine: string[]) => mine.includes(key) || (key.startsWith("schedule_") && mine.includes("team"));
 function accessSummary(held: string[]) {
   if (held.length >= ACCESS_AREAS.length) return "Full access";
   if (!held.length) return "Read only";
@@ -1369,16 +1416,17 @@ function AccessPanel({restaurantId, member, current, myAccess, meId, busy, actio
   useEffect(() => {setPicked(current);}, [saved, member.user_id]);
   const firstName = member.name.trim().split(/\s+/)[0] || "They";
   const self = member.user_id === meId;
-  const missing = ACCESS_AREAS.some(area => !myAccess.includes(area.key));
+  const missing = ACCESS_AREAS.some(area => !canGive(area.key, myAccess));
   if (member.is_owner) return <section className="panel my-5 p-5"><h3 className="text-lg font-semibold">Can change</h3><p className="muted mt-2 text-sm">Everything. The owner&rsquo;s access is not a setting, so there is nothing here to switch off.</p></section>;
   return <section className="panel my-5 p-5">
     <h3 className="text-lg font-semibold">Can change</h3>
     <p className="muted mt-2 text-sm">{firstName} reads everything either way. Tick where they can add, edit and delete.</p>
     <div className="word-chips mt-4">{ACCESS_AREAS.map(area => {
       const held = picked.includes(area.key);
-      return <button key={area.key} type="button" className="word-chip" aria-pressed={held} disabled={busy || self || !myAccess.includes(area.key)} onClick={() => setPicked(held ? picked.filter(key => key !== area.key) : [...picked, area.key])}>{area.label}</button>;
+      return <button key={area.key} type="button" className="word-chip" aria-pressed={held} disabled={busy || self || !canGive(area.key, myAccess)} onClick={() => setPicked(held ? picked.filter(key => key !== area.key) : [...picked, area.key])}>{area.label}</button>;
     })}</div>
     <p className="muted mt-4 text-sm"><strong>Content library</strong> covers dishes, cocktails, wine &amp; sake &mdash; and their allergens. Anyone with it can change what a guest with an allergy is told.</p>
+    <p className="muted mt-2 text-sm"><strong>Schedule</strong>: a floor manager gets front of house, the head chef or sous chef gets kitchen. They build, publish and approve changes and time off for their side only. Team builds both.</p>
     {self && <p className="muted mt-2 text-sm">This is you. Nobody can change their own access &mdash; ask the owner or a GM.</p>}
     {!self && missing && <p className="muted mt-2 text-sm">Dimmed areas are ones you do not hold yourself. You can only hand out access you have.</p>}
     {!self && <button className="btn mt-4" disabled={busy || [...picked].sort().join(",") === saved} onClick={() => void action(async () => {
@@ -1633,7 +1681,7 @@ function TeamMemberDetail({restaurantId, restaurantName, member, needsPosition =
           typed, so somebody already called Server was only ever offered Server and Server assistant.
           The box is hidden until it is needed, because a chip already says what the title is. */}
         <fieldset className="field mt-4"><legend className="mb-2 block text-sm font-semibold">Role</legend>
-          <div className="word-chips">{TEAM_ROLES.map(value => <button key={value} type="button" className="word-chip" aria-pressed={!typing && role.trim().toLowerCase() === value.toLowerCase()} onClick={() => {setTyping(false);setRole(value);}}>{value}</button>)}<button type="button" className="word-chip" aria-pressed={typing} onClick={() => setTyping(true)}><Plus size={14} />Other</button></div>
+          <PositionChips value={role} otherOn={typing} onPick={value => {setTyping(false);setRole(value);}} onOther={() => setTyping(true)} />
           {typing && <><input id="team-member-role" className="mt-3" maxLength={40} value={role} placeholder="Captain, maître d’, expo…" onChange={e => setRole(e.target.value)} /><p className="muted mt-2 text-xs">Whatever this restaurant calls the job.</p></>}
         </fieldset>
         {needsPosition && !role.trim() && <p className="muted mt-3 text-xs">Choose a position to save. It's what the schedule uses for their shifts.</p>}
@@ -1779,7 +1827,17 @@ function Workspace({
     if (next !== "allergy" || view !== "allergy") setAllergyPick(ALLERGY_START);
     setDetailItem(null);setView(next); setContentType(nextType); setCategory(nextCategory); setQuery(""); setCameFrom(null);
     setQuizItem(null); setAdding(false); setEditing(undefined); setCreating(false); setNavOpen(false); setViewingMember(null);
-    setError(""); setMessage("");
+    setError(""); setMessage(""); setScheduleTab(null);
+  }
+  // Schedule straight on one of its tabs, from a chip on Home.
+  const [scheduleTab, setScheduleTab] = useState<ScheduleTab | null>(null);
+  function openSchedule(tab: ScheduleTab) { navigate("schedule"); setScheduleTab(tab); }
+  function openAttention(target: AttentionTarget) {
+    if (target === "shift_changes" || target === "released") openSchedule("requests");
+    else if (target === "time_off") openSchedule("timeoff");
+    else if (target === "positions") navigate("team");
+    else if (target === "urgent") navigate("reports");
+    else document.getElementById("retake-requests")?.scrollIntoView({behavior: "smooth", block: "start"});
   }
   const [inviteLink, setInviteLink] = useState("");
   // The plain link stays at hand while the manager tries the position links (042).
@@ -2406,8 +2464,8 @@ function Workspace({
               </div>}
               {dashboardScope === "brand" && ownsBrand && brand
                 ? <BrandDashboard key={brand.id} organization={brand} currentId={restaurant.id} onOpen={id => {setSelected(id);setDashboardScope("location");window.scrollTo(0, 0);}} />
-                : <ManagerDashboard key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} />}
-            </section> : null) : view === "schedule" ? <Schedule key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} userId={user.id} canManage={can("team") && !employeeView} setMessage={setMessage} /> : view === "reports" ? (can("preshift") || can("team") ? <ShiftReports key={restaurant.id} restaurant={restaurant} restaurants={restaurants} brand={brand} ownsBrand={ownsBrand} canWrite={can("preshift")} canManageRecipients={can("team")} setMessage={setMessage} /> : null) : view === "locations" ? (can("library") ? <Locations key={restaurant.id} userId={user.id} restaurant={restaurant} restaurants={restaurants} organizations={organizations} items={items} canImport={can("library")} busy={busy} action={action} setMessage={setMessage} onChanged={loadRestaurants} onItemsChanged={loadItems} onOpen={id => {setDetailItem(null);setSelected(id);setCategory("All");setQuery("");setNavOpen(false);setEmployeeView(false);setInviteLink("");window.scrollTo(0, 0);}} /> : null) : view === "words" ? <WordsManager key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} custom={customTerms} onChanged={loadGlossary} canEdit={can("words")} /> : view === "story" ? <Story key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} canEdit={can("words")} /> : view === "standards" ? <Standards key={restaurant.id} restaurantId={restaurant.id} canEdit={can("standards")} restaurantName={restaurant.name} /> : view === "checklists" ? <Checklists key={restaurant.id} restaurantId={restaurant.id} canManage={can("preshift")} /> : view === "team" ? (can("team") ? <section className="mx-auto max-w-3xl"><p className="eyebrow muted">Manager workspace · {restaurant.name}</p>{!viewingMember && <h1 className="mt-3 text-2xl font-semibold">Team</h1>}{!viewingMember && <><section className="panel mt-5 mb-5 p-5"><InfoRow info={<>Create an invitation link and share it through WhatsApp, text, or email. Employees can create an account or sign in to join {restaurant.name}.<br /><br />Links expire after 7 days. Creating a replacement disables the previous link.</>}><h2 className="text-xl font-semibold">Invite an employee</h2></InfoRow>                    {can("team") && (
+                : <ManagerDashboard key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenSchedule={() => openSchedule("week")} onOpenReports={() => navigate("reports")} />}
+            </section> : null) : view === "schedule" ? <Schedule key={`${restaurant.id}-${scheduleTab ?? ""}`} initialTab={scheduleTab} restaurantId={restaurant.id} restaurantName={restaurant.name} userId={user.id} canManage={(can("team") || can("schedule_foh") || can("schedule_boh")) && !employeeView} access={{all: can("team"), foh: can("schedule_foh"), kitchen: can("schedule_boh")}} setMessage={setMessage} /> : view === "reports" ? (can("preshift") || can("team") ? <ShiftReports key={restaurant.id} restaurant={restaurant} restaurants={restaurants} brand={brand} ownsBrand={ownsBrand} canWrite={can("preshift")} canManageRecipients={can("team")} setMessage={setMessage} /> : null) : view === "locations" ? (can("library") ? <Locations key={restaurant.id} userId={user.id} restaurant={restaurant} restaurants={restaurants} organizations={organizations} items={items} canImport={can("library")} busy={busy} action={action} setMessage={setMessage} onChanged={loadRestaurants} onItemsChanged={loadItems} onOpen={id => {setDetailItem(null);setSelected(id);setCategory("All");setQuery("");setNavOpen(false);setEmployeeView(false);setInviteLink("");window.scrollTo(0, 0);}} /> : null) : view === "words" ? <WordsManager key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} custom={customTerms} onChanged={loadGlossary} canEdit={can("words")} /> : view === "story" ? <Story key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} canEdit={can("words")} /> : view === "standards" ? <Standards key={restaurant.id} restaurantId={restaurant.id} canEdit={can("standards")} restaurantName={restaurant.name} /> : view === "checklists" ? <Checklists key={restaurant.id} restaurantId={restaurant.id} canManage={can("preshift")} /> : view === "team" ? (can("team") ? <section className="mx-auto max-w-3xl"><p className="eyebrow muted">Manager workspace · {restaurant.name}</p>{!viewingMember && <h1 className="mt-3 text-2xl font-semibold">Team</h1>}{!viewingMember && <><section className="panel mt-5 mb-5 p-5"><InfoRow info={<>Create an invitation link and share it through WhatsApp, text, or email. Employees can create an account or sign in to join {restaurant.name}.<br /><br />Links expire after 7 days. Creating a replacement disables the previous link.</>}><h2 className="text-xl font-semibold">Invite an employee</h2></InfoRow>                    {can("team") && (
                       <button
                         disabled={busy}
                         className="btn mt-6"
@@ -2500,7 +2558,7 @@ function Workspace({
             </section>;
           })() : view === "home" ? (
               <section>
-                {!isManager ? <EmployeeHome key={restaurant.id} schedule={<MyWeek key={`week-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />} onProgress={() => navigate("progress")} onChecklists={() => navigate("checklists")} restaurantId={restaurant.id} canDownloadBoard={can("preshift")} restaurantName={restaurant.name} onFocusQuiz={item => {navigate("library", "All", contentTypeOf(item));setDetailItem(item);setQuizEditing(false);setQuizItem(item);}} onBoardItem={item => {navigate("library", "All", contentTypeOf(item));setCameFrom({view: "home", label: "Pre-shift board"});openCard(item);}} user={user} items={items} progress={quizProgress} loading={itemsLoading || progressLoading} error={progressError || error} onRetry={() => {void loadItems();void loadProgress();}} onStudy={(item, mode) => {if(item && mode === "list"){setStudyType(CONTENT_TYPES.find(type => items.some(other => contentTypeOf(other) === type && !takenIds.has(other.id))) ?? "food");navigate("tostudy");return;}navigate("library", item ? categoryOf(item) : "All", item ? contentTypeOf(item) : "food");setHideTaken(false);if(item)setQuery(item.name);}} /> : <>
+                {!isManager ? <EmployeeHome key={restaurant.id} waiting={<ShiftChangesWaiting key={`waiting-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => openSchedule("mine")} setMessage={setMessage} />} schedule={<MyWeek key={`week-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />} onProgress={() => navigate("progress")} onChecklists={() => navigate("checklists")} restaurantId={restaurant.id} canDownloadBoard={can("preshift")} restaurantName={restaurant.name} onFocusQuiz={item => {navigate("library", "All", contentTypeOf(item));setDetailItem(item);setQuizEditing(false);setQuizItem(item);}} onBoardItem={item => {navigate("library", "All", contentTypeOf(item));setCameFrom({view: "home", label: "Pre-shift board"});openCard(item);}} user={user} items={items} progress={quizProgress} loading={itemsLoading || progressLoading} error={progressError || error} onRetry={() => {void loadItems();void loadProgress();}} onStudy={(item, mode) => {if(item && mode === "list"){setStudyType(CONTENT_TYPES.find(type => items.some(other => contentTypeOf(other) === type && !takenIds.has(other.id))) ?? "food");navigate("tostudy");return;}navigate("library", item ? categoryOf(item) : "All", item ? contentTypeOf(item) : "food");setHideTaken(false);if(item)setQuery(item.name);}} /> : <>
                 <p className="eyebrow muted mb-3">Home · {isManager ? "Manager workspace" : "Ready for service"}</p>
                 <h1 className="text-2xl font-semibold md:text-2xl">{`Welcome to ${restaurant.name}`}</h1>
                 <p className="muted mt-3 max-w-xl">Feel ready for every service.</p>
@@ -2508,9 +2566,11 @@ function Workspace({
                   {can("team") && <button className="btn secondary" style={{fontWeight: 700, border: "1.5px solid var(--c-text)"}} onClick={() => navigate("team")}>Assign study</button>}
                   <button className={can("team") ? "btn secondary" : "btn"} style={can("team") ? {fontWeight: 700, border: "1.5px solid var(--c-text)"} : undefined} onClick={() => navigate("library")}>Open library</button>
                 </div>}
+                {(can("team") || can("preshift") || can("library") || can("schedule_foh") || can("schedule_boh")) && restaurant && <ManagerAttention key={`attention-${restaurant.id}`} restaurantId={restaurant.id} canTeam={can("team")} canSchedule={can("team") || can("schedule_foh") || can("schedule_boh")} canReports={can("preshift") || can("team")} onOpen={openAttention} />}
                 {itemsLoading ? <p role="status" className="muted py-10">Loading your library…</p> : <>
                   {restaurant && <NextShift key={`shift-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />}
                   {(can("preshift") || can("team")) && restaurant && <LastShiftNote key={`last-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => navigate("reports")} />}
+                  {(can("preshift") || can("team") || can("schedule_foh") || can("schedule_boh")) && restaurant && <WhoWorksToday key={`today-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => openSchedule("week")} />}
                   {can("team") && restaurant && <TeamSnapshot key={`team-${restaurant.id}`} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenTeam={() => navigate("team")} />}
                   {can("team") && restaurant && <RecentCompletions key={`recent-${restaurant.id}`} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} />}
                   {can("preshift") && restaurant && <MyJobCard key={`job-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => navigate("checklists")} manager />}
@@ -2518,7 +2578,7 @@ function Workspace({
                   <h2 className="mb-4 text-xl font-semibold">Explore your menu</h2>
                   <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">{counts.filter(c => c.count > 0).map(c => <button key={c.name} className="panel category-card flex items-center gap-2 p-3 text-left" onClick={() => navigate("library", c.name, contentType)}><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{c.name}</span><span className="muted mt-1 block text-xs">{c.count} {c.count === 1 ? wordsIn(taxonomy, contentType).item_one : wordsIn(taxonomy, contentType).item_many}</span></span><ArrowRight size={15} className="muted shrink-0" /></button>)}</div></>}
                   {!items.length && <p className="panel muted mt-4 p-6">{can("library") ? "Add your first dish to start building the library." : "Your manager hasn’t added content yet."}</p>}
-                  {can("library") && restaurant && <RetakeRequests restaurantId={restaurant.id} />}
+                  {can("library") && restaurant && <div id="retake-requests"><RetakeRequests restaurantId={restaurant.id} /></div>}
                   {isManager && <AccountName user={user} />}
                 </>}
                 </>}

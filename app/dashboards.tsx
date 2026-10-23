@@ -14,6 +14,7 @@ import type { ProgressRow } from "./quiz";
 import type { Organization } from "./locations";
 import { useTaxonomy } from "./taxonomy";
 import { SectionInfo } from "./ui";
+import { OperationsDashboard } from "./ops-dashboard";
 
 type Week = {week_start: string; quizzes: number; learners: number};
 type LibraryStats = {content_type: ContentType; items: number; learners: number; taken: number; correct: number; total: number; needs_review: number; active_7d: number};
@@ -93,8 +94,10 @@ function WeeksChart({weeks, unit}: {weeks: Week[]; unit: "team" | "me"}) {
   </figure>;
 }
 
-export function ManagerDashboard({restaurantId, restaurantName, onOpenMember}: {restaurantId: string; restaurantName: string; onOpenMember: (id: string) => void}) {
+export function ManagerDashboard({restaurantId, restaurantName, onOpenMember, onOpenSchedule, onOpenReports}: {restaurantId: string; restaurantName: string; onOpenMember: (id: string) => void; onOpenSchedule?: () => void; onOpenReports?: () => void}) {
   const {labelFor} = useTaxonomy();
+  // The read-only previews supply sample training numbers only; operations need a real restaurant.
+  const sample = useContext(DashboardSource);
   const libraries = useRpc<LibraryStats>("location_summary", {rid: restaurantId});
   const weeks = useRpc<Week>("location_activity", {rid: restaurantId, weeks: 8});
   const roster = useRpc<Person>("team_learning_roster", {rid: restaurantId});
@@ -111,6 +114,7 @@ export function ManagerDashboard({restaurantId, restaurantName, onOpenMember}: {
     .sort((a, b) => a.covered - b.covered || a.name.localeCompare(b.name));
   const loading = !libraries.data;
   return <section aria-label={`${restaurantName} dashboard`}>
+    {!sample && <OperationsDashboard restaurantId={restaurantId} onOpenSchedule={onOpenSchedule} onOpenReports={onOpenReports} />}
     <div className="dash-tiles">
       <Tile value={loading ? "…" : String(learners)} label="Team members" />
       <Tile value={loading ? "…" : shown(covered)} label="Menu covered" note="Items each person has quizzed on" />

@@ -16,7 +16,11 @@ export type Unavailability = {id: string; user_id: string; weekday: number; star
 export type TimeOff = {id: string; user_id: string; starts_on: string; ends_on: string; note: string; status: "pending" | "approved" | "denied"; created_at?: string};
 
 export const OVERTIME_HOURS = 40;
-export const POSITIONS = ["Server", "Server assistant", "Bartender", "Barback", "Host", "Runner", "Busser", "Kitchen", "Sommelier", "Bar Manager", "Manager", "GM"];
+// Front of house and kitchen (back of house). Each side has its own schedulers (048): the floor
+// managers build the front of house, the head chef or sous chef the kitchen; Team access does both.
+export const FOH_POSITIONS = ["Server", "Server assistant", "Bartender", "Barback", "Host", "Runner", "Busser", "Sommelier", "Bar Manager", "Manager", "GM"];
+export const KITCHEN_POSITIONS = ["Executive Chef", "Head Chef", "Sous Chef", "Chef de Partie", "Line Cook", "Prep Cook", "Pastry Chef", "Sushi Chef", "Expo", "Dishwasher", "Kitchen Manager", "Kitchen"];
+export const POSITIONS = [...FOH_POSITIONS, ...KITCHEN_POSITIONS];
 export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 // The first day of the week `day` falls in. Weeks run Monday to Sunday unless the restaurant's
@@ -139,12 +143,14 @@ export type ScheduleSettings = {
   overtime_daily: number | null;
   shift_presets: ShiftPreset[];
   team_sees_all: boolean;
+  /** The positions that count as kitchen (back of house) here, or null for the usual ones (048). */
+  kitchen_positions: string[] | null;
   /** Releases, offers and swaps close this many hours before the shift (045). */
   change_cutoff_hours: number;
 };
 // What a restaurant without saved settings gets: the schedule as it always was.
 export const DEFAULT_SETTINGS: ScheduleSettings = {
-  week_start: 1, position_colors: {}, overtime_weekly: OVERTIME_HOURS, overtime_daily: null, shift_presets: [], team_sees_all: true, change_cutoff_hours: 24,
+  week_start: 1, position_colors: {}, overtime_weekly: OVERTIME_HOURS, overtime_daily: null, shift_presets: [], team_sees_all: true, change_cutoff_hours: 24, kitchen_positions: null,
 };
 // Whatever the database row holds, read safely: anything missing or malformed falls back to the default.
 export function readSettings(row: Partial<Record<keyof ScheduleSettings, unknown>> | null | undefined): ScheduleSettings {
@@ -159,6 +165,7 @@ export function readSettings(row: Partial<Record<keyof ScheduleSettings, unknown
     overtime_daily: row.overtime_daily == null || !(Number(row.overtime_daily) > 0) ? null : Number(row.overtime_daily),
     shift_presets: presets.filter((p): p is ShiftPreset => !!p && typeof p.name === "string" && time.test(p.start) && time.test(p.end)).slice(0, 12),
     team_sees_all: row.team_sees_all !== false,
+    kitchen_positions: Array.isArray(row.kitchen_positions) ? (row.kitchen_positions as unknown[]).filter((p): p is string => typeof p === "string") : null,
     change_cutoff_hours: Number.isInteger(Number(row.change_cutoff_hours)) && Number(row.change_cutoff_hours) >= 0 ? Number(row.change_cutoff_hours) : 24,
   };
 }
@@ -173,6 +180,8 @@ export const PALETTE: Record<string, string> = {
 export const SUGGESTED_COLORS: Record<string, string> = {
   "Server": "blue", "Server assistant": "teal", "Bartender": "red", "Barback": "orange", "Host": "purple",
   "Runner": "green", "Busser": "brown", "Kitchen": "yellow", "Sommelier": "pink", "Bar Manager": "red", "Manager": "gray", "GM": "gray",
+  "Executive Chef": "brown", "Head Chef": "brown", "Sous Chef": "orange", "Chef de Partie": "yellow", "Line Cook": "yellow", "Prep Cook": "green",
+  "Pastry Chef": "pink", "Sushi Chef": "teal", "Expo": "purple", "Dishwasher": "gray", "Kitchen Manager": "brown",
 };
 // A shift's colour comes from its position, not the person: a server who bartends on Friday is red on Friday.
 export function colorFor(position: string, colors: Record<string, string>) {
@@ -205,10 +214,25 @@ export type ShiftChange = {
   requested_by: string; requester_name: string; taker_id: string | null; taker_name: string | null;
   shift_id: string; shift_position: string; shift_starts: string; shift_ends: string;
   swap_shift_id: string | null; swap_position: string | null; swap_starts: string | null; swap_ends: string | null;
+  /** The hours whoever takes the shift would have that week, and whether that's overtime (047). In a swap, the same for whoever asked. */
+  taker_hours?: number | string | null; taker_overtime?: boolean | null;
+  requester_hours?: number | string | null; requester_overtime?: boolean | null;
 };
 export const LIVE_CHANGES: ChangeStatus[] = ["open", "asked", "pending"];
 export const isLive = (change: Pick<ShiftChange, "status">) => LIVE_CHANGES.includes(change.status);
 // Whether a shift starting then can still be released, offered or swapped.
 export function changeWindowOpen(startsAt: string, cutoffHours: number, now = Date.now()) {
   return Date.parse(startsAt) > now + cutoffHours * 3_600_000;
+}
+
+// ── Front of house and kitchen (048) ──
+const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+// Whether a position is kitchen (back of house) at this restaurant. The database asks the same question.
+export function isKitchen(position: string, settings: Pick<ScheduleSettings, "kitchen_positions">) {
+  return (settings.kitchen_positions ?? KITCHEN_POSITIONS).some(k => same(k, position));
+}
+export type ScheduleAccess = {all: boolean; foh: boolean; kitchen: boolean};
+// What this person may build: everything with Team access, otherwise their side of the house.
+export function canSchedule(position: string, access: ScheduleAccess, settings: Pick<ScheduleSettings, "kitchen_positions">) {
+  return access.all || (isKitchen(position, settings) ? access.kitchen : access.foh);
 }

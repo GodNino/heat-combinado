@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import {
   PALETTE, POSITIONS, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, dayBlocks, dayKey,
   dayTotals, defaultShift, formatHours, hoursByPerson, initials, isLive, movedShift, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, weekDays, weekStart,
-  changeWindowOpen, type ScheduleSettings, type Shift, type ShiftChange, type ShiftPreset, type TimeOff, type Unavailability, type Warning,
+  changeWindowOpen, canSchedule, isKitchen, KITCHEN_POSITIONS, type ScheduleAccess, type ScheduleSettings, type Shift, type ShiftChange, type ShiftPreset, type TimeOff, type Unavailability, type Warning,
 } from "@/lib/schedule";
 import { scheduleSheet } from "@/lib/sheets";
 import type { PushEvent } from "@/lib/push-messages";
@@ -58,8 +58,10 @@ const changeError = (message: string) => /shift_change|function .* does not exis
 const paint = (position: string, settings: ScheduleSettings) => { const color = colorFor(position, settings.position_colors); return color ? `pos pos-${color}` : ""; };
 const presetLabel = (preset: ShiftPreset) => { const today = new Date(); return `${shortTime(atTime(today, preset.start))}–${shortTime(atTime(today, preset.end))}`; };
 
-export function Schedule({restaurantId, restaurantName, userId, canManage, setMessage}: {restaurantId: string; restaurantName: string; userId: string; canManage: boolean; setMessage: (text: string) => void}) {
-  const [tab, setTab] = useState<Tab>(canManage ? "week" : "mine");
+export type ScheduleTab = Tab;
+const FULL_ACCESS: ScheduleAccess = {all: true, foh: true, kitchen: true};
+export function Schedule({restaurantId, restaurantName, userId, canManage, setMessage, initialTab, access = FULL_ACCESS}: {restaurantId: string; restaurantName: string; userId: string; canManage: boolean; setMessage: (text: string) => void; initialTab?: Tab | null; access?: ScheduleAccess}) {
+  const [tab, setTab] = useState<Tab>(initialTab ?? (canManage ? "week" : "mine"));
   const {settings, setSettings, missing} = useScheduleSettings(restaurantId);
   const {changes, reload: reloadChanges} = useShiftChanges(restaurantId);
   const awaitingManager = changes.filter(c => c.status === "pending").length;
@@ -80,11 +82,11 @@ export function Schedule({restaurantId, restaurantName, userId, canManage, setMe
       {tabs.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}
     </div>
     {!settings ? <p className="muted" role="status">Loading the schedule…</p> : <>
-    {tab === "week" && (canManage || settings.team_sees_all) && <WeekView restaurantId={restaurantId} restaurantName={restaurantName} canManage={canManage} setMessage={setMessage} settings={settings} settingsMissing={missing} onSettings={setSettings} changes={changes} />}
+    {tab === "week" && (canManage || settings.team_sees_all) && <WeekView restaurantId={restaurantId} restaurantName={restaurantName} canManage={canManage} setMessage={setMessage} settings={settings} settingsMissing={missing} onSettings={setSettings} changes={changes} access={access} />}
     {tab === "requests" && canManage && <ChangeRequests changes={changes} reload={reloadChanges} setMessage={setMessage} />}
     {tab === "mine" && <MyShifts restaurantId={restaurantId} userId={userId} settings={settings} changes={changes} reloadChanges={reloadChanges} setMessage={setMessage} />}
     {tab === "availability" && <Availability restaurantId={restaurantId} userId={userId} />}
-    {tab === "timeoff" && (canManage ? <TimeOffDecisions restaurantId={restaurantId} setMessage={setMessage} /> : <TimeOffRequests restaurantId={restaurantId} userId={userId} setMessage={setMessage} />)}
+    {tab === "timeoff" && (canManage ? <TimeOffDecisions restaurantId={restaurantId} setMessage={setMessage} access={access} settings={settings} /> : <TimeOffRequests restaurantId={restaurantId} userId={userId} setMessage={setMessage} />)}
     </>}
   </section>;
 }
@@ -99,7 +101,10 @@ type Press = {shift: Shift; x: number; y: number; dx: number; dy: number; width:
 const BLOCK_TEXT = {unavailable: "Unavailable", time_off: "Time off", time_off_pending: "Asked off"} as const;
 const cellKey = (userId: string, day: Date) => `${userId}|${dayKey(day)}`;
 
-function WeekView({restaurantId, restaurantName, canManage, setMessage, settings, settingsMissing, onSettings, changes}: {restaurantId: string; restaurantName: string; canManage: boolean; setMessage: (text: string) => void; settings: ScheduleSettings; settingsMissing: boolean; onSettings: (settings: ScheduleSettings) => void; changes: ShiftChange[]}) {
+function WeekView({restaurantId, restaurantName, canManage, setMessage, settings, settingsMissing, onSettings, changes, access}: {restaurantId: string; restaurantName: string; canManage: boolean; setMessage: (text: string) => void; settings: ScheduleSettings; settingsMissing: boolean; onSettings: (settings: ScheduleSettings) => void; changes: ShiftChange[]; access: ScheduleAccess}) {
+  // A floor manager builds the floor, a head chef the kitchen; Team access builds everything (048).
+  const mayEdit = (position: string) => canManage && canSchedule(position, access, settings);
+  const editablePositions = POSITIONS.filter(p => canSchedule(p, access, settings));
   const [start, setStart] = useState(() => weekStart(new Date(), settings.week_start));
   const [editingSettings, setEditingSettings] = useState(false);
   // A new first day of the week moves the grid to the week holding the day it showed.
@@ -139,7 +144,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   useEffect(() => { setShifts(null); void load(); }, [load]);
 
   const hours = useMemo(() => hoursByPerson(shifts ?? []), [shifts]);
-  const drafts = (shifts ?? []).filter(s => !s.published).length;
+  const drafts = (shifts ?? []).filter(s => !s.published && mayEdit(s.position)).length;
   const warningsOf = useMemo(() => {
     const found = new Map<string, Warning[]>();
     if (canManage) for (const shift of shifts ?? []) { const w = allWarnings(shift, shifts ?? [], unavailable, timeOff, settings.overtime_daily); if (w.length) found.set(shift.id, w); }
@@ -167,7 +172,8 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   }, [canManage, people, hours, query, viewBy]);
 
   function openNew(person: Person, day: Date) {
-    setDraft({user_id: person.user_id, position: person.role.trim() || "Server", day: dayKey(day), ...defaultShift(settings), note: ""});
+    const own = person.role.trim() || "Server";
+    setDraft({user_id: person.user_id, position: mayEdit(own) ? own : editablePositions[0] ?? own, day: dayKey(day), ...defaultShift(settings), note: ""});
   }
   function openShift(shift: Shift) {
     const from = new Date(shift.starts_at);
@@ -195,7 +201,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     if (last.error) throw new Error(last.error.message);
     // Only what isn't here already, so copying twice never doubles a shift.
     const here = new Set((shifts ?? []).map(s => `${s.user_id}|${Date.parse(s.starts_at)}`));
-    const rows = copiedWeek(last.data as Shift[]).filter(s => !here.has(`${s.user_id}|${Date.parse(s.starts_at)}`));
+    const rows = copiedWeek(last.data as Shift[]).filter(s => mayEdit(s.position) && !here.has(`${s.user_id}|${Date.parse(s.starts_at)}`));
     if (!rows.length) return setMessage("Nothing to copy: last week had no new shifts for this one.");
     const result = await supabase!.from("schedule_shifts").insert(rows);
     if (result.error) throw new Error(result.error.message);
@@ -236,7 +242,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   liftRef.current = lift;
 
   function grab(event: ReactPointerEvent<HTMLButtonElement>, shift: Shift) {
-    if (!canManage || busy || event.button !== 0 || shift.id.startsWith("copy-")) return;
+    if (!mayEdit(shift.position) || busy || event.button !== 0 || shift.id.startsWith("copy-")) return;
     const box = event.currentTarget.getBoundingClientRect();
     const touch = event.pointerType === "touch";
     press.current = {shift, x: event.clientX, y: event.clientY, dx: event.clientX - box.left, dy: event.clientY - box.top, width: box.width, touch};
@@ -362,10 +368,11 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
         </label>
         <button type="button" className="btn secondary" disabled={busy} onClick={copyLastWeek}><Copy size={15} />Copy last week</button>
         <button type="button" className="btn" disabled={busy || !drafts} onClick={publish}>{drafts ? `Publish ${drafts} ${drafts === 1 ? "change" : "changes"}` : "Published"}</button>
-        <button type="button" className="btn secondary sched-gear" aria-label="Schedule settings" title="Schedule settings" onClick={() => setEditingSettings(true)}><Settings size={17} /></button>
+        {access.all && <button type="button" className="btn secondary sched-gear" aria-label="Schedule settings" title="Schedule settings" onClick={() => setEditingSettings(true)}><Settings size={17} /></button>}
       </div>}
     </div>
     {error && <p role="alert" className="notice bad mb-4">{error}</p>}
+    {canManage && !access.all && <p className="sched-side muted mb-3 text-sm">{access.kitchen && !access.foh ? "You build the kitchen schedule. Front-of-house shifts are shown for reference." : access.foh && !access.kitchen ? "You build the front-of-house schedule. Kitchen shifts are shown for reference." : ""}</p>}
     {legend.length > 0 && <p className="sched-legend" aria-label="Position colours">{legend.map(([name, color]) => <span key={name} className={`pos-${color}`}><i aria-hidden="true" />{name}</span>)}</p>}
     {!shifts ? <p className="muted" role="status">Loading the schedule…</p>
       : !people.length || (!canManage && !rows.length && !query) ? <p className="panel p-5 muted">{canManage ? "Nobody on the team yet. Invite your team from Team." : "Nothing published for this week yet."}</p>
@@ -409,7 +416,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
                   {blocks.map((block, i) => <span key={i} className={`sched-block ${block.kind}`}><b>{BLOCK_TEXT[block.kind]}</b><small>{block.label}</small></span>)}
                   {theirs.map(shift => {
                     const warnings = showConflicts ? warningsOf.get(shift.id) ?? [] : [];
-                    return <button key={shift.id} type="button" disabled={!canManage}
+                    return <button key={shift.id} type="button" disabled={!mayEdit(shift.position)}
                       onPointerDown={e => grab(e, shift)} onContextMenu={e => { if (canManage) e.preventDefault(); }}
                       onClick={() => { if (!dragged.current && !shift.id.startsWith("copy-")) openShift(shift); }}
                       className={`sched-shift ${paint(shift.position, settings)} ${shift.published ? "" : "draft"} ${warnings.length ? "warn" : ""} ${drag?.shift.id === shift.id && !drag.copy ? "lifting" : ""}`}
@@ -451,7 +458,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
         </div>
         <fieldset disabled={busy}>
           <Field label="Who"><select id="shift-who" value={draft.user_id} onChange={e => setDraft({...draft, user_id: e.target.value})}>{people.map(p => <option key={p.user_id} value={p.user_id}>{p.name}</option>)}</select></Field>
-          <Field label="Position"><select id="shift-position" value={draft.position} onChange={e => setDraft({...draft, position: e.target.value})}>{(POSITIONS.includes(draft.position) ? POSITIONS : [draft.position, ...POSITIONS]).map(p => <option key={p}>{p}</option>)}</select></Field>
+          <Field label="Position"><select id="shift-position" value={draft.position} onChange={e => setDraft({...draft, position: e.target.value})}>{(editablePositions.includes(draft.position) ? editablePositions : [draft.position, ...editablePositions]).map(p => <option key={p}>{p}</option>)}</select></Field>
           <Field label="Day"><input id="shift-day" type="date" required value={draft.day} onChange={e => setDraft({...draft, day: e.target.value})} /></Field>
           {settings.shift_presets.length > 0 && <div className="sched-presets" role="group" aria-label="Quick shifts">{settings.shift_presets.map(preset =>
             <button key={preset.name} type="button" className="word-chip" aria-pressed={draft.start === preset.start && draft.end === preset.end} onClick={() => setDraft({...draft, start: preset.start, end: preset.end})}>{preset.name}<small>{presetLabel(preset)}</small></button>)}</div>}
@@ -468,7 +475,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
         </fieldset>
       </form>
     </div>}
-    {editingSettings && <SettingsSheet restaurantId={restaurantId} settings={settings} positions={positions} missing={settingsMissing}
+    {editingSettings && access.all && <SettingsSheet restaurantId={restaurantId} settings={settings} positions={positions} missing={settingsMissing}
       onClose={() => setEditingSettings(false)} onSaved={saved => {onSettings(saved);setEditingSettings(false);setMessage("Schedule settings saved.");}} />}
   </div>;
 }
@@ -493,6 +500,8 @@ function SettingsSheet({restaurantId, settings, positions, missing, onClose, onS
       restaurant_id: restaurantId, week_start: form.week_start, position_colors: form.position_colors,
       overtime_weekly: form.overtime_weekly, overtime_daily: daily ? form.overtime_daily ?? 8 : null,
       shift_presets: presets, team_sees_all: form.team_sees_all, change_cutoff_hours: form.change_cutoff_hours,
+      time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
+      kitchen_positions: form.kitchen_positions,
     };
     setBusy(true); setError("");
     const result = await supabase!.from("schedule_settings").upsert(row);
@@ -524,6 +533,13 @@ function SettingsSheet({restaurantId, settings, positions, missing, onClose, onS
               {Object.entries(PALETTE).map(([key, label]) => <button key={key} type="button" role="radio" aria-checked={current === key} className={`swatch pos-${key}`} title={label} aria-label={label} onClick={() => setColor(name, key)} />)}
             </span>
           </div>; })}
+        </fieldset>
+
+        <fieldset className="mb-5">
+          <legend className="mb-1 block text-sm font-semibold">Kitchen positions</legend>
+          <p className="muted mb-2 text-xs">The head chef or sous chef builds these (Schedule: kitchen); everything else is front of house (Schedule: front of house). Team access builds both.</p>
+          <div className="word-chips">{positions.map(name => { const on = isKitchen(name, form); return <button key={name} type="button" className="word-chip" aria-pressed={on}
+            onClick={() => { const list = form.kitchen_positions ?? KITCHEN_POSITIONS; setForm({...form, kitchen_positions: on ? list.filter(k => k.trim().toLowerCase() !== name.trim().toLowerCase()) : [...list, name]}); }}>{name}</button>; })}</div>
         </fieldset>
 
         <fieldset className="mb-5">
@@ -598,6 +614,8 @@ function ChangeCard({change, children}: {change: ShiftChange; children?: React.R
       {change.kind === "swap" && change.swap_starts && change.swap_ends && <span className="block text-sm"><ArrowLeftRight size={12} aria-hidden="true" className="mr-1 inline" />{`${when(change.swap_starts, change.swap_ends)} · ${change.swap_position}`}</span>}
       <small className="muted mt-1 block">{`Asked by ${change.requester_name || "Team member"}`}{change.taker_id ? ` · ${change.kind === "swap" ? `Swaps with ${change.taker_name || "Team member"}` : `Covering: ${change.taker_name || "Team member"}`}` : ""}</small>
       {change.note && <small className="muted block">{`“${change.note}”`}</small>}
+      {isLive(change) && change.taker_overtime && change.taker_name !== undefined && <small className="sched-overtime"><AlertTriangle size={12} aria-hidden="true" />{`If approved, ${change.taker_name || "they"} will have ${formatHours(Number(change.taker_hours))} that week: overtime`}</small>}
+      {isLive(change) && change.requester_overtime && <small className="sched-overtime"><AlertTriangle size={12} aria-hidden="true" />{`If approved, ${change.requester_name || "they"} will have ${formatHours(Number(change.requester_hours))} that week: overtime`}</small>}
     </span>
     {children && <span className="flex shrink-0 flex-wrap gap-2">{children}</span>}
   </li>;
@@ -682,8 +700,10 @@ function MyShifts({restaurantId, userId, settings, changes, reloadChanges, setMe
   </div>;
 }
 
-type Person2 = {user_id: string; name: string; role: string; same_area: boolean; busy: boolean};
-type SwapChoice = {shift_id: string; user_id: string; name: string; role: string; shift_position: string; starts_at: string; ends_at: string; same_area: boolean};
+type Person2 = {user_id: string; name: string; role: string; same_area: boolean; busy: boolean; hours?: number | string; overtime?: boolean};
+type SwapChoice = {shift_id: string; user_id: string; name: string; role: string; shift_position: string; starts_at: string; ends_at: string; same_area: boolean; hours?: number | string; overtime?: boolean};
+// "· 42h that week · Overtime": what taking the shift does to someone's week, when the database says.
+const weekNote = (hours?: number | string, overtime?: boolean) => hours === undefined || hours === null ? "" : ` · ${formatHours(Number(hours))} that week${overtime ? " · Overtime" : ""}`;
 
 // "Can't make it?": release to the area, give it to someone, or swap. Same area first; the rest of
 // the team appears only when asked for, and the manager sees that it crosses areas.
@@ -737,17 +757,18 @@ function ChangeSheet({shift, onClose, onDone}: {shift: Shift; onClose: () => voi
         {kind !== "release" && (!people || !choices ? <p className="muted mb-4" role="status">Loading your team…</p> : <>
           <ul className="sched-pick mb-2" role="radiogroup" aria-label={kind === "offer" ? "Who covers it" : "Which shift you take instead"}>
             {kind === "offer" && visiblePeople.map(p => <li key={p.user_id}>
-              <label className={p.busy ? "muted" : ""}><input type="radio" name="pick" value={p.user_id} disabled={p.busy} checked={pick === p.user_id} onChange={() => setPick(p.user_id)} />
-                <span className="min-w-0 flex-1"><b className="block">{p.name}</b><small className="muted">{p.role}{p.busy ? " · Working then" : ""}{!p.same_area ? " · Other area" : ""}</small></span></label>
+              <label className={`${p.busy ? "muted" : ""} ${p.overtime ? "overtime" : ""}`}><input type="radio" name="pick" value={p.user_id} disabled={p.busy} checked={pick === p.user_id} onChange={() => setPick(p.user_id)} />
+                <span className="min-w-0 flex-1"><b className="block">{p.name}</b><small className="muted">{p.role}{p.busy ? " · Working then" : weekNote(p.hours, p.overtime)}{!p.same_area ? " · Other area" : ""}</small></span></label>
             </li>)}
             {kind === "swap" && visibleChoices.map(c => <li key={c.shift_id}>
-              <label><input type="radio" name="pick" value={c.shift_id} checked={pick === c.shift_id} onChange={() => setPick(c.shift_id)} />
-                <span className="min-w-0 flex-1"><b className="block">{c.name}</b><small className="muted">{`${when(c.starts_at, c.ends_at)} · ${c.shift_position}`}{!c.same_area ? " · Other area" : ""}</small></span></label>
+              <label className={c.overtime ? "overtime" : ""}><input type="radio" name="pick" value={c.shift_id} checked={pick === c.shift_id} onChange={() => setPick(c.shift_id)} />
+                <span className="min-w-0 flex-1"><b className="block">{c.name}</b><small className="muted">{`${when(c.starts_at, c.ends_at)} · ${c.shift_position}`}{weekNote(c.hours, c.overtime)}{!c.same_area ? " · Other area" : ""}</small></span></label>
             </li>)}
             {(kind === "offer" ? visiblePeople : visibleChoices).length === 0 && <li className="muted text-sm">{kind === "offer" ? "Nobody else in your area yet." : "No shifts in your area to swap for in the next four weeks."}</li>}
           </ul>
           {!others && hiddenCount > 0 && <button type="button" className="mb-4 text-sm underline" onClick={() => setOthers(true)}>Someone from another area will cover?</button>}
           {others && <p className="muted mb-4 text-xs">Someone from another area is marked for your manager, who decides.</p>}
+          {(kind === "offer" ? visiblePeople : visibleChoices).some(p => p.overtime) && <p className="muted mb-4 text-xs">People who'd go into overtime with this shift are last. Your manager sees it before approving.</p>}
         </>)}
         <Field label="Note (optional)"><input id="change-note" maxLength={300} value={note} placeholder="e.g. Family dinner" onChange={e => setNote(e.target.value)} /></Field>
         {error && <p role="alert" className="verdict-bad mb-3 text-sm">{error}</p>}
@@ -979,9 +1000,10 @@ function TimeOffRequests({restaurantId, userId, setMessage}: {restaurantId: stri
   </div>;
 }
 
-function TimeOffDecisions({restaurantId, setMessage}: {restaurantId: string; setMessage: (text: string) => void}) {
+function TimeOffDecisions({restaurantId, setMessage, access, settings}: {restaurantId: string; setMessage: (text: string) => void; access: ScheduleAccess; settings: ScheduleSettings}) {
   const [requests, setRequests] = useState<TimeOff[] | null>(null);
   const [names, setNames] = useState<Map<string, string>>(new Map());
+  const [roles, setRoles] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState("");
   const today = dayKey(new Date());
   const load = useCallback(async () => {
@@ -992,6 +1014,7 @@ function TimeOffDecisions({restaurantId, setMessage}: {restaurantId: string; set
     if (list.error) return setError(list.error.message);
     setRequests(list.data as TimeOff[]);
     setNames(new Map(((team.data ?? []) as Person[]).map(p => [p.user_id, p.name])));
+    setRoles(new Map(((team.data ?? []) as Person[]).map(p => [p.user_id, p.role])));
   }, [restaurantId, today]);
   useEffect(() => {void load();}, [load]);
   async function decide(id: string, approve: boolean) {
@@ -1003,7 +1026,8 @@ function TimeOffDecisions({restaurantId, setMessage}: {restaurantId: string; set
     await load();
   }
   if (!requests) return <p className="muted" role="status">Loading…</p>;
-  const waiting = requests.filter(r => r.status === "pending"), approved = requests.filter(r => r.status === "approved");
+  const mine = requests.filter(r => canSchedule(roles.get(r.user_id) ?? "Server", access, settings));
+  const waiting = mine.filter(r => r.status === "pending"), approved = mine.filter(r => r.status === "approved");
   const row = (r: TimeOff, actions: boolean) => <li key={r.id} className="panel sched-mine">
     <span className="min-w-0 flex-1">
       <b className="block">{names.get(r.user_id) ?? "Team member"}</b>
@@ -1021,4 +1045,90 @@ function TimeOffDecisions({restaurantId, setMessage}: {restaurantId: string; set
     <p className="eyebrow muted mb-2">Coming up</p>
     {approved.length ? <ul className="space-y-2">{approved.map(r => row(r, false))}</ul> : <p className="panel p-5 muted">No approved time off coming up.</p>}
   </div>;
+}
+
+// ── On Home ──────────────────────────────────────────────────────────────────────────────────────
+// The manager's "who works today": today's shifts by position, in the restaurant's colours, with
+// drafts and shifts that are changing hands marked.
+export function WhoWorksToday({restaurantId, onOpen}: {restaurantId: string; onOpen: () => void}) {
+  const {settings} = useScheduleSettings(restaurantId);
+  const {changes} = useShiftChanges(restaurantId);
+  const [shifts, setShifts] = useState<Shift[] | null>(null);
+  const [names, setNames] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    let live = true;
+    const from = new Date(); from.setHours(0, 0, 0, 0);
+    void Promise.all([
+      supabase!.from("schedule_shifts").select("*").eq("restaurant_id", restaurantId).gte("starts_at", from.toISOString()).lt("starts_at", addDays(from, 1).toISOString()).order("starts_at"),
+      supabase!.rpc("schedule_team", {rid: restaurantId}),
+    ]).then(([today, team]) => {
+      if (!live) return;
+      setShifts(today.error ? [] : (today.data ?? []) as Shift[]);
+      setNames(new Map(((team.data ?? []) as Person[]).map(p => [p.user_id, p.name || "Team member"])));
+    });
+    return () => {live = false;};
+  }, [restaurantId]);
+  if (!shifts || !settings) return null;
+  const groups = [...new Map(shifts.map(s => [s.position.trim().toLowerCase(), s.position.trim()])).values()].sort((a, b) => a.localeCompare(b));
+  const people = new Set(shifts.map(s => s.user_id)).size;
+  const hours = shifts.reduce((sum, s) => sum + shiftHours(s), 0);
+  const changing = (shift: Shift) => changes.some(c => isLive(c) && (c.shift_id === shift.id || c.swap_shift_id === shift.id));
+  return <section className="panel today-floor mb-4" aria-label="Working today">
+    <div className="flex items-center gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="eyebrow muted">Working today</p>
+        <p className="mt-1 font-semibold">{shifts.length ? `${people} ${people === 1 ? "person" : "people"} · ${formatHours(hours)}` : "Nobody is scheduled today."}</p>
+      </div>
+      <button type="button" className="btn secondary shrink-0" onClick={onOpen}>{shifts.length ? "Schedule" : "Build the week"}<ArrowRight size={15} aria-hidden="true" /></button>
+    </div>
+    {groups.length > 0 && <div className="today-groups">{groups.map(group => <div key={group}>
+      <p className={`today-position ${paint(group, settings)}`}><i aria-hidden="true" />{group}</p>
+      <ul>{shifts.filter(s => s.position.trim().toLowerCase() === group.toLowerCase()).map(s => <li key={s.id} className={s.published ? "" : "draft"}>
+        <span className="min-w-0 flex-1 truncate">{names.get(s.user_id) ?? "Team member"}</span>
+        <span className="today-time">{shiftLabel(s)}</span>
+        {!s.published && <small className="muted">Draft</small>}
+        {changing(s) && <ArrowLeftRight size={13} aria-label="Change asked" />}
+      </li>)}</ul>
+    </div>)}</div>}
+  </section>;
+}
+
+// An employee's "waiting for you": shifts a coworker asked them to cover or swap, shifts up for grabs
+// in their position, and what happened to their own requests lately. Nothing to show, nothing shown.
+export function ShiftChangesWaiting({restaurantId, userId, onOpen, setMessage}: {restaurantId: string; userId: string; onOpen: () => void; setMessage: (text: string) => void}) {
+  const {changes, reload} = useShiftChanges(restaurantId);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  async function act(id: string, call: PromiseLike<{error: {message: string} | null}>, done: string, event: PushEvent) {
+    setBusy(id); setError("");
+    const {error} = await call;
+    setBusy("");
+    if (error) return setError(changeError(error.message));
+    notify(event, id);
+    setMessage(done);
+    await reload();
+  }
+  const forMe = changes.filter(c => c.status === "asked" && c.taker_id === userId);
+  const upForGrabs = changes.filter(c => c.status === "open" && c.requested_by !== userId);
+  const recent = Date.now() - 2 * 86_400_000;
+  const answered = changes.filter(c => c.requested_by === userId && (c.status === "approved" || c.status === "denied" || c.status === "declined")
+    && Date.parse(c.decided_at ?? c.created_at) > recent);
+  if (!forMe.length && !upForGrabs.length && !answered.length) return null;
+  return <section className="panel dash-panel waiting-card mb-4" aria-label="Shifts waiting for you">
+    <div className="mb-2 flex items-center gap-3">
+      <p className="eyebrow muted min-w-0 flex-1">Shifts waiting for you</p>
+      <button type="button" className="text-sm underline" onClick={onOpen}>My shifts</button>
+    </div>
+    {error && <p role="alert" className="verdict-bad mb-2 text-sm">{error}</p>}
+    <ul className="space-y-2">
+      {forMe.map(c => <ChangeCard key={c.id} change={c}>
+        <button type="button" className="btn" disabled={!!busy} onClick={() => void act(c.id, supabase!.rpc("answer_shift_change", {change: c.id, accept: true}), "Done. Your manager approves it next.", "shift_change_pending")}>{c.kind === "swap" ? "Swap" : "I'll cover it"}</button>
+        <button type="button" className="btn secondary" disabled={!!busy} onClick={() => void act(c.id, supabase!.rpc("answer_shift_change", {change: c.id, accept: false}), "You said no.", "shift_change_declined")}>No</button>
+      </ChangeCard>)}
+      {upForGrabs.map(c => <ChangeCard key={c.id} change={c}>
+        <button type="button" className="btn" disabled={!!busy} onClick={() => void act(c.id, supabase!.rpc("take_released_shift", {change: c.id}), "It's yours once your manager approves.", "shift_change_pending")}>Take it</button>
+      </ChangeCard>)}
+      {answered.map(c => <ChangeCard key={c.id} change={c} />)}
+    </ul>
+  </section>;
 }
