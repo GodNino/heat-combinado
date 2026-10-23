@@ -2640,3 +2640,11 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .report-row.report-row-2 { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0 12px; }
 :root:root:root:root:root:root:root .report-service { margin-bottom:14px; }
 :root:root:root:root:root:root:root .report-service .category-tabs { padding-bottom:0; }
+
+/* ===== Shift report: the three switches (tabs, How did the service go, Which reports) are sized like the app's chips, 30px tall, 12px text, one line. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .library-switch.report-switch { padding:3px; gap:3px; }
+:root:root:root:root:root:root:root .library-switch.report-switch button { min-height:30px; padding:0 10px; font-size:12px; font-weight:600; line-height:1; white-space:nowrap; }
+
+/* ===== Shift report: the "Want to add more?" area under the notes, set apart with a thin line and a title. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .report-add { margin-top:16px; padding-top:14px; border-top:1px solid color-mix(in srgb, var(--c-muted) 30%, transparent); }
+:root:root:root:root:root:root:root .report-add .report-chips { margin-top:10px; }
