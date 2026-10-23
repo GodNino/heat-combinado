@@ -68,8 +68,11 @@ function ReportForm({initial, before, busy, error, submitText, footer, onSubmit,
   return <form onSubmit={event => {event.preventDefault(); onSubmit(v);}}>
     {before}
     <div className="panel dash-panel">
-      <div className="report-row">
-        <Field label="Service"><select id="report-service" value={v.label} onChange={e => set({label: e.target.value})}>{services.map(s => <option key={s}>{s}</option>)}</select></Field>
+      <div className="report-service">
+        <p className="report-label">Service</p>
+        <div className="category-tabs" role="radiogroup" aria-label="Service">{services.map(s => <button key={s} type="button" role="radio" aria-checked={v.label === s} aria-pressed={v.label === s} onClick={() => set({label: s})}>{s}</button>)}</div>
+      </div>
+      <div className="report-row report-row-2">
         <Field label="Covers"><input id="report-covers" type="number" inputMode="numeric" min={0} max={100000} placeholder="e.g. 180" value={v.covers} onChange={e => set({covers: e.target.value})} /></Field>
         <Field label="Sales (optional)"><input id="report-sales" type="number" inputMode="decimal" min={0} step="0.01" placeholder="e.g. 14250" value={v.sales} onChange={e => set({sales: e.target.value})} /></Field>
       </div>
