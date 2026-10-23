@@ -2726,3 +2726,10 @@ span.dash-name { text-decoration:none; }
   :root:root:root:root:root:root:root .site-lang .lang-switch { gap:6px; }
   :root:root:root:root:root:root:root .site-lang .lang-switch button { padding:0 10px; }
 }
+
+/* Home, "Your next shift" week strip: keep the 16px margin when it scrolls on a phone, so the first day does not stick to the card edge.
+   To undo, revert the commit that added this block. */
+@media (max-width: 639px) {
+  :root:root:root:root:root:root:root .my-week-days { scroll-padding-inline:16px; }
+  :root:root:root:root:root:root:root .my-week-bar { padding-right:2px; }
+}
