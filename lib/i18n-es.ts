@@ -317,7 +317,7 @@ const PHRASES: Record<string, string> = {
   "End of shift": "Fin de turno", "Tonight's report": "Reporte de hoy", "Past reports": "Reportes anteriores", "Who gets it": "Quién lo recibe",
   "Already in HEAT tonight": "Ya está en HEAT hoy", "Taken from tonight's pre-shift, checklists and quizzes when you submit. Nothing to type.": "Se toma del pre-turno, los checklists y los quizzes de hoy al enviarlo. No hay que escribir nada.",
   "No pre-shift, checklists or quizzes recorded today.": "Hoy no hay pre-turno, checklists ni quizzes registrados.", "Service": "Servicio", "Covers": "Cubiertos", "Sales (optional)": "Ventas (opcional)",
-  "How did the night go?": "¿Cómo estuvo la noche?", "How did the service go?": "¿Cómo estuvo el servicio?", "Great": "Muy bien", "OK": "Normal", "Rough": "Difícil", "Anything to flag?": "¿Algo que reportar?", "Want to add more?": "¿Quieres agregar algo más?", "Optional. Tap one to add a box for it to this report.": "Opcional. Toca uno para agregar un cuadro a este reporte.",
+  "How did the night go?": "¿Cómo estuvo la noche?", "How did the service go?": "¿Cómo estuvo el servicio?", "Great": "Muy bien", "OK": "Normal", "Rough": "Difícil", "Anything to flag?": "¿Algo que reportar?", "Submit report": "Enviar reporte", "Guest complaint": "Queja de cliente", "Dishes where the latest quiz score is under 80%. Tap a name to open them.": "Platillos donde el último quiz salió por debajo de 80%. Toca un nombre para abrirlos.", "Want to add more?": "¿Quieres agregar algo más?", "Optional. Tap one to add a box for it to this report.": "Opcional. Toca uno para agregar un cuadro a este reporte.",
   "Tap what happened and add a line. Allergy incidents and injuries mark the report urgent.": "Toca lo que pasó y agrega una línea. Los incidentes de alergia y las lesiones marcan el reporte como urgente.",
   "Guest complaint or comp": "Queja o cortesía", "Allergy incident": "Incidente de alergia", "Injury or safety": "Lesión o seguridad", "Equipment": "Equipo de cocina",
   "Staff": "Personal", "Urgent": "Urgente", "What happened, and what you did about it": "Qué pasó y qué hiciste", "Low stock / to order": "Poco inventario / por pedir",
@@ -733,6 +733,8 @@ const lower = (text: string) => (translateCore(text) ?? text).toLowerCase();
 
 // Sentences with a name or a number inside: the automatic quiz's questions, and a few counters.
 const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/^(\d+) results? needs? review$/, m => `${m[1]} ${m[1] === "1" ? "resultado por revisar" : "resultados por revisar"}`],
+  [/^(\d+) (?:dish|dishes) under 80%$/, m => `${m[1]} ${m[1] === "1" ? "platillo" : "platillos"} por debajo de 80%`],
   [/^A short tour of the things you'll use every day at (.+)\. Skip it now and replay it any time\.$/, m => `Un tour corto de lo que usarás cada día en ${m[1]}. Sáltalo ahora y repítelo cuando quieras.`],
   [/^Working today · (\d+)$/, m => `Trabajan hoy · ${m[1]}`],
   [/^(\d+) quiz results? to review$/, m => `${m[1]} ${m[1] === "1" ? "resultado de quiz por revisar" : "resultados de quiz por revisar"}`],

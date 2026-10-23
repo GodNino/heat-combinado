@@ -3,7 +3,7 @@
 // managers and owners. HEAT fills in what it already knows; the manager adds the night in a few taps,
 // and submitting saves it here and emails it (see app/api/shift-report/route.ts).
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Pencil, Plus, Trash2, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Restaurant } from "@/lib/menu";
 import { ISSUE_KINDS, MOODS, SERVICES, URGENT_KINDS, heatLines, money, serviceDate, serviceDay, type FromHeat, type IssueKind, type Mood, type ShiftReport } from "@/lib/shift-report";
@@ -91,7 +91,7 @@ function ReportForm({initial, before, busy, error, submitText, footer, onSubmit,
 
     <div className="panel dash-panel">
       <SectionInfo heading="Anything to flag?">Tap what happened and add a line. Allergy incidents and injuries mark the report urgent.</SectionInfo>
-      <div className="report-chips">{(Object.keys(ISSUE_KINDS) as IssueKind[]).map(kind => <button key={kind} type="button" className="btn secondary" onClick={() => set({issues: [...v.issues, {kind, note: ""}]})}><Plus size={14} />{ISSUE_KINDS[kind]}</button>)}</div>
+      <div className="report-chips report-flags">{(Object.keys(ISSUE_KINDS) as IssueKind[]).map(kind => { const on = v.issues.some(issue => issue.kind === kind); return <button key={kind} type="button" className={`btn secondary${on ? " report-flag-on" : ""}`} aria-pressed={on} onClick={() => set({issues: [...v.issues, {kind, note: ""}]})}>{on ? <Check size={14} /> : <Plus size={14} />}{kind === "complaint" ? "Guest complaint" : ISSUE_KINDS[kind]}</button>; })}</div>
       {v.issues.map((issue, index) => <div key={index} className="report-issue">
         <div className="flex items-center gap-2">
           <b className="text-sm">{ISSUE_KINDS[issue.kind]}</b>
@@ -105,11 +105,10 @@ function ReportForm({initial, before, busy, error, submitText, footer, onSubmit,
 
     <div className="panel dash-panel">
       <Field label="For the next shift"><textarea id="report-next" rows={3} maxLength={1000} placeholder="What the opening manager needs to know" value={v.next_shift} onChange={e => set({next_shift: e.target.value})} /></Field>
-      {optional.filter(n => open[n.key]).map(n => <Field key={n.key} label={n.label}><textarea id={n.id} rows={n.rows} maxLength={n.max} placeholder={n.hint} value={v[n.key]} onChange={e => set(n.key === "low_stock" ? {low_stock: e.target.value} : n.key === "shoutouts" ? {shoutouts: e.target.value} : {notes: e.target.value})} /></Field>)}
-      {optional.some(n => !open[n.key]) && <div className="report-add">
-        <SectionInfo heading="Want to add more?">Optional. Tap one to add a box for it to this report.</SectionInfo>
-        <div className="report-chips" role="group" aria-label="Add to the report">{optional.filter(n => !open[n.key]).map(n => <button key={n.key} type="button" className="btn secondary" onClick={() => setOpen(current => ({...current, [n.key]: true}))}><Plus size={14} />{n.label}</button>)}</div>
-      </div>}
+      <div className="report-folds">{optional.map(n => <div key={n.key} className="report-fold">
+        <button type="button" className="report-fold-head" aria-expanded={open[n.key]} aria-controls={n.id} onClick={() => setOpen(current => ({...current, [n.key]: !current[n.key]}))}><span>{n.label}</span><ChevronDown size={18} aria-hidden="true" /></button>
+        {open[n.key] && <textarea id={n.id} aria-label={n.label} rows={n.rows} maxLength={n.max} placeholder={n.hint} value={v[n.key]} onChange={e => set(n.key === "low_stock" ? {low_stock: e.target.value} : n.key === "shoutouts" ? {shoutouts: e.target.value} : {notes: e.target.value})} />}
+      </div>)}</div>
     </div>
 
     {error && <p role="alert" className="notice bad mb-4">{error}</p>}
@@ -166,7 +165,7 @@ function TonightReport({restaurant, setMessage, onSent}: {restaurant: Restaurant
 
   const known = draft ? heatLines(draft) : [];
   return <ReportForm initial={emptyReport()} busy={busy} error={error} onSubmit={v => void submit(v)}
-    submitText={label => `Submit ${label.toLowerCase()} report`}
+    submitText={() => "Submit report"}
     footer={`Goes to the owners and everyone who manages ${restaurant.name}. Sending again tonight replaces it.`}
     before={<div className="panel dash-panel">
       <SectionInfo heading="Already in HEAT tonight">Taken from tonight's pre-shift, checklists and quizzes when you submit. Nothing to type.</SectionInfo>
