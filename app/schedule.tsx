@@ -121,6 +121,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   const [showConflicts, setShowConflicts] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
+  const [phoneDay, setPhoneDay] = useState(-1);
   const viewRef = useRef<HTMLSpanElement | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const press = useRef<Press | null>(null);
@@ -457,7 +458,30 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
             </td>; })}
           </tr></tfoot>
         </table>
-      </div></>}
+      </div>
+      <div className="sched-daylist">
+        {(() => {
+          const pick = phoneDay >= 0 ? phoneDay : Math.max(0, days.findIndex(d => dayKey(d) === today));
+          const dayList = rows.flatMap(person => (shifts ?? []).filter(s => s.user_id === person.user_id && dayKey(new Date(s.starts_at)) === dayKey(days[pick])).map(shift => ({person, shift})));
+          return <>
+            <div className="sched-daypick" role="group" aria-label="Day">{days.map((day, i) => <button key={day.toISOString()} type="button" aria-pressed={i === pick} className={dayKey(day) === today ? "today" : ""} onClick={() => setPhoneDay(i)}><span>{day.toLocaleDateString("en-US", {weekday: "short"})}</span><b>{day.getDate()}</b></button>)}</div>
+            <p className="sched-dayhead"><b>{dayHeading(days[pick])}</b></p>
+            {dayList.length ? dayList.map(({person, shift}) => {
+              const warnings = showConflicts ? warningsOf.get(shift.id) ?? [] : [];
+              return <button key={shift.id} type="button" disabled={!mayEdit(shift.position)} onClick={() => { if (!shift.id.startsWith("copy-")) openShift(shift); }} className={`sched-dayrow ${paint(shift.position, settings)} ${shift.published ? "" : "draft"}`}>
+                <span className="sched-avatar" aria-hidden="true">{initials(person.name)}</span>
+                <span className="sched-dayname">{person.name}</span>
+                <span className="sched-daycard">{card(shift, warnings)}</span>
+              </button>;
+            }) : <p className="muted text-sm">No shifts this day.</p>}
+            {canManage && <div className="sched-dayadd">
+              <p className="eyebrow muted">Add a shift for</p>
+              <div className="category-tabs">{rows.map(person => <button key={person.user_id} type="button" onClick={() => openNew(person, days[pick])}>{person.name}</button>)}</div>
+            </div>}
+          </>;
+        })()}
+      </div>
+      </>}
     {canManage && shifts && shifts.length > 0 && <p className="muted mt-3 text-xs">{"Drag a shift to move it to another day or person. Hold Alt (Option on a Mac) as you drop to copy it instead; on a phone, hold the shift for a moment to pick it up."}</p>}
     {canManage && shifts && shifts.length > 0 && <p className="muted mt-1 text-xs">{`Dashed shifts are drafts: the team sees them once you publish. Total this week: ${formatHours(total)}.`}</p>}
 
