@@ -65,6 +65,13 @@ function ReportForm({initial, before, busy, error, submitText, footer, onSubmit,
   const [v, setV] = useState<ReportValues>(initial);
   const set = (change: Partial<ReportValues>) => setV(current => ({...current, ...change}));
   const services = SERVICES.includes(v.label as typeof SERVICES[number]) ? SERVICES : [v.label, ...SERVICES];
+  // Optional notes start as "+" buttons (like the flags above) and open into a field; a field that already has text stays open.
+  const optional = [
+    {key: "low_stock" as const, label: "Low stock / to order", id: "report-low", rows: 2, max: 1000, hint: "e.g. Uni, yuzu, Albariño"},
+    {key: "shoutouts" as const, label: "Shout-outs", id: "report-shout", rows: 2, max: 1000, hint: "Who did great today"},
+    {key: "notes" as const, label: "Anything else", id: "report-notes", rows: 4, max: 4000, hint: "Write it the way you always have"},
+  ];
+  const [open, setOpen] = useState({low_stock: initial.low_stock !== "", shoutouts: initial.shoutouts !== "", notes: initial.notes !== ""});
   return <form onSubmit={event => {event.preventDefault(); onSubmit(v);}}>
     {before}
     <div className="panel dash-panel">
@@ -97,10 +104,9 @@ function ReportForm({initial, before, busy, error, submitText, footer, onSubmit,
     </div>
 
     <div className="panel dash-panel">
-      <Field label="Low stock / to order"><textarea id="report-low" rows={2} maxLength={1000} placeholder="e.g. Uni, yuzu, Albariño" value={v.low_stock} onChange={e => set({low_stock: e.target.value})} /></Field>
-      <Field label="Shout-outs"><textarea id="report-shout" rows={2} maxLength={1000} placeholder="Who did great today" value={v.shoutouts} onChange={e => set({shoutouts: e.target.value})} /></Field>
-      <Field label="For the next shift"><textarea id="report-next" rows={2} maxLength={1000} placeholder="What the opening manager needs to know" value={v.next_shift} onChange={e => set({next_shift: e.target.value})} /></Field>
-      <Field label="Anything else"><textarea id="report-notes" rows={4} maxLength={4000} placeholder="Write it the way you always have" value={v.notes} onChange={e => set({notes: e.target.value})} /></Field>
+      <Field label="For the next shift"><textarea id="report-next" rows={3} maxLength={1000} placeholder="What the opening manager needs to know" value={v.next_shift} onChange={e => set({next_shift: e.target.value})} /></Field>
+      <div className="report-chips" role="group" aria-label="Add to the report">{optional.filter(n => !open[n.key]).map(n => <button key={n.key} type="button" className="btn secondary" onClick={() => setOpen(current => ({...current, [n.key]: true}))}><Plus size={14} />{n.label}</button>)}</div>
+      {optional.filter(n => open[n.key]).map(n => <Field key={n.key} label={n.label}><textarea id={n.id} rows={n.rows} maxLength={n.max} placeholder={n.hint} value={v[n.key]} onChange={e => set(n.key === "low_stock" ? {low_stock: e.target.value} : n.key === "shoutouts" ? {shoutouts: e.target.value} : {notes: e.target.value})} /></Field>)}
     </div>
 
     {error && <p role="alert" className="notice bad mb-4">{error}</p>}
