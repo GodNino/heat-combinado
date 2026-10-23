@@ -733,6 +733,7 @@ const lower = (text: string) => (translateCore(text) ?? text).toLowerCase();
 
 // Sentences with a name or a number inside: the automatic quiz's questions, and a few counters.
 const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/^(\d+) results? needs? review$/, m => `${m[1]} ${m[1] === "1" ? "resultado por revisar" : "resultados por revisar"}`],
   [/^(\d+) (?:dish|dishes) under 80%$/, m => `${m[1]} ${m[1] === "1" ? "platillo" : "platillos"} por debajo de 80%`],
   [/^A short tour of the things you'll use every day at (.+)\. Skip it now and replay it any time\.$/, m => `Un tour corto de lo que usarás cada día en ${m[1]}. Sáltalo ahora y repítelo cuando quieras.`],
   [/^Working today · (\d+)$/, m => `Trabajan hoy · ${m[1]}`],
