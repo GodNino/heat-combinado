@@ -58,6 +58,7 @@ import { termsFor, mergeTerms, type Term, type CustomTerm } from "@/lib/glossary
 import { CONTENT_TYPES, categoryOf, contentTypeOf, filterContent, type ContentType } from "@/lib/categories";
 import { TaxonomyContext, useTaxonomy, namesIn, wordsIn, type SectionWords, type MenuCategoryRow, type Taxonomy } from "./taxonomy";
 import { Notice, Field, InfoRow, ScreenHeader, SectionInfo } from "./ui";
+import { AssignDishes } from "./assign-dishes";
 import { photoLinks, shrinkPhoto, forgetPhotoLinks } from "./photos";
 import { WordsManager } from "./words";
 import { Standards } from "./standards";
@@ -1508,9 +1509,6 @@ function TeamMemberDetail({restaurantId, restaurantName, member, needsPosition =
   const [typing, setTyping] = useState(!needsPosition && !TEAM_ROLES.some(value => value.toLowerCase() === member.role.trim().toLowerCase()));
   const [attempts, setAttempts] = useState<TeamAttempt[]>([]);
   const [assignments, setAssignments] = useState<TeamAssignment[]>([]);
-  const [mids, setMids] = useState<string[]>([]);const [pickFilter, setPickFilter] = useState("");const [pickShow, setPickShow] = useState<"all" | "new" | "practice">("all");
-  const [note, setNote] = useState("");
-  const [due, setDue] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
@@ -1542,9 +1540,6 @@ function TeamMemberDetail({restaurantId, restaurantName, member, needsPosition =
     return () => {live = false;};
   }, [restaurantId, member.user_id]);
   const review = attempts.filter(row => learningStatus(row) !== "At target").sort((a,b) => a.correct / a.total - b.correct / b.total);
-  const unopened = items.filter(item => !attempts.some(row => row.menu_item_id === item.id));
-  // The picker can narrow to dishes this person has never quizzed on, or that still need practice.
-  const showItem = (item: MenuItem) => pickShow === "all" || (pickShow === "new" ? !attempts.some(row => row.menu_item_id === item.id) : review.some(row => row.menu_item_id === item.id));
   // What happened with each assigned item. The scores above already know; the Assigned list just never asked.
   const assignmentStatus = (assignment: TeamAssignment) => {
     const score = attempts.find(row => row.menu_item_id === assignment.menu_item_id);
@@ -1557,6 +1552,9 @@ function TeamMemberDetail({restaurantId, restaurantName, member, needsPosition =
   // Still to do first, finished at the bottom; due date order holds inside each group.
   const assignmentRows = assignments.map(assignment => ({assignment, status: assignmentStatus(assignment)})).sort((a, b) => Number(a.status.done) - Number(b.status.done));
   const assignmentsDone = assignmentRows.filter(row => row.status.done).length;
+  // Dishes already handed over and not finished: the list shows "Assigned" instead of a button.
+  const assignedIds = new Set(assignmentRows.filter(row => !row.status.done).map(row => row.assignment.menu_item_id));
+  const scores = new Map(attempts.filter(row => row.total > 0).map(row => [row.menu_item_id, `${learningStatus(row) === "At target" ? "Passed" : "Needs practice"} ${row.correct}/${row.total}`] as const));
   return <section className="mt-7">
     <div className="mb-5 flex items-center justify-between gap-3"><button className="btn secondary" disabled={busy} onClick={onBack}><ArrowLeft size={16} />Team</button>{!loading && !error && <DownloadSheet variant="button" buttonLabel="Summary" label="Download employee training summary" build={async () => employeeSheet({name: member.name, role: member.role, owner: member.is_owner, access: ACCESS_AREAS.filter(area => access.includes(area.key)).map(area => area.label), items, results: attempts, assignments}, {restaurant: restaurantName})} />}</div>
     <div className="mb-5 flex items-start gap-3"><span className="employee-avatar" aria-hidden="true">{member.name.split(/\s+/).slice(0,2).map(part => part[0]).join("").toUpperCase()}</span><div className="min-w-0"><h2 className="text-xl font-semibold break-words">{member.name}</h2><p className="muted mt-1 text-sm">{needsPosition ? "No position yet" : member.role}{member.is_owner ? " · Owner" : ""}</p><p className="muted mt-1 text-sm">{member.last_attempt_at ? `Last quiz ${teamLastActive(member.last_attempt_at).toLowerCase()}` : "No quizzes yet"}</p>{email && <p className="muted mt-1 text-sm">Signs in with <span className="break-all font-semibold" style={{color: "var(--c-text)"}}>{email}</span></p>}</div></div>
@@ -1585,13 +1583,13 @@ function TeamMemberDetail({restaurantId, restaurantName, member, needsPosition =
         <button className="btn mt-4" type="submit" disabled={!role.trim()}>Save profile</button></fieldset></form></div>
     <div hidden={openPanel !== "access"}><AccessPanel restaurantId={restaurantId} member={member} current={access} myAccess={myAccess} meId={meId} busy={busy} action={action} setMessage={setMessage} onSaved={onReload} /></div>
     {loading ? <p role="status" className="muted py-8">Loading member details…</p> : error ? <div className="panel p-5"><p role="alert">{error}</p><button className="btn secondary mt-3" onClick={() => void loadDetail()}>Try again</button></div> : <>
-      <details className="panel team-fold" style={{margin: "12px 0"}}><summary>Assign study</summary><div className="team-fold-body"><form onSubmit={event => {event.preventDefault();void action(async () => {
+      <AssignDishes items={items} practiceIds={new Set(review.map(row => row.menu_item_id))} quizzedIds={new Set(attempts.filter(row => row.total > 0).map(row => row.menu_item_id))} scores={scores} assignedIds={assignedIds} busy={busy} group={list => CONTENT_TYPES.map(type => ({key: type, heading: labelFor(type).heading, items: inMenuOrder(list.filter(item => contentTypeOf(item) === type), namesFor(type))})).filter(section => section.items.length)} onAssign={(ids, note, due) => action(async () => {
         if (!supabase) throw new Error("Please reconnect to your workspace.");
-        const result = await supabase.rpc("assign_menu_items", {rid: restaurantId, learner_id: member.user_id, mids, note, due: due || null});
+        const result = await supabase.rpc("assign_menu_items", {rid: restaurantId, learner_id: member.user_id, mids: ids, note, due: due || null});
         if (result.error) throw new Error(result.error.message);
         notify("study_assigned", restaurantId, member.user_id);
-        setMids([]);setNote("");setDue("");await loadDetail();setMessage("Study items assigned.");
-      });}}><fieldset disabled={busy}><fieldset className="field"><legend className="mb-2 block text-sm font-semibold">Menu items</legend><div className="dish-picker-field"><Search size={18} aria-hidden="true" className="dish-picker-lens" /><input type="search" autoComplete="off" aria-label="Search menu items to assign" placeholder="Search dishes" value={pickFilter} style={{ paddingLeft: 44 }} onChange={e => setPickFilter(e.target.value)} onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} /></div><div className="word-chips mt-3" style={{marginBottom: 16}} role="group" aria-label="Show">{([["all", "All dishes"], ["new", `Not quizzed yet · ${unopened.length}`], ["practice", `Needs practice · ${review.length}`]] as const).map(([key, text]) => <button key={key} type="button" className="word-chip" aria-pressed={pickShow === key} onClick={() => setPickShow(key)}>{text}</button>)}</div>{mids.length > 0 && <div className="dish-chips">{mids.map(mid => {const dish = items.find(item => item.id === mid); return dish ? <button type="button" key={mid} className="dish-chip" aria-label={"Remove " + dish.name} onClick={() => setMids(mids.filter(id => id !== mid))}>{dish.name}<X size={13} aria-hidden="true" /></button> : null;})}</div>}{pickFilter.trim() && !items.some(item => dishKey(item.name).includes(dishKey(pickFilter))) && <p className="muted dish-picker-empty">No dish called “{pickFilter.trim()}”.</p>}{pickShow !== "all" && !(pickShow === "new" ? unopened.length : review.length) && <p className="muted dish-picker-empty">{pickShow === "new" ? "Every menu item has a completed quiz." : "Nothing needs practice."}</p>}<div className="assign-picker">{CONTENT_TYPES.map(type => {const group = inMenuOrder(items.filter(item => contentTypeOf(item) === type && (!pickFilter.trim() || dishKey(item.name).includes(dishKey(pickFilter))) && showItem(item)), namesFor(type));return group.length ? <div key={type}><p className="assign-picker-heading eyebrow muted">{labelFor(type).heading}</p>{group.map(item => <label key={item.id} className="assign-option"><input type="checkbox" checked={mids.includes(item.id)} onChange={event => setMids(event.target.checked ? [...mids, item.id] : mids.filter(id => id !== item.id))}/><span>{item.name}</span>{(() => {const row = attempts.find(r => r.menu_item_id === item.id); return row && row.total > 0 ? <span className="muted text-xs"> · {learningStatus(row) === "At target" ? "Passed" : "Needs practice"} {row.correct}/{row.total}</span> : null;})()}</label>)}</div> : null;})}</div></fieldset><p className="muted mt-2 mb-4 text-xs">{mids.length ? `${mids.length} selected` : "Tick the items you want this person to study."}</p><Field label="Note (optional)"><input id="team-study-note" maxLength={200} value={note} onChange={e => setNote(e.target.value)}/></Field><Field label="Due date (optional)"><input id="team-study-due" type="date" value={due} onChange={e => setDue(e.target.value)}/></Field><div className="mt-4 flex flex-wrap items-center gap-3"><button className="btn" type="submit" disabled={!mids.length}>Assign</button>{due && <button type="button" className="btn secondary" onClick={() => setDue("")}>Clear due date</button>}</div></fieldset></form></div></details>
+        await loadDetail();setMessage(ids.length === 1 ? "Study item assigned." : "Study items assigned.");
+      })} />
       {!!assignments.length && <details className="panel team-fold" style={{margin: "12px 0"}}><summary>Assigned · {assignments.length}{assignmentsDone ? ` · ${assignmentsDone} done` : ""}</summary><div className="team-fold-body"><ul className="space-y-3">{assignmentRows.map(({assignment, status}) => <li key={assignment.id} className="flex items-start justify-between gap-3 border-t border-line pt-3"><div className="min-w-0"><p className="font-semibold">{assignment.item_name}</p><p className="mt-2"><span className={`menu-badge ${status.tone}`}>{status.label}</span></p>{assignment.note && <p className="muted mt-1 whitespace-pre-wrap">{assignment.note}</p>}{assignment.due_on && <p className="muted mt-1 text-xs">Due {new Date(`${assignment.due_on}T12:00:00`).toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"})}</p>}</div><button className="btn secondary shrink-0" disabled={busy} aria-label={`Remove assignment for ${assignment.item_name}`} onClick={() => void action(async () => {
           if (!supabase) throw new Error("Please reconnect to your workspace.");
           const result = await supabase.rpc("remove_assignment", {assignment_id: assignment.id});

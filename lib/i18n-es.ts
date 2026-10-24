@@ -555,6 +555,7 @@ const PHRASES: Record<string, string> = {
 
   // ── Found on screen after the first pass ──
   "(not posted yet)": "(sin publicar)", "(posted)": "(publicado)", "(all done)": "(todo listo)", "(jobs still open)": "(tareas pendientes)",
+  "Assigned": "Asignado", "Add a note or due date": "Agregar una nota o fecha límite", "Due date (optional)": "Fecha límite (opcional)", "Yes, assign": "Sí, asignar", "Study item assigned.": "Plato asignado.", "All dishes": "Todos los platos", "No dishes on this menu yet.": "Todavía no hay platos en este menú.",
   "Edited": "Editado", "Edit today’s pre-shift": "Editar el pre-turno de hoy",
   "Owner": "Dueño", "History": "Historial", "Detail (optional)": "Detalle (opcional)", "Download": "Descargar",
   "dishes": "platos", "dish": "plato", "cocktails": "cócteles", "cocktail": "cóctel", "wines": "vinos", "wine": "vino", "wines and sakes": "vinos y sakes",
@@ -740,6 +741,13 @@ const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^(\d+) (?:dish|dishes) under 80%$/, m => `${m[1]} ${m[1] === "1" ? "platillo" : "platillos"} por debajo de 80%`],
   [/^A short tour of the things you'll use every day at (.+)\. Skip it now and replay it any time\.$/, m => `Un tour corto de lo que usarás cada día en ${m[1]}. Sáltalo ahora y repítelo cuando quieras.`],
   [/^Working today · (\d+)$/, m => `Trabajan hoy · ${m[1]}`],
+  [/^Needs practice · (\d+)$/, m => `Por practicar · ${m[1]}`],
+  [/^Not quizzed yet · (\d+)$/, m => `Sin quiz todavía · ${m[1]}`],
+  [/^Assign all (\d+)$/, m => `Asignar los ${m[1]}`],
+  [/^Assign (\d+) dishes to this person\?$/, m => `¿Asignar ${m[1]} platos a esta persona?`],
+  [/^(Passed|Needs practice) (\d+\/\d+)$/, m => `${m[1] === "Passed" ? "Aprobado" : "Falta práctica"} ${m[2]}`],
+  [/^Assign (?!study$|all )(.+)$/, m => `Asignar ${m[1]}`],
+  [/^No dish called “(.+)”\.$/, m => `No hay ningún plato llamado “${m[1]}”.`],
   [/^Who is working today · (\d+)$/, m => `Quién trabaja hoy · ${m[1]}`],
   [/^Posted by (.+?)(?: · (.+?))?(?: · Edited (.+))?$/, m => `Publicado por ${m[1]}${m[2] ? ` · ${m[2]}` : ""}${m[3] ? ` · Editado ${m[3]}` : ""}`],
   [/^Posted (.+?)(?: · Edited (.+))?$/, m => `Publicado ${m[1]}${m[2] ? ` · Editado ${m[2]}` : ""}`],

@@ -2833,3 +2833,30 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .today-name small { color:var(--c-muted); font-size:12px; white-space:nowrap; }
 :root:root:root:root:root:root:root .today-roster-foot { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:14px; padding-top:14px; border-top:1px solid var(--c-line-5); font-size:12px; }
 :root:root:root:root:root:root:root .today-roster-body > p { margin:0; font-size:13px; }
+
+/* Training > one person > Assign study: a dish list with an Assign button on every row.
+   Rows 36px with 13px names, buttons 30px / 12px from the rules, search 44px, spacing 14 and 16 only.
+   "Assign all" is the one lime button on the screen; the per-dish buttons are outlined.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .assign-dishes { display:grid; gap:14px; padding:16px; margin:14px 0; }
+:root:root:root:root:root:root:root .assign-dishes > * { margin:0; }
+:root:root:root:root:root:root:root .assign-dishes-title { font-size:20px; font-weight:600; line-height:1.2; }
+:root:root:root:root:root:root:root .assign-dishes .dish-picker-field { margin:0; }
+:root:root:root:root:root:root:root .assign-dishes .dish-picker-field input { min-height:44px; }
+:root:root:root:root:root:root:root .assign-dishes-list { display:grid; gap:14px; }
+:root:root:root:root:root:root:root .assign-dishes-list ul { margin:0; padding:0; list-style:none; }
+:root:root:root:root:root:root:root .assign-dishes-list li { display:flex; align-items:center; gap:14px; min-height:36px; padding:3px 0; border-top:1px solid var(--c-line-5); }
+:root:root:root:root:root:root:root .assign-dishes-list li:first-child { border-top:0; }
+:root:root:root:root:root:root:root .assign-dishes-name { display:flex; flex:1; min-width:0; flex-direction:column; }
+:root:root:root:root:root:root:root .assign-dishes-name b { font-size:13px; font-weight:600; line-height:1.3; }
+:root:root:root:root:root:root:root .assign-dishes-name small { color:var(--c-muted); font-size:12px; line-height:1.3; }
+:root:root:root:root:root:root:root .assign-dishes-done { display:inline-flex; align-items:center; gap:4px; color:var(--c-pass); font-size:12px; font-weight:600; white-space:nowrap; }
+:root:root:root:root:root:root:root .assign-dishes-list .btn { flex:none; }
+:root:root:root:root:root:root:root .assign-dishes-empty { font-size:13px; }
+:root:root:root:root:root:root:root .assign-dishes-foot { display:flex; align-items:center; justify-content:space-between; gap:14px; padding-top:14px; border-top:1px solid var(--c-line-5); font-size:12px; }
+:root:root:root:root:root:root:root .assign-dishes-buttons { display:flex; gap:14px; }
+:root:root:root:root:root:root:root .assign-dishes-more summary { display:flex; align-items:center; justify-content:space-between; gap:14px; min-height:30px; cursor:pointer; list-style:none; font-size:12px; font-weight:600; }
+:root:root:root:root:root:root:root .assign-dishes-more summary::-webkit-details-marker { display:none; }
+:root:root:root:root:root:root:root .assign-dishes-more[open] summary svg { transform:rotate(180deg); }
+:root:root:root:root:root:root:root .assign-dishes-more label { display:grid; gap:6px; margin-top:14px; font-size:12px; font-weight:600; }
+:root:root:root:root:root:root:root .assign-dishes-more input { min-height:44px; font-weight:400; }
