@@ -110,17 +110,17 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
 
   // Everyone else sees their own job and the floor, nothing to set up.
   if (!canManage) return <section className="mx-auto max-w-3xl">
-    <ScreenHeader eyebrow="Know the floor" title="Checklists" info="Your job for this shift, and how the rest of the floor is doing." />
+    <ScreenHeader eyebrow="Know the floor" title="Side work" info="Your job for this shift, and how the rest of the floor is doing." />
     <MyShift restaurantId={restaurantId} />
   </section>;
 
   return <section className="mx-auto max-w-3xl">
     <ScreenHeader
       eyebrow="Manager workspace"
-      title="Checklists"
+      title="Side work"
       info="Who does which job before, during and after service, and when it is done."
     />
-    {!(tab === "today" && deep) && <div className="category-tabs" role="group" aria-label="Checklists">
+    {!(tab === "today" && deep) && <div className="category-tabs" role="group" aria-label="Side work">
       {TABS.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} style={{fontWeight: 700, border: "1.5px solid var(--edge)"}} onClick={() => {setTab(key); setError(""); setMessage("");}}>{label}</button>)}
     </div>}
     <div><Notice text={error} error /><Notice text={message} /></div>

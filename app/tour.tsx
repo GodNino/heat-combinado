@@ -51,7 +51,7 @@ export function tourSteps({manager, demo, restaurantName}: {manager: boolean; de
     {title: "Welcome to HEAT", body: demo
       ? "This is your own copy of a sample restaurant. Change anything you like: it's yours for 7 days. This short tour shows you around."
       : `A short tour of the things you'll use every day at ${restaurantName}. Skip it now and replay it any time.`},
-    {title: "Everything is here", body: "The menu takes you to the schedule, the library, the allergy check, pre-shift, checklists, your team and more.", view: "home", target: '[data-tour="nav"]'},
+    {title: "Everything is here", body: "The menu takes you to the schedule, the library, the allergy check, pre-shift, side work, your team and more.", view: "home", target: '[data-tour="nav"]'},
     {title: "What's waiting for you", body: "Your home starts with what needs a decision: time off, shift changes, urgent reports, quiz retakes. Tap one to go straight to it. Below, who's working today.", view: "home", target: ".attention"},
     {title: "Add a dish", body: "Every dish, cocktail and wine lives in the library. Tap Add menu item: a name, ingredients, allergens and a photo is all it takes.", view: "library", target: '[data-tour="add-item"]'},
     {title: "Open any dish", body: "Tap a dish to see the card your team studies, with a QUIZ ME button at the end. The quiz writes itself from the card.", view: "library", target: ".menu-list > .compact-menu-row:first-child"},
