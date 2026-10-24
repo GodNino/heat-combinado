@@ -14,7 +14,7 @@ import { CONTENT_TYPES, categoryOf, contentTypeOf, type ContentType } from "@/li
 import type { ProgressRow } from "./quiz";
 import type { Organization } from "./locations";
 import { useTaxonomy } from "./taxonomy";
-import { SectionInfo } from "./ui";
+import { SectionInfo, Stats } from "./ui";
 import { OperationsDashboard, type OpsView } from "./ops-dashboard";
 
 type Week = {week_start: string; quizzes: number; learners: number};
@@ -124,12 +124,12 @@ export function ManagerDashboard({restaurantId, restaurantName, onOpenMember, on
       <ul className="dash-review">{[...people].filter(p => Number(p.needs_review) > 0).sort((a, b) => Number(b.needs_review) - Number(a.needs_review) || a.name.localeCompare(b.name)).map(p => <li key={p.user_id}><button type="button" onClick={() => onOpenMember(p.user_id)}><span className="dash-review-name">{p.name}<small>{`${p.needs_review} ${Number(p.needs_review) === 1 ? "dish" : "dishes"} under 80%`}</small></span><span className="dash-badge">{p.needs_review}</span><ChevronRight size={18} aria-hidden="true" /></button></li>)}</ul>
     </div>}
     {(sample || view === "training") && <>
-    <div className="dash-tiles">
-      <Tile value={loading ? "…" : String(learners)} label="Team members" />
-      <Tile value={loading ? "…" : shown(covered)} label="Menu covered" note="Items each person has quizzed on" />
-      <Tile value={loading ? "…" : shown(accuracy)} label="Quiz accuracy" note={accuracy === null || loading ? "Latest results · target 80%" : accuracy >= 80 ? "On track · goal 80%" : "Below the 80% goal"} />
-      <Tile value={loading ? "…" : `${libs[0]?.active_7d ?? 0} of ${learners}`} label="Active this week" note={review ? `${review} ${review === 1 ? "result needs" : "results need"} review` : undefined} />
-    </div>
+    <Stats items={[
+      {value: loading ? "…" : String(learners), label: "Team"},
+      {value: loading ? "…" : shown(covered), label: "Menu covered"},
+      {value: loading ? "…" : shown(accuracy), label: "Accuracy"},
+      {value: loading ? "…" : `${libs[0]?.active_7d ?? 0} of ${learners}`, label: "Active this week"},
+    ]} notes={loading ? [] : [accuracy === null ? {text: "Latest results · goal 80%"} : accuracy >= 80 ? {tone: "pass", text: "Accuracy on track · goal 80%"} : {tone: "fail", text: "Accuracy below the 80% goal"}]} />
 
     <div className="panel dash-panel">
       <SectionInfo heading="Quizzes per week">Completed quizzes by the team, retakes included. The owner&apos;s own practice is left out.</SectionInfo>
