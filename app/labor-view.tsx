@@ -1,14 +1,16 @@
 "use client";
 
-// Dashboard > Labor. Four date buttons (Today, Yesterday, This week, Date range) and a box to find one
-// person. Everyone: hours, people and the hours by position. One person: their hours, shifts, overtime and
+// Dashboard > Labor. Four date buttons (Today, Yesterday, This week, Date range), a small search icon that
+// opens a box to find one person, and a print icon for the report. Everyone: hours, people and the hours by position. One person: their hours, shifts, overtime and
 // the list of their shifts. Read only, with the manager's own access, like the rest of the dashboard.
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ChevronDown, Search, X } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { AlertTriangle, CalendarDays, ChevronDown, Search, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { addDays, colorFor, dayKey, formatHours, shiftHours, shiftLabel, weekStart, type ScheduleSettings, type Shift, type TimeOff } from "@/lib/schedule";
 import { change, laborRange, overtimeHours } from "@/lib/ops-stats";
+import { laborSheet } from "@/lib/sheets";
 import { SectionInfo, Stats, type StatNote } from "./ui";
+import { DownloadSheet } from "./sheet-download";
 
 type Person = {user_id: string; name: string; role: string};
 type Preset = "today" | "yesterday" | "week" | "custom";
@@ -17,13 +19,22 @@ const toDate = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); 
 const dateLabel = (day: Date) => day.toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"});
 const shortDate = (day: Date, year: boolean) => day.toLocaleDateString("en-US", {month: "short", day: "numeric", ...(year ? {year: "numeric"} : {})});
 const plain = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+// A date shown as a small pill ("Oct 1, 2026"). The phone's own calendar opens from the invisible date box on top of it.
+function DatePill({label, value, min, onChange}: {label: string; value: string; min?: string; onChange: (value: string) => void}) {
+  return <label className="labor-pill"><span>{label}</span>
+    <span className="labor-pill-box">{value ? toDate(value).toLocaleDateString("en-US", {month: "short", day: "numeric", year: "numeric"}) : "Pick a date"}<CalendarDays size={14} aria-hidden="true" />
+      <input type="date" aria-label={label} value={value} min={min} onChange={event => onChange(event.target.value)} onClick={event => { try { event.currentTarget.showPicker?.(); } catch { /* the phone opens it by itself */ } }} />
+    </span>
+  </label>;
+}
 const PRESETS: [Preset, string][] = [["today", "Today"], ["yesterday", "Yesterday"], ["week", "This week"], ["custom", "Date range"]];
 
-export function LaborView({restaurantId, settings, people, released, timeOff}: {restaurantId: string; settings: ScheduleSettings; people: Person[]; released: number; timeOff: TimeOff[]}) {
+export function LaborView({restaurantId, settings, people, released, timeOff, restaurantName}: {restaurantId: string; restaurantName: string; settings: ScheduleSettings; people: Person[]; released: number; timeOff: TimeOff[]}) {
   const [preset, setPreset] = useState<Preset>("week");
   const [fromText, setFromText] = useState(() => dayKey(weekStart(new Date(), settings.week_start)));
   const [toText, setToText] = useState(() => dayKey(addDays(weekStart(new Date(), settings.week_start), 6)));
   const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
   const [person, setPerson] = useState<Person | null>(null);
   const [showEmpty, setShowEmpty] = useState(false);
   const [shifts, setShifts] = useState<Shift[] | null>(null);
@@ -76,30 +87,42 @@ export function LaborView({restaurantId, settings, people, released, timeOff}: {
   const against = preset === "week" ? "last week" : count === 1 ? "the day before" : `the ${count} days before`;
   const emptyWord = preset === "today" ? "today" : preset === "yesterday" ? "yesterday" : preset === "week" ? "this week" : "in these dates";
 
-  const controls = <div className="labor-controls">
+  const closeSearch = () => {setSearching(false); setQuery("");};
+  const controls = (print: ReactNode) => <div className="labor-controls">
     <div className="category-tabs" role="group" aria-label="Dates">
       {PRESETS.map(([key, label]) => <button key={key} type="button" aria-pressed={preset === key} onClick={() => setPreset(key)}>{label}</button>)}
     </div>
     {preset === "custom" && <div className="labor-dates">
-      <label>From<input type="date" value={fromText} onChange={event => setFromText(event.target.value)} /></label>
-      <label>To<input type="date" value={toText} min={fromText} onChange={event => setToText(event.target.value)} /></label>
+      <DatePill label="From" value={fromText} onChange={setFromText} />
+      <DatePill label="To" value={toText} min={fromText} onChange={setToText} />
     </div>}
-    {person ? <div className="labor-who">
-      <span className="muted">{rangeText}</span>
-      <button type="button" className="btn secondary" onClick={() => {setPerson(null); setQuery("");}} aria-label={`Show everyone, not only ${person.name}`}>{person.name}<X size={14} aria-hidden="true" /></button>
-    </div> : <>
-      <p className="muted labor-range">{rangeText}</p>
-      <div className="dish-picker-field"><Search size={18} aria-hidden="true" className="dish-picker-lens" />
-        <input type="search" autoComplete="off" aria-label="Find a person" placeholder="Find a person" value={query} style={{paddingLeft: 44}} onChange={event => setQuery(event.target.value)} />
+    {person ? <div className="labor-line">
+      <span className="muted labor-range">{rangeText}</span>
+      <span className="labor-icons">
+        <button type="button" className="btn secondary" onClick={() => {setPerson(null); setQuery("");}} aria-label={`Show everyone, not only ${person.name}`}>{person.name}<X size={14} aria-hidden="true" /></button>
+        {print}
+      </span>
+    </div> : searching ? <>
+      <div className="labor-line">
+        <div className="labor-search"><Search size={14} aria-hidden="true" />
+          <input type="search" autoFocus autoComplete="off" aria-label="Find a person" placeholder="Find a person" value={query} onChange={event => setQuery(event.target.value)} />
+        </div>
+        <button type="button" className="icon-chip" aria-label="Close search" onClick={closeSearch}><X size={14} aria-hidden="true" /></button>
       </div>
       {query.trim() !== "" && <div className="panel labor-matches">{matches.length ? <ul>{matches.map(p => <li key={p.user_id}>
-        <button type="button" onClick={() => {setPerson(p); setQuery("");}}><b>{p.name || "Team member"}</b>{p.role && <small>{p.role}</small>}</button>
+        <button type="button" onClick={() => {setPerson(p); closeSearch();}}><b>{p.name || "Team member"}</b>{p.role && <small>{p.role}</small>}</button>
       </li>)}</ul> : <p className="muted">{`No one called “${query.trim()}”.`}</p>}</div>}
-    </>}
+    </> : <div className="labor-line">
+      <span className="muted labor-range">{preset === "custom" && count > 1 ? `${rangeText} · ${count} days` : rangeText}</span>
+      <span className="labor-icons">
+        <button type="button" className="icon-chip" aria-label="Find a person" onClick={() => setSearching(true)}><Search size={14} aria-hidden="true" /></button>
+        {print}
+      </span>
+    </div>}
   </div>;
 
   const head = <div className="ops-head"><div className="min-w-0 flex-1"><h2 className="text-xl font-semibold">Labor</h2></div></div>;
-  if (!shifts) return <>{head}{controls}<p className="muted" role="status">Loading…</p></>;
+  if (!shifts) return <>{head}{controls(null)}<p className="muted" role="status">Loading…</p></>;
 
   const inRange = (s: Shift) => Date.parse(s.starts_at) >= from.getTime() && Date.parse(s.starts_at) < addDays(to, 1).getTime();
   const nowShifts = shifts.filter(inRange), beforeShifts = shifts.filter(s => !inRange(s));
@@ -108,7 +131,13 @@ export function LaborView({restaurantId, settings, people, released, timeOff}: {
     const mine = nowShifts.filter(s => s.user_id === person.user_id).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
     const hours = mine.reduce((total, s) => total + shiftHours(s), 0);
     const over = overtimeHours(mine, settings);
-    return <>{head}{controls}
+    const personFigures = [{value: formatHours(hours), label: "Hours"}, {value: String(mine.length), label: "Shifts"}, {value: formatHours(over), label: "Overtime"}];
+    const personNote = over > 0 ? `Over the ${settings.overtime_weekly}h weekly limit by ${formatHours(over)}` : `Under the ${settings.overtime_weekly}h weekly limit`;
+    const print = <DownloadSheet label="Print this report" build={async () => laborSheet({
+      range: rangeText, start: dayKey(from), end: dayKey(to), person: person.name || "Team member", figures: personFigures, notes: [personNote], positions: [], overtime: [],
+      shifts: mine.map(s => ({day: dateLabel(new Date(s.starts_at)), detail: `${shiftLabel(s)} · ${s.position}${s.published ? "" : " · Draft"}`, hours: formatHours(shiftHours(s))})),
+    }, {restaurant: restaurantName})} />;
+    return <>{head}{controls(print)}
       <Stats items={[{value: formatHours(hours), label: "Hours"}, {value: String(mine.length), label: "Shifts"}, {value: formatHours(over), label: "Overtime", alert: over > 0}]}
         notes={[over > 0 ? {tone: "fail", text: `Over the ${settings.overtime_weekly}h weekly limit by ${formatHours(over)}`} : {tone: "pass", text: `Under the ${settings.overtime_weekly}h weekly limit`}]} />
       {mine.length ? <section className="panel labor-shifts"><ul>{mine.map(s => <li key={s.id}>
@@ -127,7 +156,13 @@ export function LaborView({restaurantId, settings, people, released, timeOff}: {
     : [{tone: "pass", text: "All clear"}];
   const emptyPositions = labor.byPosition.filter(p => !p.hours && !p.people);
   const livePositions = showEmpty ? labor.byPosition : labor.byPosition.filter(p => p.hours || p.people);
-  return <>{head}{controls}
+  const figures = [{value: formatHours(labor.hours), label: "Scheduled hours", note: change(labor.hours, labor.lastHours, against) ?? undefined}, {value: String(labor.people), label: "People scheduled"}];
+  const print = <DownloadSheet label="Print this report" build={async () => laborSheet({
+    range: rangeText, start: dayKey(from), end: dayKey(to), figures, notes: notes.map(n => String(n.text)),
+    positions: labor.byPosition.filter(p => p.hours || p.people).map(p => ({position: p.position, hours: formatHours(p.hours), people: p.people})),
+    shifts: [], overtime: labor.overtime.map(o => ({name: names.get(o.user_id) ?? "Team member", detail: o.daily ? `Over ${settings.overtime_daily}h in a day` : `${formatHours(o.hours)} in a week`})),
+  }, {restaurant: restaurantName})} />;
+  return <>{head}{controls(print)}
     <Stats items={[{value: formatHours(labor.hours), label: "Scheduled hours", note: change(labor.hours, labor.lastHours, against)}, {value: String(labor.people), label: "People scheduled"}]} notes={notes} />
 
     <div className="panel dash-panel">

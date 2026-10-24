@@ -29,7 +29,7 @@ const delta = (now: number, before: number) => {
 
 // view: show one part (Labor, Service or Training) when a page puts chips above it; without it, show everything.
 export type OpsView = "labor" | "service" | "training";
-export function OperationsDashboard({restaurantId, onOpenReports, view}: {restaurantId: string; onOpenSchedule?: () => void; onOpenReports?: () => void; view?: OpsView}) {
+export function OperationsDashboard({restaurantId, restaurantName, onOpenReports, view}: {restaurantId: string; restaurantName: string; onOpenSchedule?: () => void; onOpenReports?: () => void; view?: OpsView}) {
   const [data, setData] = useState<Loaded | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -85,7 +85,7 @@ export function OperationsDashboard({restaurantId, onOpenReports, view}: {restau
   return <div className="ops-dash">
     {(!view || view === "labor") && <>
     {/* ── Labor ── */}
-    <LaborView key={restaurantId} restaurantId={restaurantId} settings={settings} people={data.people} released={data.released} timeOff={data.timeOff} />
+    <LaborView key={restaurantId} restaurantId={restaurantId} restaurantName={restaurantName} settings={settings} people={data.people} released={data.released} timeOff={data.timeOff} />
     </>}
 
     {(!view || view === "service") && <>
