@@ -221,7 +221,7 @@ const PHRASES: Record<string, string> = {
   "Posted to the whole team.": "Publicado para todo el equipo.", "The board could not be posted. Please try again.": "No se pudo publicar el pre-turno. Intenta de nuevo.",
   "Add another focus item": "Agregar otro plato a impulsar", "Add a focus item": "Agregar un plato a impulsar", "Chosen item": "Plato elegido", "Posting…": "Publicando…",
   "Post to the floor": "Publicar al piso", "Could not load menu items.": "No se pudieron cargar los platos.",
-  "Editing today’s board. Change what you need, then post it again.": "Editando el pre-turno de hoy. Cambia lo que necesites y vuelve a publicarlo.",
+  "Editing today’s board": "Editando el pre-turno de hoy", "Change what you need, then post it again.": "Cambia lo que necesites y vuelve a publicarlo.",
   "This item is already on the board. Remove its row before adding a replacement.": "Este plato ya está en el pre-turno. Quita su fila antes de agregar otro.",
   "Today’s board is down. Your team no longer sees it.": "El pre-turno de hoy se quitó. Tu equipo ya no lo ve.",
   "Add the pending row or clear its fields before posting.": "Agrega la fila pendiente o bórrala antes de publicar.",

@@ -1095,7 +1095,6 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, startEd
       setPosted(data.board ?? null);
       setEditing(prefill && !!data.board);
       setItemId("");setDetail("");
-      if (prefill) setMessage("Editing today’s board. Change what you need, then post it again.");
     } catch (e) {
       if (request === sequence.current) {setServiceDate("");setError(e instanceof Error ? e.message : "Could not load the pre-shift board.");}
     } finally {
@@ -1165,6 +1164,8 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, startEd
     <Notice text={error} error /><Notice text={message} />
     {loading ? <p role="status" className="muted py-8">Loading today’s board…</p> : !serviceDate ? <button className="btn secondary" onClick={() => void loadBoard()}>Try again</button> : <>
       {posted && (posted.note.trim() || postedFocusIds.length || posted.entries.length) ? (editing ? <section className="panel mb-6 p-5" aria-label="Editing today’s board">
+        <div className="posted-head"><h2 className="text-xl font-semibold">Editing today’s board</h2></div>
+        <p className="muted mt-2 text-sm">Change what you need, then post it again.</p>
         {!confirmClear && <div className="posted-actions"><button type="button" className="btn secondary card-admin-danger" disabled={busy} onClick={() => setConfirmClear(true)}>Delete</button><button type="button" className="btn secondary" disabled={busy} onClick={() => void loadBoard()}>Cancel</button></div>}
         {deleteConfirm}
       </section> : <section className="panel mb-6 p-5" aria-label="Board posted today">
