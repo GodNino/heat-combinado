@@ -127,11 +127,18 @@ export function dayTotals(shifts: Shift[], day: Date) {
 export const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]!.toUpperCase()).join("") || "?";
 
 // Copying last week: the same shifts, seven days later, as drafts.
-export function copiedWeek(shifts: Shift[]) {
+// The same shifts a week later (or `weeks` weeks later), as new drafts.
+export function copiedWeek(shifts: Shift[], weeks = 1) {
   return shifts.map(s => ({
     restaurant_id: s.restaurant_id, user_id: s.user_id, position: s.position, note: s.note,
-    starts_at: addDays(new Date(s.starts_at), 7).toISOString(), ends_at: addDays(new Date(s.ends_at), 7).toISOString(),
+    starts_at: addDays(new Date(s.starts_at), 7 * weeks).toISOString(), ends_at: addDays(new Date(s.ends_at), 7 * weeks).toISOString(),
   }));
+}
+
+// Only the copies whose person doesn't already start a shift at that moment, so copying twice never doubles one.
+export function newCopies<T extends {user_id: string; starts_at: string}>(copies: T[], already: {user_id: string; starts_at: string}[]) {
+  const here = new Set(already.map(s => `${s.user_id}|${Date.parse(s.starts_at)}`));
+  return copies.filter(s => !here.has(`${s.user_id}|${Date.parse(s.starts_at)}`));
 }
 
 // ── Schedule settings (migration 044) ──

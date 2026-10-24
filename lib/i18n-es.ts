@@ -575,7 +575,7 @@ const PHRASES: Record<string, string> = {
   "Asked for this day off": "Pidió este día libre", "Edit shift": "Editar turno", "New shift": "Turno nuevo", "Who": "Quién", "Position": "Puesto", "Their position": "Su puesto", "Cover another position": "Cubrir otro puesto", "Covering another position": "Cubre otro puesto", "Back to their position": "Volver a su puesto", "No position on their profile yet. Set it in Team.": "Todavía no tiene puesto en su perfil. Ponlo en Equipo.",
   "Day": "Día", "Starts": "Empieza", "Ends": "Termina", "Note (optional)": "Nota (opcional)", "e.g. Patio, private party": "ej. Patio, evento privado",
   "An end time before the start means the shift closes after midnight.": "Si la hora de salida es antes que la de entrada, el turno termina después de medianoche.",
-  "Add shift": "Agregar turno", "Delete shift": "Eliminar turno", "A shift can be at most 16 hours.": "Un turno puede durar como máximo 16 horas.",
+  "Add shift": "Agregar turno", "Copy week": "Copiar semana", "Copy a week": "Copiar una semana", "Copies come in as drafts. Nobody sees them until you publish.": "Las copias entran como borradores. Nadie las ve hasta que publiques.", "Bring last week here": "Traer la semana pasada aquí", "Copy this week to next week": "Copiar esta semana a la siguiente", "Nothing new to bring": "No hay nada nuevo para traer", "Nothing new to copy": "No hay nada nuevo para copiar", "Delete shift": "Eliminar turno", "A shift can be at most 16 hours.": "Un turno puede durar como máximo 16 horas.",
   "Nothing to copy: last week had no new shifts for this one.": "No hay nada para copiar: la semana pasada no tiene turnos nuevos para esta.",
   "Nothing new to publish.": "No hay nada nuevo para publicar.", "Loading your shifts…": "Cargando tus turnos…",
   "No shifts in the next three weeks yet. Your manager publishes the schedule here.": "Todavía no tienes turnos en las próximas tres semanas. Tu manager publica el horario aquí.",
@@ -741,6 +741,11 @@ const lower = (text: string) => (translateCore(text) ?? text).toLowerCase();
 
 // Sentences with a name or a number inside: the automatic quiz's questions, and a few counters.
 const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/^(\d+) shifts? into this week$/, m => `${m[1]} ${m[1] === "1" ? "turno" : "turnos"} a esta semana`],
+  [/^(\d+) shifts? into next week$/, m => `${m[1]} ${m[1] === "1" ? "turno" : "turnos"} a la semana siguiente`],
+  [/^Copied (\d+) shifts? into (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}) – (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}) as drafts\. Publish when it's ready\.$/, m => `Se ${m[1] === "1" ? "copió 1 turno" : `copiaron ${m[1]} turnos`} al ${m[3]} ${MONTHS[m[2]]} – ${m[5]} ${MONTHS[m[4]]} como borradores. Publica cuando esté listo.`],
+  [/^That's ([\d.]+) hours(, ending the next day)?\. Check AM and PM: a shift can be at most 16 hours\.$/, m => `Son ${m[1]} horas${m[2] ? ", terminando al día siguiente" : ""}. Revisa AM y PM: un turno puede durar como máximo 16 horas.`],
+  [/^([\d.]+) hours?(, ending the next day)?\.$/, m => `${m[1]} ${m[1] === "1" ? "hora" : "horas"}${m[2] ? ", termina al día siguiente" : ""}.`],
   [/^Hired as (.+)\.$/, m => `Contratado como ${PHRASES[m[1]] ?? m[1]}.`],
   [/^(\d+) results? needs? review$/, m => `${m[1]} ${m[1] === "1" ? "resultado por revisar" : "resultados por revisar"}`],
   [/^(\d+) (?:dish|dishes) under 80%$/, m => `${m[1]} ${m[1] === "1" ? "platillo" : "platillos"} por debajo de 80%`],

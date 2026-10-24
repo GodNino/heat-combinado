@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SETTINGS, allWarnings, colorFor, copiedWeek, dayBlocks, dayKey, dayTotals, defaultShift, hoursByPerson, initials, movedShift, readSettings, shiftLabel, shiftTimes, shiftWarnings, weekStart, type Shift } from "../lib/schedule.ts";
+import { DEFAULT_SETTINGS, allWarnings, colorFor, copiedWeek, newCopies, dayBlocks, dayKey, dayTotals, defaultShift, hoursByPerson, initials, movedShift, readSettings, shiftLabel, shiftTimes, shiftWarnings, weekStart, type Shift } from "../lib/schedule.ts";
 
 const shift = (id: string, user: string, from: Date, to: Date): Shift => ({
   id, restaurant_id: "r", user_id: user, position: "Server", note: "", published: false, starts_at: from.toISOString(), ends_at: to.toISOString(),
@@ -70,4 +70,14 @@ test("schedule settings: weeks start on the restaurant's day, colours follow the
   assert.deepEqual(allWarnings(dinner, [lunch, dinner], [], [], 8), ["daily_overtime"], "10 hours on a day with an 8-hour limit");
   assert.deepEqual(allWarnings(dinner, [lunch, dinner], [], [], null), [], "no daily limit, no warning");
   assert.deepEqual(allWarnings(dinner, [lunch, dinner], [], [], 10), [], "exactly the limit is fine");
+});
+
+test("copying a week moves every shift by whole weeks and never doubles one already there", () => {
+  const a = {id: "a", restaurant_id: "r", user_id: "u1", position: "Server", starts_at: "2026-10-01T21:00:00.000Z", ends_at: "2026-10-02T03:00:00.000Z", note: "", published: true} as Shift;
+  const b = {...a, id: "b", user_id: "u2"};
+  const copies = copiedWeek([a, b]);
+  assert.equal(copies[0].starts_at, "2026-10-08T21:00:00.000Z");
+  assert.equal(copiedWeek([a], 2)[0].starts_at, "2026-10-15T21:00:00.000Z");
+  const fresh = newCopies(copies, [{user_id: "u1", starts_at: "2026-10-08T21:00:00.000Z"}]);
+  assert.deepEqual(fresh.map(s => s.user_id), ["u2"]);
 });

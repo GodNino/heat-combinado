@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Check, ChevronDown, Copy, Plus, Settings, SlidersHorizontal, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
-  PALETTE, POSITIONS, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, dayBlocks, dayKey,
+  PALETTE, POSITIONS, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, newCopies, dayBlocks, dayKey,
   dayTotals, defaultShift, formatHours, hoursByPerson, initials, isLive, movedShift, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, weekDays, weekStart,
   changeWindowOpen, canSchedule, isKitchen, KITCHEN_POSITIONS, type ScheduleAccess, type ScheduleSettings, type Shift, type ShiftChange, type ShiftPreset, type TimeOff, type Unavailability, type Warning,
 } from "@/lib/schedule";
@@ -121,6 +121,8 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   const [query, setQuery] = useState("");
   const [showConflicts, setShowConflicts] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Copy week: what the week before holds and what the week after already has, fetched when it opens.
+  const [copying, setCopying] = useState<{before: Shift[]; after: Shift[]} | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [phoneDay, setPhoneDay] = useState(-1);
   const viewRef = useRef<HTMLSpanElement | null>(null);
@@ -218,17 +220,33 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     if (result.error) throw new Error(result.error.message);
     setDraft(null); await load();
   }); };
-  const copyLastWeek = () => void act(async () => {
-    const last = await supabase!.from("schedule_shifts").select("*").eq("restaurant_id", restaurantId).gte("starts_at", addDays(start, -7).toISOString()).lt("starts_at", start.toISOString());
-    if (last.error) throw new Error(last.error.message);
-    // Only what isn't here already, so copying twice never doubles a shift.
-    const here = new Set((shifts ?? []).map(s => `${s.user_id}|${Date.parse(s.starts_at)}`));
-    const rows = copiedWeek(last.data as Shift[]).filter(s => mayEdit(s.position) && !here.has(`${s.user_id}|${Date.parse(s.starts_at)}`));
-    if (!rows.length) return setMessage("Nothing to copy: last week had no new shifts for this one.");
+  // Two ways to reuse a week, both as drafts: bring the week before into the one on screen, or send the
+  // one on screen to the week after (and go there). Only shifts this manager may build are copied.
+  const weekOf = async (from: Date) => {
+    const result = await supabase!.from("schedule_shifts").select("*").eq("restaurant_id", restaurantId).gte("starts_at", from.toISOString()).lt("starts_at", addDays(from, 7).toISOString());
+    if (result.error) throw new Error(result.error.message);
+    return result.data as Shift[];
+  };
+  const openCopy = () => void act(async () => {
+    setMoreOpen(false);
+    const [before, after] = await Promise.all([weekOf(addDays(start, -7)), weekOf(end)]);
+    setCopying({before, after});
+  });
+  const bringLastWeek = copying ? newCopies(copiedWeek(copying.before.filter(s => mayEdit(s.position))), shifts ?? []) : [];
+  const sendToNextWeek = copying ? newCopies(copiedWeek((shifts ?? []).filter(s => mayEdit(s.position))), copying.after) : [];
+  const copyInto = (rows: ReturnType<typeof copiedWeek>, next: boolean) => void act(async () => {
+    if (!rows.length) return;
     const result = await supabase!.from("schedule_shifts").insert(rows);
     if (result.error) throw new Error(result.error.message);
-    setMessage(`Copied ${rows.length} ${rows.length === 1 ? "shift" : "shifts"} from last week as drafts.`);
-    await load();
+    setCopying(null);
+    const count = `${rows.length} ${rows.length === 1 ? "shift" : "shifts"}`;
+    if (next) {
+      setMessage(`Copied ${count} into ${weekHeading(end)} as drafts. Publish when it's ready.`);
+      setStart(end);
+    } else {
+      setMessage(`Copied ${count} from last week as drafts.`);
+      await load();
+    }
   });
   const publish = () => void act(async () => {
     const result = await supabase!.rpc("publish_schedule", {rid: restaurantId, from_ts: start.toISOString(), to_ts: end.toISOString()});
@@ -389,7 +407,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
           Show conflicts
           {conflicts > 0 && <em>{conflicts}</em>}
         </label>
-        <button type="button" className="btn secondary" disabled={busy} onClick={copyLastWeek}><Copy size={15} />Copy last week</button>
+        <button type="button" className="btn secondary" disabled={busy} onClick={openCopy}><Copy size={15} />Copy week</button>
         {access.all && <button type="button" className="btn secondary sched-gear" aria-label="Schedule settings" title="Schedule settings" onClick={() => setEditingSettings(true)}><Settings size={17} /></button>}
         </div>
         <button type="button" className="btn" disabled={busy || !drafts} onClick={publish}>{drafts ? `Publish ${drafts} ${drafts === 1 ? "change" : "changes"}` : "Published"}</button>
@@ -504,6 +522,28 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
       {drag.copy && <em>Copy</em>}
     </div>}
 
+    {copying && <div className="sched-sheet" role="dialog" aria-modal="true" aria-labelledby="copy-title">
+      <div className="panel sched-form">
+        <div className="mb-3 flex items-center">
+          <h2 id="copy-title" className="text-lg font-semibold">Copy a week</h2>
+          <button type="button" className="ml-auto muted" aria-label="Close" onClick={() => setCopying(null)}><X size={18} /></button>
+        </div>
+        <p className="muted mb-4 text-sm">Copies come in as drafts. Nobody sees them until you publish.</p>
+        <div className="sched-copy-options">
+          <button type="button" className="sched-copy-option" disabled={busy || !bringLastWeek.length} onClick={() => copyInto(bringLastWeek, false)}>
+            <b>Bring last week here</b>
+            <small>{weekHeading(addDays(start, -7))}</small>
+            <span>{bringLastWeek.length ? `${bringLastWeek.length} ${bringLastWeek.length === 1 ? "shift" : "shifts"} into this week` : "Nothing new to bring"}</span>
+          </button>
+          <button type="button" className="sched-copy-option" disabled={busy || !sendToNextWeek.length} onClick={() => copyInto(sendToNextWeek, true)}>
+            <b>Copy this week to next week</b>
+            <small>{weekHeading(end)}</small>
+            <span>{sendToNextWeek.length ? `${sendToNextWeek.length} ${sendToNextWeek.length === 1 ? "shift" : "shifts"} into next week` : "Nothing new to copy"}</span>
+          </button>
+        </div>
+      </div>
+    </div>}
+
     {draft && <div className="sched-sheet" role="dialog" aria-modal="true" aria-labelledby="shift-title">
       <form className="panel sched-form" onSubmit={save}>
         <div className="mb-3 flex items-center">
@@ -533,11 +573,21 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
             <Field label="Ends"><input id="shift-end" type="time" required step={900} value={draft.end} onChange={e => setDraft({...draft, end: e.target.value})} /></Field>
           </div>
           <Field label="Note (optional)"><input id="shift-note" maxLength={300} value={draft.note} placeholder="e.g. Patio, private party" onChange={e => setDraft({...draft, note: e.target.value})} /></Field>
-          <p className="muted mb-4 text-xs">An end time before the start means the shift closes after midnight.</p>
-          <div className="flex flex-wrap gap-2">
-            <button className="btn">{draft.id ? "Save changes" : "Add shift"}</button>
-            {draft.id && <button type="button" className="btn secondary" onClick={remove}>Delete shift</button>}
-          </div>
+          {(() => {
+            const [y, m, d] = draft.day.split("-").map(Number);
+            const {from, to} = draft.day && draft.start && draft.end ? shiftTimes(new Date(y, m - 1, d), draft.start, draft.end) : {from: null, to: null};
+            const length = from && to ? Math.round((to.getTime() - from.getTime()) / 36e5 * 100) / 100 : 0;
+            const overnight = !!from && !!to && to.getDate() !== from.getDate();
+            return <>
+              {length > 16
+                ? <p role="alert" className="notice bad mb-4 text-xs">{`That's ${length} hours${overnight ? ", ending the next day" : ""}. Check AM and PM: a shift can be at most 16 hours.`}</p>
+                : <p className="muted mb-4 text-xs">{length ? `${length} ${length === 1 ? "hour" : "hours"}${overnight ? ", ending the next day" : ""}.` : "An end time before the start means the shift closes after midnight."}</p>}
+              <div className="flex flex-wrap gap-2">
+                <button className="btn" disabled={length > 16}>{draft.id ? "Save changes" : "Add shift"}</button>
+                {draft.id && <button type="button" className="btn secondary" onClick={remove}>Delete shift</button>}
+              </div>
+            </>;
+          })()}
         </fieldset>
       </form>
     </div>}

@@ -2919,3 +2919,11 @@ span.dash-name { text-decoration:none; }
 /* ===== New shift: the person's own position, with "Cover another position" as the extra step. To undo, revert the commit that added this block. ===== */
 :root:root:root:root:root:root:root .sched-own-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; min-height:44px; padding:6px 6px 6px 16px; border:1.5px solid var(--c-text); border-radius:999px; background:var(--c-surface); }
 :root:root:root:root:root:root:root .sched-own-row b { font-weight:600; }
+
+/* ===== Copy a week: two choices, each saying which week and how many shifts. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .sched-copy-options { display:grid; gap:10px; }
+:root:root:root:root:root:root:root .sched-copy-option { display:grid; gap:2px; width:100%; padding:14px 16px; text-align:left; border:1.5px solid var(--c-text); border-radius:16px; background:var(--c-surface); color:var(--c-text); cursor:pointer; }
+:root:root:root:root:root:root:root .sched-copy-option:hover:not(:disabled) { background:var(--c-surface-hover); }
+:root:root:root:root:root:root:root .sched-copy-option:disabled { opacity:.5; cursor:default; }
+:root:root:root:root:root:root:root .sched-copy-option small { color:var(--c-muted); font-size:12px; }
+:root:root:root:root:root:root:root .sched-copy-option span { margin-top:4px; font-size:12px; font-weight:600; }
