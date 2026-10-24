@@ -21,6 +21,7 @@ import type { CustomTerm } from "./glossary.ts";
 import { contentTypeOf, CONTENT_LABELS } from "./categories.ts";
 import { plainScheduleSheet, type ScheduleSheetInput } from "./schedule-sheet.ts";
 import { plainShiftReportSheet, type ShiftReportSheetInput } from "./plain-sheets.ts";
+import { plainLaborSheet, type LaborSheetInput } from "./labor-sheet.ts";
 
 /* ---------------------------------------------------------------- shared --- */
 
@@ -229,5 +230,14 @@ export function shiftReportSheet(input: ShiftReportSheetInput & { serviceDate: s
   return {
     filename: `${slug(input.label)}-report-${input.serviceDate}.pdf`,
     bytes: plainShiftReportSheet(input, header(context, "Shift report", input.updated)),
+  };
+}
+
+/* ----------------------------------------------------------------- labor --- */
+
+export function laborSheet(input: LaborSheetInput, context: SheetContext): PrintedSheet {
+  return {
+    filename: `${slug(context.restaurant)}-labor${input.person ? `-${slug(input.person)}` : ""}-${input.start}${input.end === input.start ? "" : `-to-${input.end}`}.pdf`,
+    bytes: plainLaborSheet(input, header(context, "Labor")),
   };
 }
