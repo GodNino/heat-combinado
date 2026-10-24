@@ -1036,6 +1036,8 @@ function PostedPreShiftCard({restaurantId, items, restaurantName}: {restaurantId
 function PreShiftManager({restaurant, items, itemsLoading, refreshItems, startEditing, onPosted}: {restaurant: Restaurant; items: MenuItem[]; itemsLoading: boolean; refreshItems: () => Promise<void>; startEditing: boolean; onPosted: () => void}) {
   // Opened from the pencil on Today: start with the posted board already in the form, as the Edit button does.
   const [openInEdit] = useState(startEditing);
+  // True while the form is filled with the posted board: the "On the board today" card above would only repeat it.
+  const [editing, setEditing] = useState(false);
   const {namesFor, labelFor} = useTaxonomy();
   const [serviceDate, setServiceDate] = useState("");
   // What is actually on the board right now, as opposed to what is being typed.
@@ -1091,6 +1093,7 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, startEd
       setFocusIds(!prefill ? [] : data.board?.focus_item_ids?.length ? data.board.focus_item_ids : data.board?.focus_item_id ? [data.board.focus_item_id] : []);
       setEntries(prefill ? data.board?.entries ?? [] : []);
       setPosted(data.board ?? null);
+      setEditing(prefill && !!data.board);
       setItemId("");setDetail("");
       if (prefill) setMessage("Editing today’s board. Change what you need, then post it again.");
     } catch (e) {
@@ -1159,7 +1162,7 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, startEd
     {serviceDate && <p className="muted mt-2 mb-5"><time dateTime={serviceDate}>{new Date(`${serviceDate}T12:00:00Z`).toLocaleDateString(undefined, {dateStyle: "full", timeZone: "UTC"})}</time></p>}
     <Notice text={error} error /><Notice text={message} />
     {loading ? <p role="status" className="muted py-8">Loading today’s board…</p> : !serviceDate ? <button className="btn secondary" onClick={() => void loadBoard()}>Try again</button> : <>
-      {posted && (posted.note.trim() || postedFocusIds.length || posted.entries.length) ? <section className="panel mb-6 p-5" aria-label="Board posted today">
+      {posted && !editing && (posted.note.trim() || postedFocusIds.length || posted.entries.length) ? <section className="panel mb-6 p-5" aria-label="Board posted today">
         <div className="posted-head"><h2 className="text-xl font-semibold">On the board today</h2></div>
         {posted.note.trim() && <p className="mt-3 whitespace-pre-wrap">{posted.note}</p>}
         {(!!postedFocusIds.length || !!posted.entries.length) && <div className="board-pills mt-3">
