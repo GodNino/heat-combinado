@@ -559,6 +559,7 @@ const PHRASES: Record<string, string> = {
   "Date range": "Rango de fechas", "Find a person": "Buscar a una persona", "Shifts": "Turnos", "No shifts in these dates.": "No hay turnos en estas fechas.", "Drafts included. People counts everyone with at least one shift.": "Borradores incluidos. Personas cuenta a quien tiene al menos un turno.", "Overtime in these dates, shifts someone released and nobody took yet, and time off in the next two weeks.": "Horas extra en estas fechas, turnos liberados que nadie ha tomado y días libres en las próximas dos semanas.",
   "Assigned": "Asignado", "Add a note or due date": "Agregar una nota o fecha límite", "Due date (optional)": "Fecha límite (opcional)", "Yes, assign": "Sí, asignar", "Study item assigned.": "Plato asignado.", "All dishes": "Todos los platos", "No dishes on this menu yet.": "Todavía no hay platos en este menú.",
   "Edited": "Editado", "Edit today’s pre-shift": "Editar el pre-turno de hoy",
+  "Print today’s pre-shift": "Imprimir el pre-turno de hoy",
   "Owner": "Dueño", "History": "Historial", "Detail (optional)": "Detalle (opcional)", "Download": "Descargar",
   "dishes": "platos", "dish": "plato", "cocktails": "cócteles", "cocktail": "cóctel", "wines": "vinos", "wine": "vino", "wines and sakes": "vinos y sakes",
   "items": "elementos", "item": "elemento", "words": "palabras", "guides": "guías",

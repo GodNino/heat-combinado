@@ -53,7 +53,7 @@ import { detailEntries, detailFields, detailsFromForm, timeLabel } from "@/lib/d
 import { cardEntries, detailsToSave, hiddenCore, type CardFieldRow } from "@/lib/card-fields";
 import { CardFieldInputs, CardRowsContext, CoreField, useCardRows } from "./card-fields-editor";
 import { DownloadSheet, loadPhoto } from "./sheet-download";
-import { dishCard, allergySheet, employeeSheet } from "@/lib/sheets";
+import { dishCard, allergySheet, preshiftSheet, employeeSheet } from "@/lib/sheets";
 import { termsFor, mergeTerms, type Term, type CustomTerm } from "@/lib/glossary";
 import { CONTENT_TYPES, categoryOf, contentTypeOf, filterContent, type ContentType } from "@/lib/categories";
 import { TaxonomyContext, useTaxonomy, namesIn, wordsIn, type SectionWords, type MenuCategoryRow, type Taxonomy } from "./taxonomy";
@@ -1003,6 +1003,36 @@ function TodayActions({canAssign, onAssign, onLibrary}: {canAssign: boolean; onA
     <button type="button" className="btn secondary" onClick={onLibrary}>Open library</button>
   </div>;
 }
+// The posted pre-shift on Today: the note and what to push or watch, with the button to print it.
+// Nothing posted, no card. The row above it (green dot, pencil) is the way in to edit.
+function PostedPreShiftCard({restaurantId, items, restaurantName}: {restaurantId: string; items: MenuItem[]; restaurantName: string}) {
+  const [board, setBoard] = useState<ShiftBoardResponse["board"]>(null);
+  useEffect(() => {
+    if (!supabase) return;
+    let alive = true;
+    void supabase.rpc("get_preshift_board", {rid: restaurantId}).then(({data}) => {
+      if (!alive) return;
+      const next = (data as ShiftBoardResponse | null)?.board ?? null;
+      setBoard(next && next.restaurant_id === restaurantId ? next : null);
+    });
+    return () => {alive = false;};
+  }, [restaurantId]);
+  const focusIds = board?.focus_item_ids?.length ? board.focus_item_ids : board?.focus_item_id ? [board.focus_item_id] : [];
+  // An emptied board is a row with nothing in it, not a missing row.
+  if (!board || !(board.note.trim() || board.entries.length || focusIds.length)) return null;
+  const nameOf = (id: string) => items.find(item => item.id === id)?.name ?? "Menu item unavailable";
+  return <section className="panel today-card">
+    <div className="posted-head">
+      <h2 className="text-sm font-semibold">Today’s pre-shift</h2>
+      <DownloadSheet label="Print today’s pre-shift" build={async () => preshiftSheet({serviceDate: board.service_date, note: board.note, postedBy: board.posted_by_name?.trim(), updated: board.updated_at, focus: focusIds.map(id => items.find(item => item.id === id)?.name).filter((name): name is string => !!name), groups: Object.entries(SHIFT_STATUS_LABELS).map(([status, label]) => ({label, entries: board.entries.filter(entry => entry.status === status).map(entry => ({name: nameOf(entry.menu_item_id), status, detail: entry.detail}))}))}, {restaurant: restaurantName})} />
+    </div>
+    {!!board.note.trim() && <p className="muted guide-blurb mt-3 text-xs">{board.note}</p>}
+    {(!!focusIds.length || !!board.entries.length) && <div className="board-pills mt-3">
+      {focusIds.map(id => <span key={id} className="board-pill">{nameOf(id)} · Focus</span>)}
+      {board.entries.map(entry => <span key={entry.menu_item_id} className={`board-pill${entry.status === "86" ? " out" : entry.status === "low" ? " low" : ""}`}>{nameOf(entry.menu_item_id)} · {SHIFT_STATUS_LABELS[entry.status]}</span>)}
+    </div>}
+  </section>;
+}
 function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPosted}: {restaurant: Restaurant; items: MenuItem[]; itemsLoading: boolean; refreshItems: () => Promise<void>; onPosted: () => void}) {
   const {namesFor, labelFor} = useTaxonomy();
   const [serviceDate, setServiceDate] = useState("");
@@ -1671,6 +1701,7 @@ function Workspace({
       {(can("preshift") || can("team") || canSchedule) && <TodayFigures key={`figures-${rid}`} restaurantId={rid} canSchedule={canSchedule} />}
       {(can("team") || can("preshift") || can("library") || canSchedule) && <ManagerAttention key={`attention-${rid}`} restaurantId={rid} canTeam={can("team")} canSchedule={canSchedule} canReports={can("preshift") || can("team")} onOpen={openAttention} />}
       <TodayStatus key={`status-${rid}`} restaurantId={rid} canPreshift={can("preshift")} canReports={can("preshift") || can("team")} onPreshift={() => navigate("preshift")} onSideWork={() => navigate("checklists")} onReport={openPastReports} />
+      {can("preshift") && <PostedPreShiftCard key={`posted-${rid}`} restaurantId={rid} items={items} restaurantName={restaurant.name} />}
       {itemsLoading ? <p role="status" className="muted py-10">Loading your library…</p> : <>
         <NextShift key={`shift-${rid}`} restaurantId={rid} userId={user.id} onOpen={() => navigate("schedule")} />
         {(can("preshift") || can("team")) && <LastShiftNote key={`last-${rid}`} restaurantId={rid} onOpen={() => navigate("reports")} />}
