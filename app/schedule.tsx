@@ -92,7 +92,8 @@ export function Schedule({restaurantId, restaurantName, userId, canManage, setMe
 }
 
 // ── The week ─────────────────────────────────────────────────────────────────────────────────
-type Draft = {id?: string; user_id: string; position: string; day: string; start: string; end: string; note: string};
+// `covering` is the extra step: the shift is for a position other than the one the person was hired for.
+type Draft = {id?: string; user_id: string; position: string; day: string; start: string; end: string; note: string; covering?: boolean};
 type ViewBy = "name" | "hours" | "position";
 // A shift being dragged: where it was grabbed, where the pointer is now, and the cell under it.
 type Drag = {shift: Shift; x: number; y: number; dx: number; dy: number; width: number; target: string | null; copy: boolean};
@@ -184,13 +185,21 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
       : viewBy === "position" ? (a, b) => a.role.localeCompare(b.role) || byName(a, b) : byName);
   }, [canManage, people, hours, query, viewBy]);
 
+  // A shift is for the position the person was hired for. Covering another one is a step of its own,
+  // taken on purpose; it's also where we land when their own position isn't this manager's to schedule.
+  const ownPosition = (userId: string) => people.find(p => p.user_id === userId)?.role.trim() ?? "";
+  const samePosition = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  function forPerson(userId: string): Pick<Draft, "position" | "covering"> {
+    const own = ownPosition(userId);
+    return own && mayEdit(own) ? {position: own, covering: false} : {position: editablePositions[0] ?? own, covering: true};
+  }
   function openNew(person: Person, day: Date) {
-    const own = person.role.trim() || "Server";
-    setDraft({user_id: person.user_id, position: mayEdit(own) ? own : editablePositions[0] ?? own, day: dayKey(day), ...defaultShift(settings), note: ""});
+    setDraft({user_id: person.user_id, ...forPerson(person.user_id), day: dayKey(day), ...defaultShift(settings), note: ""});
   }
   function openShift(shift: Shift) {
     const from = new Date(shift.starts_at);
-    setDraft({id: shift.id, user_id: shift.user_id, position: shift.position, day: dayKey(from), start: clock(from), end: clock(new Date(shift.ends_at)), note: shift.note});
+    const own = ownPosition(shift.user_id);
+    setDraft({id: shift.id, user_id: shift.user_id, position: shift.position, covering: !own || !samePosition(own, shift.position), day: dayKey(from), start: clock(from), end: clock(new Date(shift.ends_at)), note: shift.note});
   }
   async function act(work: () => Promise<void>) {
     setBusy(true); setError("");
@@ -502,8 +511,20 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
           <button type="button" className="ml-auto muted" aria-label="Close" onClick={() => setDraft(null)}><X size={18} /></button>
         </div>
         <fieldset disabled={busy}>
-          <Field label="Who"><select id="shift-who" value={draft.user_id} onChange={e => setDraft({...draft, user_id: e.target.value})}>{people.map(p => <option key={p.user_id} value={p.user_id}>{p.name}</option>)}</select></Field>
-          <Field label="Position"><select id="shift-position" value={draft.position} onChange={e => setDraft({...draft, position: e.target.value})}>{(editablePositions.includes(draft.position) ? editablePositions : [draft.position, ...editablePositions]).map(p => <option key={p}>{p}</option>)}</select></Field>
+          <Field label="Who"><select id="shift-who" value={draft.user_id} onChange={e => setDraft({...draft, user_id: e.target.value, ...(draft.covering ? {} : forPerson(e.target.value))})}>{people.map(p => <option key={p.user_id} value={p.user_id}>{p.name}</option>)}</select></Field>
+          {(() => {
+            const own = ownPosition(draft.user_id);
+            const canOwn = !!own && mayEdit(own);
+            if (!draft.covering) return <div className="field" role="group" aria-labelledby="shift-own-label">
+              <label id="shift-own-label">Position</label>
+              <div className="sched-own-row"><b>{draft.position}</b><span className="muted text-xs">Their position</span>
+                <button type="button" className="btn secondary ml-auto" onClick={() => setDraft({...draft, covering: true, position: editablePositions.find(p => !samePosition(p, draft.position)) ?? draft.position})}>Cover another position</button></div>
+            </div>;
+            return <>
+              <Field label="Covering another position"><select id="shift-position" value={draft.position} onChange={e => setDraft({...draft, position: e.target.value})}>{(editablePositions.includes(draft.position) ? editablePositions : [draft.position, ...editablePositions]).map(p => <option key={p}>{p}</option>)}</select></Field>
+              <p className="muted -mt-2 mb-4 text-xs">{own ? `Hired as ${own}.` : "No position on their profile yet. Set it in Team."}{canOwn && <> <button type="button" className="underline underline-offset-4" onClick={() => setDraft({...draft, covering: false, position: own})}>Back to their position</button></>}</p>
+            </>;
+          })()}
           <Field label="Day"><input id="shift-day" type="date" required value={draft.day} onChange={e => setDraft({...draft, day: e.target.value})} /></Field>
           {settings.shift_presets.length > 0 && <div className="sched-presets" role="group" aria-label="Quick shifts">{settings.shift_presets.map(preset =>
             <button key={preset.name} type="button" className="word-chip" aria-pressed={draft.start === preset.start && draft.end === preset.end} onClick={() => setDraft({...draft, start: preset.start, end: preset.end})}>{preset.name}<small>{presetLabel(preset)}</small></button>)}</div>}

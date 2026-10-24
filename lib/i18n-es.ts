@@ -572,7 +572,7 @@ const PHRASES: Record<string, string> = {
   "Nobody on the team yet. Invite your team from Team.": "Todavía no hay nadie en el equipo. Invita a tu equipo desde Equipo.",
   "Nothing published for this week yet.": "Todavía no se publicó nada para esta semana.", "Overtime": "Horas extra", "Draft": "Borrador",
   "Overlaps another shift": "Se cruza con otro turno", "Marked unavailable": "Marcó que no puede", "Approved time off": "Día libre aprobado",
-  "Asked for this day off": "Pidió este día libre", "Edit shift": "Editar turno", "New shift": "Turno nuevo", "Who": "Quién", "Position": "Puesto",
+  "Asked for this day off": "Pidió este día libre", "Edit shift": "Editar turno", "New shift": "Turno nuevo", "Who": "Quién", "Position": "Puesto", "Their position": "Su puesto", "Cover another position": "Cubrir otro puesto", "Covering another position": "Cubre otro puesto", "Back to their position": "Volver a su puesto", "No position on their profile yet. Set it in Team.": "Todavía no tiene puesto en su perfil. Ponlo en Equipo.",
   "Day": "Día", "Starts": "Empieza", "Ends": "Termina", "Note (optional)": "Nota (opcional)", "e.g. Patio, private party": "ej. Patio, evento privado",
   "An end time before the start means the shift closes after midnight.": "Si la hora de salida es antes que la de entrada, el turno termina después de medianoche.",
   "Add shift": "Agregar turno", "Delete shift": "Eliminar turno", "A shift can be at most 16 hours.": "Un turno puede durar como máximo 16 horas.",
@@ -741,6 +741,7 @@ const lower = (text: string) => (translateCore(text) ?? text).toLowerCase();
 
 // Sentences with a name or a number inside: the automatic quiz's questions, and a few counters.
 const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/^Hired as (.+)\.$/, m => `Contratado como ${PHRASES[m[1]] ?? m[1]}.`],
   [/^(\d+) results? needs? review$/, m => `${m[1]} ${m[1] === "1" ? "resultado por revisar" : "resultados por revisar"}`],
   [/^(\d+) (?:dish|dishes) under 80%$/, m => `${m[1]} ${m[1] === "1" ? "platillo" : "platillos"} por debajo de 80%`],
   [/^A short tour of the things you'll use every day at (.+)\. Skip it now and replay it any time\.$/, m => `Un tour corto de lo que usarás cada día en ${m[1]}. Sáltalo ahora y repítelo cuando quieras.`],

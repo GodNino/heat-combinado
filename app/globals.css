@@ -2914,3 +2914,8 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .labor-pill-box { position:relative; display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 14px; border:1px solid var(--c-line-5); border-radius:999px; background:var(--c-surface); color:var(--c-text); font-size:12px; font-weight:600; white-space:nowrap; }
 :root:root:root:root:root:root:root .labor-pill-box:focus-within { outline:2px solid var(--c-heat); outline-offset:2px; }
 :root:root:root:root:root:root:root .labor-pill-box input { position:absolute; inset:0; width:100%; height:100%; min-height:0; margin:0; padding:0; border:0; opacity:0; font-size:16px; cursor:pointer; }
+
+
+/* ===== New shift: the person's own position, with "Cover another position" as the extra step. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .sched-own-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; min-height:44px; padding:6px 6px 6px 16px; border:1.5px solid var(--c-text); border-radius:999px; background:var(--c-surface); }
+:root:root:root:root:root:root:root .sched-own-row b { font-weight:600; }
