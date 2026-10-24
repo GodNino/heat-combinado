@@ -54,7 +54,7 @@ function EmployeeShiftBoard({restaurantId, items, onFocusQuiz, onBoardItem, canD
  const focusItems=focusIds.map(id=>items.find(item=>item.id===id)).filter((item): item is MenuItem=>!!item);
  const postedBy=board.posted_by_name?.trim();
  // An edit made after posting is the one thing somebody who already read the board needs to see.
- const edited=!!board.created_at&&!!board.updated_at&&new Date(board.updated_at).getTime()-new Date(board.created_at).getTime()>60000;
+ const edited=!!board.created_at&&!!board.updated_at&&new Date(board.updated_at).getTime()-new Date(board.created_at).getTime()>5000;
  const stamped=board.updated_at?shiftAge(board.updated_at):'';
  if(!board.note.trim()&&!focusIds.length&&!board.entries.length)return null;
  return <section className="panel mb-7 p-5" aria-label="Today’s pre-shift board">
