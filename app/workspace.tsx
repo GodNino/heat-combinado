@@ -1156,13 +1156,18 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, startEd
     } finally {setBusy(false);}
   }
   const itemOptions = CONTENT_TYPES.map(type => <optgroup key={type} label={labelFor(type).heading}>{inMenuOrder(items.filter(item => contentTypeOf(item) === type), namesFor(type)).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</optgroup>);
+  // "Delete" asks once more. It is shown under the posted card, and under the Delete and Cancel row while editing.
+  const deleteConfirm = confirmClear ? <div className="mt-5 border-t border-line pt-4"><p>Delete today’s board? It comes off every phone. The note, the focus and the 86 board go with it. You can write a new one straight after.</p><div className="mt-3 flex flex-wrap gap-3"><button type="button" className="btn secondary card-admin-danger" disabled={busy} onClick={() => void clearBoard()}>{busy ? "Deleting\u2026" : "Yes, delete"}</button><button type="button" className="btn secondary" disabled={busy} onClick={() => setConfirmClear(false)}>Keep it</button></div></div> : null;
   return <section className="preshift mx-auto max-w-3xl">
     <p className="eyebrow muted">Manager workspace · {restaurant.name}</p>
     <h1 className="mt-3 text-2xl font-semibold">Pre-shift</h1>
     {serviceDate && <p className="muted mt-2 mb-5"><time dateTime={serviceDate}>{new Date(`${serviceDate}T12:00:00Z`).toLocaleDateString(undefined, {dateStyle: "full", timeZone: "UTC"})}</time></p>}
     <Notice text={error} error /><Notice text={message} />
     {loading ? <p role="status" className="muted py-8">Loading today’s board…</p> : !serviceDate ? <button className="btn secondary" onClick={() => void loadBoard()}>Try again</button> : <>
-      {posted && !editing && (posted.note.trim() || postedFocusIds.length || posted.entries.length) ? <section className="panel mb-6 p-5" aria-label="Board posted today">
+      {posted && (posted.note.trim() || postedFocusIds.length || posted.entries.length) ? (editing ? <section className="panel mb-6 p-5" aria-label="Editing today’s board">
+        {!confirmClear && <div className="posted-actions"><button type="button" className="btn secondary card-admin-danger" disabled={busy} onClick={() => setConfirmClear(true)}>Delete</button><button type="button" className="btn secondary" disabled={busy} onClick={() => void loadBoard()}>Cancel</button></div>}
+        {deleteConfirm}
+      </section> : <section className="panel mb-6 p-5" aria-label="Board posted today">
         <div className="posted-head"><h2 className="text-xl font-semibold">On the board today</h2></div>
         {posted.note.trim() && <p className="mt-3 whitespace-pre-wrap">{posted.note}</p>}
         {(!!postedFocusIds.length || !!posted.entries.length) && <div className="board-pills mt-3">
@@ -1170,8 +1175,8 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, startEd
           {posted.entries.map(entry => <span key={entry.menu_item_id} className={`board-pill${entry.status === "86" ? " out" : entry.status === "low" ? " low" : ""}`}>{items.find(item => item.id === entry.menu_item_id)?.name ?? "Menu item unavailable"} · {SHIFT_STATUS_LABELS[entry.status]}{entry.detail ? ` · ${entry.detail}` : ""}</span>)}
         </div>}
         {!confirmClear && <div className="posted-actions"><button type="button" className="btn secondary card-admin-danger" disabled={busy} onClick={() => setConfirmClear(true)}>Delete</button><button type="button" className="btn secondary posted-edit" disabled={busy} onClick={() => void loadBoard(true)}><Pencil size={14} aria-hidden="true" />Edit</button></div>}
-        {confirmClear && <div className="mt-5 border-t border-line pt-4"><p>Delete today’s board? It comes off every phone. The note, the focus and the 86 board go with it. You can write a new one straight after.</p><div className="mt-3 flex flex-wrap gap-3"><button type="button" className="btn secondary card-admin-danger" disabled={busy} onClick={() => void clearBoard()}>{busy ? "Deleting\u2026" : "Yes, delete"}</button><button type="button" className="btn secondary" disabled={busy} onClick={() => setConfirmClear(false)}>Keep it</button></div></div>}
-      </section> : null}
+        {deleteConfirm}
+      </section>) : null}
       <fieldset disabled={busy} className="panel mb-6 p-5">
         <InfoRow info="A short message every employee sees at the top of today’s board." className="mb-3"><h2 className="text-lg font-semibold">Note to the floor</h2></InfoRow>
         <textarea id="shift-note" aria-label="Note to the floor" maxLength={2000} value={note} onChange={e => {setNote(e.target.value);setMessage("");}} aria-describedby="shift-note-count" placeholder="Two VIPs at 8pm on table 12, both shellfish allergies…" />
