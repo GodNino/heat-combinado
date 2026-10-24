@@ -15,7 +15,8 @@ import { DownloadSheet } from "./sheet-download";
 
 type Tab = "tonight" | "past" | "recipients";
 
-export function ShiftReports({restaurant, restaurants, brand, ownsBrand, canWrite, canManageRecipients, setMessage}: {
+export function ShiftReports({restaurant, restaurants, brand, ownsBrand, canWrite, canManageRecipients, setMessage, initialTab}: {
+  initialTab?: Tab;
   restaurant: Restaurant;
   restaurants: Restaurant[];
   brand?: Organization;
@@ -24,7 +25,7 @@ export function ShiftReports({restaurant, restaurants, brand, ownsBrand, canWrit
   canManageRecipients: boolean;
   setMessage: (text: string) => void;
 }) {
-  const [tab, setTab] = useState<Tab>(canWrite ? "tonight" : "past");
+  const [tab, setTab] = useState<Tab>(initialTab ?? (canWrite ? "tonight" : "past"));
   const tabs: [Tab, string][] = [
     ...(canWrite ? [["tonight", "Tonight's report"] as [Tab, string]] : []),
     ["past", "Past reports"],
