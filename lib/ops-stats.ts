@@ -1,7 +1,7 @@
 // The operations dashboard's arithmetic: labor from the schedule and the service from the shift
 // reports, this week against last. Kept free of React and Supabase so the screen and the tests share
 // one copy. Weeks are the restaurant's own (schedule settings); days are the device's local days.
-import { dayKey, shiftHours, type ScheduleSettings, type Shift } from "./schedule.ts";
+import { dayKey, shiftHours, weekStart, type ScheduleSettings, type Shift } from "./schedule.ts";
 import { ISSUE_KINDS, type IssueKind, type Mood, type ShiftReport } from "./shift-report.ts";
 
 export type PositionHours = {position: string; hours: number; lastHours: number; people: number};
@@ -38,6 +38,34 @@ export function laborSummary(thisWeek: Shift[], lastWeek: Shift[], settings: Pic
     hours: sum(thisWeek), lastHours: sum(lastWeek), people: new Set(thisWeek.map(s => s.user_id)).size,
     drafts: thisWeek.filter(s => !s.published).length, byPosition, overtime,
   };
+}
+
+// Any stretch of days, not only a week: the same numbers as laborSummary, but overtime is judged one
+// restaurant week at a time inside the stretch, so a month does not turn 160 honest hours into "overtime".
+// A short stretch (a day, a few days) is judged on the shifts inside it, because that is all it holds.
+export function laborRange(now: Shift[], before: Shift[], settings: Pick<ScheduleSettings, "overtime_weekly" | "overtime_daily" | "week_start">): LaborSummary {
+  const base = laborSummary(now, before, settings);
+  const weeks = new Map<string, Shift[]>();
+  for (const s of now) {
+    const key = dayKey(weekStart(new Date(s.starts_at), settings.week_start));
+    weeks.set(key, [...(weeks.get(key) ?? []), s]);
+  }
+  const worst = new Map<string, Overtime>();
+  for (const week of weeks.values()) for (const o of laborSummary(week, [], settings).overtime) {
+    const seen = worst.get(o.user_id);
+    if (!seen || o.hours > seen.hours) worst.set(o.user_id, o);
+  }
+  return {...base, overtime: [...worst.values()].sort((a, b) => b.hours - a.hours)};
+}
+
+// Hours past the weekly limit, added up week by week, for one person's shifts.
+export function overtimeHours(shifts: Shift[], settings: Pick<ScheduleSettings, "overtime_weekly" | "week_start">) {
+  const weeks = new Map<string, number>();
+  for (const s of shifts) {
+    const key = dayKey(weekStart(new Date(s.starts_at), settings.week_start));
+    weeks.set(key, (weeks.get(key) ?? 0) + shiftHours(s));
+  }
+  return [...weeks.values()].reduce((total, hours) => total + Math.max(0, hours - settings.overtime_weekly), 0);
 }
 
 export type ServiceDay = {day: string; covers: number; sales: number; reports: number};
