@@ -41,6 +41,8 @@ export function ManagerAttention({restaurantId, canTeam, canSchedule = canTeam, 
     ["positions", counts.positions, counts.positions === 1 ? "new person needs a position" : "new people need a position", <UserRound key="i" size={16} aria-hidden="true" />],
     ["retakes", counts.retakes, counts.retakes === 1 ? "quiz retake to approve" : "quiz retakes to approve", <RotateCcw key="i" size={16} aria-hidden="true" />],
   ] as [AttentionTarget, number, string, React.ReactNode][]).filter(([, n]) => n > 0);
+  // Caught up: no card at all. Nothing is waiting, so nothing takes space.
+  if (!chips.length) return null;
   return <section className="panel attention mb-4" aria-label="Waiting for you">
     <p className="eyebrow muted">Waiting for you</p>
     {chips.length ? <ul className="attention-list">{chips.map(([key, n, words, icon]) => <li key={key}>

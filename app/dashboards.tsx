@@ -6,7 +6,7 @@
 // Same rules as everywhere else in HEAT: latest result per item, accuracy weighted by answered
 // questions, review below 80%. Charts are one series in the app's own ink; numbers are always
 // written out next to the bars, so nothing depends on reading a colour.
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { MenuItem } from "@/lib/menu";
@@ -95,15 +95,16 @@ function WeeksChart({weeks, unit}: {weeks: Week[]; unit: "team" | "me"}) {
   </figure>;
 }
 
-export function ManagerDashboard({restaurantId, restaurantName, onOpenMember, onOpenSchedule, onOpenReports}: {restaurantId: string; restaurantName: string; onOpenMember: (id: string) => void; onOpenSchedule?: () => void; onOpenReports?: () => void}) {
+export function ManagerDashboard({restaurantId, restaurantName, onOpenMember, onOpenSchedule, onOpenReports, today}: {restaurantId: string; restaurantName: string; onOpenMember: (id: string) => void; onOpenSchedule?: () => void; onOpenReports?: () => void; today?: ReactNode}) {
   const {labelFor} = useTaxonomy();
   // The read-only previews supply sample training numbers only; operations need a real restaurant.
   const sample = useContext(DashboardSource);
   const libraries = useRpc<LibraryStats>("location_summary", {rid: restaurantId});
   const weeks = useRpc<Week>("location_activity", {rid: restaurantId, weeks: 8});
   const roster = useRpc<Person>("team_learning_roster", {rid: restaurantId});
-  // One part at a time: Labor and Service from the schedule and reports, Training from the quizzes.
-  const [view, setView] = useState<OpsView>("labor");
+  // One part at a time: Today first when the page brings it, then Labor and Service from the schedule
+  // and reports, and Training from the quizzes.
+  const [view, setView] = useState<OpsView | "today">(today ? "today" : "labor");
   if (libraries.error) return <p className="panel p-5 muted">{NEEDS_UPDATE}</p>;
   const libs = libraries.data ?? [];
   const learners = libs[0]?.learners ?? 0;
@@ -117,8 +118,9 @@ export function ManagerDashboard({restaurantId, restaurantName, onOpenMember, on
     .sort((a, b) => a.covered - b.covered || a.name.localeCompare(b.name));
   const loading = !libraries.data;
   return <section aria-label={`${restaurantName} dashboard`}>
-    {!sample && <div className="category-tabs mb-4" role="group" aria-label="Dashboard view">{([["labor", "Labor"], ["service", "Service"], ["training", "Training"]] as [OpsView, string][]).map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => setView(key)}>{label}{key === "training" && !loading && review > 0 && <span className="dash-badge" aria-label={`${review} to review`}>{review}</span>}</button>)}</div>}
-    {!sample && <OperationsDashboard restaurantId={restaurantId} onOpenSchedule={onOpenSchedule} onOpenReports={onOpenReports} view={view} />}
+    {!sample && <div className="category-tabs mb-4" role="group" aria-label="Dashboard view">{([...(today ? [["today", "Today"]] : []), ["labor", "Labor"], ["service", "Service"], ["training", "Training"]] as [OpsView | "today", string][]).map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => setView(key)}>{label}{key === "training" && !loading && review > 0 && <span className="dash-badge" aria-label={`${review} to review`}>{review}</span>}</button>)}</div>}
+    {!sample && view === "today" && today}
+    {!sample && view !== "today" && <OperationsDashboard restaurantId={restaurantId} onOpenSchedule={onOpenSchedule} onOpenReports={onOpenReports} view={view} />}
     {!sample && view === "training" && !loading && people.some(p => Number(p.needs_review) > 0) && <div className="panel dash-panel">
       <SectionInfo heading="Needs review">Dishes where the latest quiz score is under 80%. Tap a name to open them.</SectionInfo>
       <ul className="dash-review">{[...people].filter(p => Number(p.needs_review) > 0).sort((a, b) => Number(b.needs_review) - Number(a.needs_review) || a.name.localeCompare(b.name)).map(p => <li key={p.user_id}><button type="button" onClick={() => onOpenMember(p.user_id)}><span className="dash-review-name">{p.name}<small>{`${p.needs_review} ${Number(p.needs_review) === 1 ? "dish" : "dishes"} under 80%`}</small></span><span className="dash-badge">{p.needs_review}</span><ChevronRight size={18} aria-hidden="true" /></button></li>)}</ul>

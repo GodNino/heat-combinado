@@ -63,15 +63,14 @@ import { WordsManager } from "./words";
 import { Standards } from "./standards";
 import { Story } from "./story";
 import { Checklists } from "./checklists";
-import { MyJobCard } from "./checklist-card";
 import { Locations, setUpLibraries, type Organization } from "./locations";
 import { BrandDashboard, ManagerDashboard, MyActivity } from "./dashboards";
 import { Tour, tourSeen, tourSteps } from "./tour";
 import { LastShiftNote, ShiftReports } from "./shift-report";
 import { LanguageSwitch, currentLang, setLang } from "./language";
 import { NotificationSwitch, notify } from "./notifications";
-import { MyWeek, NextShift, Schedule, ShiftChangesWaiting, WhoWorksToday, type ScheduleTab } from "./schedule";
-import { FOH_POSITIONS, KITCHEN_POSITIONS, POSITIONS } from "@/lib/schedule";
+import { MyWeek, NextShift, Schedule, ShiftChangesWaiting, TodayRoster, type ScheduleTab } from "./schedule";
+import { FOH_POSITIONS, KITCHEN_POSITIONS, POSITIONS, shortTime } from "@/lib/schedule";
 import { ManagerAttention, type AttentionTarget } from "./home-cards";
 
 // Every screen the workspace can show. Named once: it used to be spelled out in two places.
@@ -996,11 +995,9 @@ function AddDish({
 
 // A pre-shift with ten focus items is no focus at all; the database refuses more than this too.
 const FOCUS_LIMIT = 10;
-// The manager home used to link to the pre-shift tab without saying whether anything was
-// on it. At four in the afternoon that is the one thing you actually want to know.
-// The two shortcuts at the top of the manager Home. A dot says whether each one still needs you:
-// Pre-shift is lit once a board is posted; Checklists is lit once every job given out today is done.
-function HomeShortcuts({restaurantId, canAssign, onPreshift, onChecklists, onAssign, onLibrary}: {restaurantId: string; canAssign: boolean; onPreshift: () => void; onChecklists: () => void; onAssign: () => void; onLibrary: () => void}) {
+// The two shortcuts at the top of the manager's Today. A dot says whether each one still needs you:
+// green once a pre-shift is posted, and once every side-work job given out today is done; red until then.
+function TodayShortcuts({restaurantId, onPreshift, onSideWork}: {restaurantId: string; onPreshift: () => void; onSideWork: () => void}) {
   const [posted, setPosted] = useState<boolean | null>(null);
   const [jobsDone, setJobsDone] = useState<boolean | null>(null);
   useEffect(() => {
@@ -1024,12 +1021,16 @@ function HomeShortcuts({restaurantId, canAssign, onPreshift, onChecklists, onAss
     })();
     return () => {alive = false;};
   }, [restaurantId]);
-  const dot = (state: boolean | null, yes: string, no: string) => state === null ? null : <><span className={`home-dot${state ? " on" : ""}`} aria-hidden="true" /><span className="sr-only">{state ? yes : no}</span></>;
-  return <div className="home-chips mt-5 mb-4">
-    <button className="btn secondary home-chip" onClick={onPreshift}>Pre-shift{dot(posted, " (posted)", " (not posted yet)")}</button>
-    <button className="btn secondary home-chip" onClick={onChecklists}>Checklists{dot(jobsDone, " (all done)", " (jobs still open)")}</button>
-    {canAssign && <button className="btn secondary home-chip" onClick={onAssign}>Assign study</button>}
-    <button className="btn secondary home-chip" onClick={onLibrary}>Open library</button>
+  const dot = (state: boolean | null, yes: string, no: string) => state === null ? null : <><span className={`today-state ${state ? "on" : "off"}`} aria-hidden="true" /><span className="sr-only">{state ? yes : no}</span></>;
+  return <div className="today-chips">
+    <button type="button" className="btn secondary" onClick={onPreshift}>Pre-shift{dot(posted, " (posted)", " (not posted yet)")}</button>
+    <button type="button" className="btn secondary" onClick={onSideWork}>Side work{dot(jobsDone, " (all done)", " (jobs still open)")}</button>
+  </div>;
+}
+function TodayActions({canAssign, onAssign, onLibrary}: {canAssign: boolean; onAssign: () => void; onLibrary: () => void}) {
+  return <div className="today-chips">
+    {canAssign && <button type="button" className="btn secondary" onClick={onAssign}>Assign study</button>}
+    <button type="button" className="btn secondary" onClick={onLibrary}>Open library</button>
   </div>;
 }
 function PreShiftHomeCard({restaurantId, items, onOpen, canDownload, restaurantName}: {restaurantId: string; items: MenuItem[]; onOpen: () => void; canDownload: boolean; restaurantName: string}) {
@@ -1053,12 +1054,15 @@ function PreShiftHomeCard({restaurantId, items, onOpen, canDownload, restaurantN
   const edited = !!board?.created_at && !!board?.updated_at && new Date(board.updated_at).getTime() - new Date(board.created_at).getTime() > 60000;
   // Nothing posted: no card at all. The Pre-shift shortcut at the top of Home is the way in.
   if (!loaded || !live) return null;
-  return <section className="panel mt-2 p-4">
-    <div className="posted-head"><h2 className="text-sm font-semibold">Today’s pre-shift</h2>
-      {!loaded ? null : live
-        ? (canDownload ? <DownloadSheet label="Download today’s board" build={async () => preshiftSheet({serviceDate: board!.service_date, note: board!.note, postedBy, updated: board!.updated_at, focus: focusIds.map(id => items.find(item => item.id === id)?.name).filter((name): name is string => !!name), groups: Object.entries(SHIFT_STATUS_LABELS).map(([status, label]) => ({label, entries: board!.entries.filter(entry => entry.status === status).map(entry => ({name: items.find(item => item.id === entry.menu_item_id)?.name ?? "Menu item unavailable", status, detail: entry.detail}))}))}, {restaurant: restaurantName})} /> : null)
-        : <span className="menu-badge cc shrink-0">Not posted yet</span>}</div>
-    {loaded && live ? <p className="muted mt-1 text-xs">{postedBy ? `Posted by ${postedBy}` : "Posted"}{board?.updated_at ? <> · {edited ? <span className="font-semibold text-heat">updated {shiftAge(board.updated_at)}</span> : shiftAge(board.updated_at)}</> : null}</p> : null}
+  const posted = board?.created_at ? shortTime(new Date(board.created_at)) : "";
+  return <section className="panel today-card">
+    <div className="posted-head">
+      <div className="flex min-w-0 items-center gap-2"><h2 className="text-sm font-semibold">Pre-shift</h2>{edited && <span className="menu-badge unknown">Edited</span>}</div>
+      <div className="flex shrink-0 items-center gap-2">
+        {canDownload ? <DownloadSheet label="Download today’s board" build={async () => preshiftSheet({serviceDate: board!.service_date, note: board!.note, postedBy, updated: board!.updated_at, focus: focusIds.map(id => items.find(item => item.id === id)?.name).filter((name): name is string => !!name), groups: Object.entries(SHIFT_STATUS_LABELS).map(([status, label]) => ({label, entries: board!.entries.filter(entry => entry.status === status).map(entry => ({name: items.find(item => item.id === entry.menu_item_id)?.name ?? "Menu item unavailable", status, detail: entry.detail}))}))}, {restaurant: restaurantName})} /> : null}
+        <button type="button" className="icon-chip" aria-label="Edit today’s pre-shift" title="Edit" onClick={onOpen}><Pencil size={14} aria-hidden="true" /></button>
+      </div></div>
+    <p className="muted mt-1 text-xs">{postedBy ? `Posted by ${postedBy}${posted ? ` · ${posted}` : ""}` : posted ? `Posted ${posted}` : "Posted"}{edited && board?.updated_at ? ` · Edited ${shortTime(new Date(board.updated_at))}` : ""}</p>
     
     {!loaded ? <p className="muted mt-3 text-xs">Checking today’s board…</p> : live ? <>
       {!!board!.note.trim() && <p className="muted guide-blurb mt-3 text-xs">{board!.note}</p>}
@@ -1066,7 +1070,6 @@ function PreShiftHomeCard({restaurantId, items, onOpen, canDownload, restaurantN
         {focusIds.map(id => <span key={id} className="board-pill">{items.find(item => item.id === id)?.name ?? "Menu item unavailable"} · Focus</span>)}
         {board!.entries.map(entry => <span key={entry.menu_item_id} className={`board-pill${entry.status === "86" ? " out" : entry.status === "low" ? " low" : ""}`}>{items.find(item => item.id === entry.menu_item_id)?.name ?? "Menu item unavailable"} · {SHIFT_STATUS_LABELS[entry.status]}</span>)}
       </div>}</> : <p className="muted mt-3 text-xs">Your team sees nothing until you post it.</p>}
-    <div className="preshift-home-foot"><button className="btn secondary home-edit-btn" onClick={onOpen}>{live ? <Pencil size={14} aria-hidden="true" /> : <Plus size={14} aria-hidden="true" />}{live ? "Edit" : "Write"}</button></div>
   </section>;
 }
 function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPosted}: {restaurant: Restaurant; items: MenuItem[]; itemsLoading: boolean; refreshItems: () => Promise<void>; onPosted: () => void}) {
@@ -1438,113 +1441,6 @@ function AccessPanel({restaurantId, member, current, myAccess, meId, busy, actio
     })}>Save access</button>}
   </section>;
 }
-// Manager Home: a quick read of the team. Tap a tile and a bubble opens with the names (or, for accuracy, the dishes).
-// It reads the same functions the Team screen uses and writes nothing.
-function TeamSnapshot({restaurantId, onOpenMember, onOpenTeam}: {restaurantId: string; onOpenMember: (id: string) => void; onOpenTeam: () => void}) {
-  type Detail = {attempts: TeamAttempt[]; assignments: TeamAssignment[]};
-  const [members, setMembers] = useState<TeamMember[] | null>(null);
-  const [detail, setDetail] = useState<Record<string, Detail> | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [open, setOpen] = useState<"" | "study" | "accuracy" | "review">("");
-  useEffect(() => {
-    let live = true;
-    (async () => {
-      try {
-        if (!supabase) throw new Error("Please reconnect to your workspace.");
-        const roster = await supabase.rpc("team_learning_roster", {rid: restaurantId});
-        if (roster.error) throw new Error(roster.error.message);
-        const people = (roster.data ?? []) as TeamMember[];
-        if (!live) return;
-        setMembers(people);
-        const found: Record<string, Detail> = {};
-        // A few people at a time, so a big team does not open dozens of requests at once.
-        for (let start = 0; start < people.length; start += 6) {
-          await Promise.all(people.slice(start, start + 6).map(async person => {
-            const [scores, assigned] = await Promise.all([
-              supabase!.rpc("team_member_print_progress", {rid: restaurantId, learner_id: person.user_id}),
-              supabase!.rpc("team_member_assignments", {rid: restaurantId, learner_id: person.user_id}),
-            ]);
-            if (!scores.error && !assigned.error) found[person.user_id] = {attempts: (scores.data ?? []) as TeamAttempt[], assignments: (assigned.data ?? []) as TeamAssignment[]};
-          }));
-          if (!live) return;
-        }
-        setDetail(found);
-      } catch {
-        if (live) setFailed(true);
-      }
-    })();
-    return () => {live = false;};
-  }, [restaurantId]);
-  // If the team cannot be read, Home simply carries on without these tiles.
-  if (failed || (members && !members.length)) return null;
-  const people = members ?? [];
-  // Same rule as the Assigned list on a person: passed at target, and not before the item was assigned.
-  const finished = (assignment: TeamAssignment, attempts: TeamAttempt[]) => {
-    const score = attempts.find(row => row.menu_item_id === assignment.menu_item_id);
-    if (!score || !score.total) return false;
-    if (learningStatus(score) !== "At target") return false;
-    return new Date(score.created_at).getTime() >= new Date(assignment.created_at).getTime();
-  };
-  const answered = people.reduce((sum, row) => sum + Number(row.total_sum || 0), 0);
-  const correct = people.reduce((sum, row) => sum + Number(row.correct_sum || 0), 0);
-  const accuracy = answered ? Math.round(correct / answered * 100) : null;
-  const reviewCount = people.reduce((sum, row) => sum + Number(row.needs_review || 0), 0);
-  const study = detail ? people.map(row => {
-    const mine = detail[row.user_id];
-    const total = mine ? mine.assignments.length : 0;
-    const done = mine ? mine.assignments.filter(assignment => finished(assignment, mine.attempts)).length : 0;
-    return {member: row, total, done};
-  }).filter(row => row.total > 0).sort((a, b) => (a.done === a.total ? 1 : 0) - (b.done === b.total ? 1 : 0) || (b.total - b.done) - (a.total - a.done)) : null;
-  const studyDone = study ? study.filter(row => row.done === row.total).length : 0;
-  const byDish = new Map<string, {id: string; name: string; correct: number; total: number; people: number}>();
-  if (detail) for (const mine of Object.values(detail)) for (const row of mine.attempts) {
-    if (!row.total) continue;
-    const entry = byDish.get(row.menu_item_id) ?? {id: row.menu_item_id, name: row.item_name, correct: 0, total: 0, people: 0};
-    entry.correct += row.correct; entry.total += row.total; entry.people += 1;
-    byDish.set(row.menu_item_id, entry);
-  }
-  const dishes = detail ? [...byDish.values()].map(row => ({...row, percent: Math.round(row.correct / row.total * 100)})).sort((a, b) => a.percent - b.percent || b.people - a.people) : null;
-  const reviewRows = people.filter(row => Number(row.needs_review) > 0).sort((a, b) => Number(b.needs_review) - Number(a.needs_review)).map(row => {
-    const mine = detail ? detail[row.user_id] : undefined;
-    const names = mine ? mine.attempts.filter(attempt => learningStatus(attempt) !== "At target").sort((a, b) => a.correct / a.total - b.correct / b.total).map(attempt => attempt.item_name) : [];
-    return {member: row, count: Number(row.needs_review), names};
-  });
-  const pick = (key: "study" | "accuracy" | "review") => setOpen(open === key ? "" : key);
-  const shown = 6;
-  return <section className="-mt-1 mb-4" aria-label="Your team">
-    <div className="mb-2"><SectionInfo heading="Your team">Finished assigned study counts people whose assigned items are all at target. Accuracy is correct answers out of answered questions in the latest results; unfinished quizzes are left out. Tap a tile to see who, or which dishes.</SectionInfo></div>
-    <div className="team-tiles">
-      <button type="button" className="team-tile" aria-pressed={open === "study"} onClick={() => pick("study")}><b>{study ? (study.length ? studyDone + "/" + study.length : "—") : "…"}</b><span>Finished assigned study</span></button>
-      <button type="button" className="team-tile" aria-pressed={open === "accuracy"} onClick={() => pick("accuracy")}><b>{members === null ? "…" : accuracy === null ? "—" : accuracy + "%"}</b><span>Quiz accuracy</span></button>
-      <button type="button" className="team-tile" aria-pressed={open === "review"} onClick={() => pick("review")}><b>{members === null ? "…" : reviewCount}</b><span>Items need review</span></button>
-    </div>
-    {open === "study" && <div className="team-bubble" role="status">
-      <h3>Assigned study</h3>
-      {!study ? <p className="team-empty">Loading…</p> : !study.length ? <p className="team-empty">Nothing is assigned right now.</p> : <>
-        <p className="team-sub">Not finished first</p>
-        <div className="team-list">{study.slice(0, shown).map(row => <button key={row.member.user_id} type="button" className="team-row" onClick={() => onOpenMember(row.member.user_id)}><span>{row.member.name}</span>{row.done === row.total ? <span className="team-quiet">✓ All done</span> : <span className="team-pill">{row.done} of {row.total} done</span>}</button>)}</div>
-      </>}
-      <button type="button" className="team-more" onClick={onOpenTeam}>See all in Team →</button>
-    </div>}
-    {open === "accuracy" && <div className="team-bubble" role="status">
-      <h3>Dishes to cover</h3>
-      {!dishes ? <p className="team-empty">Loading…</p> : !dishes.length ? <p className="team-empty">No quiz results yet.</p> : <>
-        <p className="team-sub">Lowest accuracy first · latest results, no names</p>
-        <div className="team-list">{dishes.slice(0, shown).map(row => <div key={row.id} className="team-row"><span>{row.name}<small>{row.people} {row.people === 1 ? "person" : "people"}</small></span><span className="team-pct">{row.percent}%</span></div>)}</div>
-      </>}
-      <button type="button" className="team-more" onClick={onOpenTeam}>See each person in Team →</button>
-    </div>}
-    {open === "review" && <div className="team-bubble" role="status">
-      <h3>Needs review</h3>
-      {!reviewRows.length ? <p className="team-empty">Nobody has items to review.</p> : <>
-        <p className="team-sub">Most items first</p>
-        <div className="team-list">{reviewRows.slice(0, shown).map(row => <button key={row.member.user_id} type="button" className="team-row" onClick={() => onOpenMember(row.member.user_id)}><span>{row.member.name}{!!row.names.length && <small>{row.names.slice(0, 2).join(", ")}{row.names.length > 2 ? ", +" + (row.names.length - 2) : ""}</small>}</span><span className="team-pill">{row.count} {row.count === 1 ? "item" : "items"}</span></button>)}</div>
-      </>}
-      <button type="button" className="team-more" onClick={onOpenTeam}>See all in Team →</button>
-    </div>}
-  </section>;
-}
-
 function TeamWorkspace({restaurantId, restaurantName, items, itemsLoading, busy, action, setMessage, onOpenItem, myAccess, meId, onViewing, openMemberId, onOpened}: {restaurantId: string; restaurantName: string; items: MenuItem[]; itemsLoading: boolean; busy: boolean; action: (work: () => Promise<void>) => Promise<void>; setMessage: (text: string) => void; onOpenItem: (item: MenuItem) => void; myAccess: string[]; meId: string; onViewing: (id: string | null) => void; openMemberId?: string | null; onOpened?: () => void}) {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [accessRows, setAccessRows] = useState<Record<string, string[]>>({});
@@ -1836,6 +1732,32 @@ function Workspace({
   // Shift reports straight on Past reports, from the Service part of the dashboard.
   const [reportsTab, setReportsTab] = useState<"past" | null>(null);
   function openPastReports() { navigate("reports"); setReportsTab("past"); }
+  // The manager's Today, the first part of the Dashboard: what the day needs, in the order a manager asks.
+  // Buttons and their dots, anything waiting (nothing shows when nothing waits), the posted pre-shift,
+  // who is working, then the two doors out. Everything else that used to crowd Home waits underneath.
+  function renderToday() {
+    if (!restaurant) return null;
+    const rid = restaurant.id;
+    const canSchedule = can("team") || can("schedule_foh") || can("schedule_boh");
+    return <div className="today">
+      {can("preshift") && <TodayShortcuts key={`shortcuts-${rid}`} restaurantId={rid} onPreshift={() => navigate("preshift")} onSideWork={() => navigate("checklists")} />}
+      {(can("team") || can("preshift") || can("library") || canSchedule) && <ManagerAttention key={`attention-${rid}`} restaurantId={rid} canTeam={can("team")} canSchedule={canSchedule} canReports={can("preshift") || can("team")} onOpen={openAttention} />}
+      {itemsLoading ? <p role="status" className="muted py-10">Loading your library…</p> : <>
+        <NextShift key={`shift-${rid}`} restaurantId={rid} userId={user.id} onOpen={() => navigate("schedule")} />
+        {(can("preshift") || can("team")) && <LastShiftNote key={`last-${rid}`} restaurantId={rid} onOpen={() => navigate("reports")} />}
+        {can("preshift") && <PreShiftHomeCard key={`preshift-${rid}`} restaurantId={rid} items={items} onOpen={() => navigate("preshift")} canDownload restaurantName={restaurant.name} />}
+        {(can("preshift") || can("team") || canSchedule) && <TodayRoster key={`roster-${rid}`} restaurantId={rid} onOpen={() => openSchedule("week")} />}
+        <TodayActions canAssign={can("team")} onAssign={() => navigate("team")} onLibrary={() => navigate("library")} />
+        {can("team") && <RecentCompletions key={`recent-${rid}`} restaurantId={rid} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} />}
+        {!can("preshift") && <>
+          <h2 className="text-xl font-semibold">Explore your menu</h2>
+          <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">{counts.filter(c => c.count > 0).map(c => <button key={c.name} className="panel category-card flex items-center gap-2 p-3 text-left" onClick={() => navigate("library", c.name, contentType)}><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{c.name}</span><span className="muted mt-1 block text-xs">{c.count} {c.count === 1 ? wordsIn(taxonomy, contentType).item_one : wordsIn(taxonomy, contentType).item_many}</span></span><ArrowRight size={15} className="muted shrink-0" /></button>)}</div></>}
+        {!items.length && <p className="panel muted p-6">{can("library") ? "Add your first dish to start building the library." : "Your manager hasn’t added content yet."}</p>}
+        {can("library") && <div id="retake-requests"><RetakeRequests restaurantId={rid} /></div>}
+        {isManager && <AccountName user={user} />}
+      </>}
+    </div>;
+  }
   function openAttention(target: AttentionTarget) {
     if (target === "shift_changes" || target === "released") openSchedule("requests");
     else if (target === "time_off") openSchedule("timeoff");
@@ -2234,8 +2156,8 @@ function Workspace({
             </>
           )}
           <nav aria-label="Main navigation" className="mt-6 space-y-2" data-tour="nav">
-            <button className={`nav-item ${view === "home" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "home" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("home")}><HomeIcon size={19} />Home</button>
-            {can("team") && <button className={`nav-item ${view === "dashboard" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "dashboard" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("dashboard")}><LayoutDashboard size={19} />Dashboard</button>}
+            {!isManager && <button className={`nav-item ${view === "home" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "home" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("home")}><HomeIcon size={19} />Home</button>}
+            {isManager && <button className={`nav-item ${(view === "dashboard" || view === "home") && !adding && !editing && !creating ? "active" : ""}`} aria-current={(view === "dashboard" || view === "home") && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("dashboard")}><LayoutDashboard size={19} />Dashboard</button>}
             <button data-tour="nav-schedule" className={`nav-item ${view === "schedule" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "schedule" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("schedule")}><CalendarDays size={19} />Schedule</button>
             {(can("preshift") || can("team")) && <button data-tour="nav-reports" className={`nav-item ${view === "reports" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "reports" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("reports")}><FileText size={19} />Shift report</button>}
             <button className={`nav-item ${view === "library" || adding || editing ? "active" : ""}`} aria-expanded={libraryExpanded} aria-controls="library-options" onClick={() => setLibraryExpanded(expanded => !expanded)}><BookOpen size={19} /><span className="flex-1">Content library</span><span aria-hidden="true">{libraryExpanded ? "⌃" : "⌄"}</span></button>
@@ -2246,7 +2168,7 @@ function Workspace({
             </div>
             <button className={`nav-item ${view === "allergy" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "allergy" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("allergy")}><ShieldAlert size={19} />Allergy</button>
             {can("preshift") && <button className={`nav-item ${view === "preshift" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "preshift" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("preshift")}><ClipboardList size={19} />Pre-shift</button>}
-            <button className={`nav-item ${view === "checklists" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "checklists" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("checklists")}><ListChecks size={19} />Checklists</button>
+            <button className={`nav-item ${view === "checklists" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "checklists" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("checklists")}><ListChecks size={19} />Side work</button>
             {can("team") && <button className={`nav-item ${view === "team" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "team" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("team")}><Users size={19} />Team</button>}
             <button className={`nav-item ${view === "words" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "words" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("words")}><Languages size={19} />Words</button>
             <button className={`nav-item ${view === "standards" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "standards" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("standards")}><ClipboardList size={19} />Standards</button>
@@ -2458,7 +2380,7 @@ function Workspace({
               setMessage(`${item.name} was deleted.`);
             })}/></div></div>}</section>
           ) : (
-            restaurant && (view === "preshift" ? (can("preshift") ? <PreShiftManager key={restaurant.id} restaurant={restaurant} items={items} itemsLoading={itemsLoading} refreshItems={loadItems} onPosted={() => navigate("home")} /> : null) : view === "library-settings" ? (can("library") ? <LibrarySettings key={restaurant.id} restaurantId={restaurant.id} taxonomy={taxonomy} items={items} onChanged={loadTaxonomy} onItemsChanged={loadItems} /> : null) : view === "dashboard" ? (can("team") ? <section className="mx-auto max-w-4xl">
+            restaurant && (view === "preshift" ? (can("preshift") ? <PreShiftManager key={restaurant.id} restaurant={restaurant} items={items} itemsLoading={itemsLoading} refreshItems={loadItems} onPosted={() => navigate("home")} /> : null) : view === "library-settings" ? (can("library") ? <LibrarySettings key={restaurant.id} restaurantId={restaurant.id} taxonomy={taxonomy} items={items} onChanged={loadTaxonomy} onItemsChanged={loadItems} /> : null) : (view === "dashboard" || (view === "home" && isManager)) ? ((can("team") || isManager) ? <section className="mx-auto max-w-4xl">
               <p className="eyebrow muted">Dashboard</p>
               <h1 className="mt-3 mb-5 text-2xl font-semibold">{dashboardScope === "brand" && brand ? brand.name : restaurant.name}</h1>
               {/* The brand's owner can step back from one location to all of them. */}
@@ -2468,7 +2390,7 @@ function Workspace({
               </div>}
               {dashboardScope === "brand" && ownsBrand && brand
                 ? <BrandDashboard key={brand.id} organization={brand} currentId={restaurant.id} onOpen={id => {setSelected(id);setDashboardScope("location");window.scrollTo(0, 0);}} />
-                : <ManagerDashboard key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenSchedule={() => openSchedule("week")} onOpenReports={openPastReports} />}
+                : can("team") ? <ManagerDashboard key={restaurant.id} today={renderToday()} restaurantId={restaurant.id} restaurantName={restaurant.name} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenSchedule={() => openSchedule("week")} onOpenReports={openPastReports} /> : renderToday()}
             </section> : null) : view === "schedule" ? <Schedule key={`${restaurant.id}-${scheduleTab ?? ""}`} initialTab={scheduleTab} restaurantId={restaurant.id} restaurantName={restaurant.name} userId={user.id} canManage={(can("team") || can("schedule_foh") || can("schedule_boh")) && !employeeView} access={{all: can("team"), foh: can("schedule_foh"), kitchen: can("schedule_boh")}} setMessage={setMessage} /> : view === "reports" ? (can("preshift") || can("team") ? <ShiftReports key={`${restaurant.id}-${reportsTab ?? ""}`} initialTab={reportsTab ?? undefined} restaurant={restaurant} restaurants={restaurants} brand={brand} ownsBrand={ownsBrand} canWrite={can("preshift")} canManageRecipients={can("team")} setMessage={setMessage} /> : null) : view === "locations" ? (can("library") ? <Locations key={restaurant.id} userId={user.id} restaurant={restaurant} restaurants={restaurants} organizations={organizations} items={items} canImport={can("library")} busy={busy} action={action} setMessage={setMessage} onChanged={loadRestaurants} onItemsChanged={loadItems} onOpen={id => {setDetailItem(null);setSelected(id);setCategory("All");setQuery("");setNavOpen(false);setEmployeeView(false);setInviteLink("");window.scrollTo(0, 0);}} /> : null) : view === "words" ? <WordsManager key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} custom={customTerms} onChanged={loadGlossary} canEdit={can("words")} /> : view === "story" ? <Story key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} canEdit={can("words")} /> : view === "standards" ? <Standards key={restaurant.id} restaurantId={restaurant.id} canEdit={can("standards")} restaurantName={restaurant.name} /> : view === "checklists" ? <Checklists key={restaurant.id} restaurantId={restaurant.id} canManage={can("preshift")} /> : view === "team" ? (can("team") ? <section className="mx-auto max-w-3xl"><p className="eyebrow muted">Manager workspace · {restaurant.name}</p>{!viewingMember && <h1 className="mt-3 text-2xl font-semibold">Team</h1>}{!viewingMember && <><section className="panel mt-5 mb-5 p-5"><InfoRow info={<>Create an invitation link and share it through WhatsApp, text, or email. Employees can create an account or sign in to join {restaurant.name}.<br /><br />Links expire after 7 days. Creating a replacement disables the previous link.</>}><h2 className="text-xl font-semibold">Invite an employee</h2></InfoRow>                    {can("team") && (
                       <button
                         disabled={busy}
@@ -2562,30 +2484,7 @@ function Workspace({
             </section>;
           })() : view === "home" ? (
               <section>
-                {!isManager ? <EmployeeHome key={restaurant.id} waiting={<ShiftChangesWaiting key={`waiting-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => openSchedule("mine")} setMessage={setMessage} />} schedule={<MyWeek key={`week-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />} onProgress={() => navigate("progress")} onChecklists={() => navigate("checklists")} restaurantId={restaurant.id} canDownloadBoard={can("preshift")} restaurantName={restaurant.name} onFocusQuiz={item => {navigate("library", "All", contentTypeOf(item));setDetailItem(item);setQuizEditing(false);setQuizItem(item);}} onBoardItem={item => {navigate("library", "All", contentTypeOf(item));setCameFrom({view: "home", label: "Pre-shift board"});openCard(item);}} user={user} items={items} progress={quizProgress} loading={itemsLoading || progressLoading} error={progressError || error} onRetry={() => {void loadItems();void loadProgress();}} onStudy={(item, mode) => {if(item && mode === "list"){setStudyType(CONTENT_TYPES.find(type => items.some(other => contentTypeOf(other) === type && !takenIds.has(other.id))) ?? "food");navigate("tostudy");return;}navigate("library", item ? categoryOf(item) : "All", item ? contentTypeOf(item) : "food");setHideTaken(false);if(item)setQuery(item.name);}} /> : <>
-                <p className="eyebrow muted mb-3">Home · {isManager ? "Manager workspace" : "Ready for service"}</p>
-                <h1 className="text-2xl font-semibold md:text-2xl">{`Welcome to ${restaurant.name}`}</h1>
-                <p className="muted mt-3 max-w-xl">Feel ready for every service.</p>
-                {can("preshift") && restaurant ? <HomeShortcuts key={`shortcuts-${restaurant.id}`} restaurantId={restaurant.id} canAssign={can("team")} onPreshift={() => navigate("preshift")} onChecklists={() => navigate("checklists")} onAssign={() => navigate("team")} onLibrary={() => navigate("library")} /> : <div className="mt-5 mb-4 flex flex-wrap gap-3">
-                  {can("team") && <button className="btn secondary" style={{fontWeight: 700, border: "1.5px solid var(--c-text)"}} onClick={() => navigate("team")}>Assign study</button>}
-                  <button className={can("team") ? "btn secondary" : "btn"} style={can("team") ? {fontWeight: 700, border: "1.5px solid var(--c-text)"} : undefined} onClick={() => navigate("library")}>Open library</button>
-                </div>}
-                {(can("team") || can("preshift") || can("library") || can("schedule_foh") || can("schedule_boh")) && restaurant && <ManagerAttention key={`attention-${restaurant.id}`} restaurantId={restaurant.id} canTeam={can("team")} canSchedule={can("team") || can("schedule_foh") || can("schedule_boh")} canReports={can("preshift") || can("team")} onOpen={openAttention} />}
-                {itemsLoading ? <p role="status" className="muted py-10">Loading your library…</p> : <>
-                  {restaurant && <NextShift key={`shift-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />}
-                  {(can("preshift") || can("team")) && restaurant && <LastShiftNote key={`last-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => navigate("reports")} />}
-                  {(can("preshift") || can("team") || can("schedule_foh") || can("schedule_boh")) && restaurant && <WhoWorksToday key={`today-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => openSchedule("week")} />}
-                  {can("team") && restaurant && <TeamSnapshot key={`team-${restaurant.id}`} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenTeam={() => navigate("team")} />}
-                  {can("team") && restaurant && <RecentCompletions key={`recent-${restaurant.id}`} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} />}
-                  {can("preshift") && restaurant && <MyJobCard key={`job-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => navigate("checklists")} manager />}
-                  {can("preshift") ? <PreShiftHomeCard key={`preshift-${restaurant.id}`} restaurantId={restaurant.id} items={items} onOpen={() => navigate("preshift")} canDownload restaurantName={restaurant.name} /> : <>
-                  <h2 className="mb-4 text-xl font-semibold">Explore your menu</h2>
-                  <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">{counts.filter(c => c.count > 0).map(c => <button key={c.name} className="panel category-card flex items-center gap-2 p-3 text-left" onClick={() => navigate("library", c.name, contentType)}><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{c.name}</span><span className="muted mt-1 block text-xs">{c.count} {c.count === 1 ? wordsIn(taxonomy, contentType).item_one : wordsIn(taxonomy, contentType).item_many}</span></span><ArrowRight size={15} className="muted shrink-0" /></button>)}</div></>}
-                  {!items.length && <p className="panel muted mt-4 p-6">{can("library") ? "Add your first dish to start building the library." : "Your manager hasn’t added content yet."}</p>}
-                  {can("library") && restaurant && <div id="retake-requests"><RetakeRequests restaurantId={restaurant.id} /></div>}
-                  {isManager && <AccountName user={user} />}
-                </>}
-                </>}
+                {!isManager ? <EmployeeHome key={restaurant.id} waiting={<ShiftChangesWaiting key={`waiting-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => openSchedule("mine")} setMessage={setMessage} />} schedule={<MyWeek key={`week-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />} onProgress={() => navigate("progress")} onChecklists={() => navigate("checklists")} restaurantId={restaurant.id} canDownloadBoard={can("preshift")} restaurantName={restaurant.name} onFocusQuiz={item => {navigate("library", "All", contentTypeOf(item));setDetailItem(item);setQuizEditing(false);setQuizItem(item);}} onBoardItem={item => {navigate("library", "All", contentTypeOf(item));setCameFrom({view: "home", label: "Pre-shift board"});openCard(item);}} user={user} items={items} progress={quizProgress} loading={itemsLoading || progressLoading} error={progressError || error} onRetry={() => {void loadItems();void loadProgress();}} onStudy={(item, mode) => {if(item && mode === "list"){setStudyType(CONTENT_TYPES.find(type => items.some(other => contentTypeOf(other) === type && !takenIds.has(other.id))) ?? "food");navigate("tostudy");return;}navigate("library", item ? categoryOf(item) : "All", item ? contentTypeOf(item) : "food");setHideTaken(false);if(item)setQuery(item.name);}} /> : null}
               </section>
             ) : view === "allergy" ? <AllergyView key={restaurant.id} items={items} loading={itemsLoading} refresh={loadItems} shift={shiftFlags} restaurantName={restaurant.name} memory={allergyPick} onMemory={setAllergyPick} onOpen={item => {allergyScroll.current = window.scrollY; setContentType(contentTypeOf(item)); setCameFrom({view: "allergy", label: "Allergy"}); openCard(item);}} /> : <>
                 {/* The switch below already says which library you are in, in coral.

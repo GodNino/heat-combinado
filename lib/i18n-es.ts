@@ -555,6 +555,7 @@ const PHRASES: Record<string, string> = {
 
   // ── Found on screen after the first pass ──
   "(not posted yet)": "(sin publicar)", "(posted)": "(publicado)", "(all done)": "(todo listo)", "(jobs still open)": "(tareas pendientes)",
+  "Edited": "Editado", "Edit today’s pre-shift": "Editar el pre-turno de hoy",
   "Owner": "Dueño", "History": "Historial", "Detail (optional)": "Detalle (opcional)", "Download": "Descargar",
   "dishes": "platos", "dish": "plato", "cocktails": "cócteles", "cocktail": "cóctel", "wines": "vinos", "wine": "vino", "wines and sakes": "vinos y sakes",
   "items": "elementos", "item": "elemento", "words": "palabras", "guides": "guías",
@@ -739,6 +740,10 @@ const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^(\d+) (?:dish|dishes) under 80%$/, m => `${m[1]} ${m[1] === "1" ? "platillo" : "platillos"} por debajo de 80%`],
   [/^A short tour of the things you'll use every day at (.+)\. Skip it now and replay it any time\.$/, m => `Un tour corto de lo que usarás cada día en ${m[1]}. Sáltalo ahora y repítelo cuando quieras.`],
   [/^Working today · (\d+)$/, m => `Trabajan hoy · ${m[1]}`],
+  [/^Who is working today · (\d+)$/, m => `Quién trabaja hoy · ${m[1]}`],
+  [/^Posted by (.+?)(?: · (.+?))?(?: · Edited (.+))?$/, m => `Publicado por ${m[1]}${m[2] ? ` · ${m[2]}` : ""}${m[3] ? ` · Editado ${m[3]}` : ""}`],
+  [/^Posted (.+?)(?: · Edited (.+))?$/, m => `Publicado ${m[1]}${m[2] ? ` · Editado ${m[2]}` : ""}`],
+  [/^(\d+) (?:people|person) · (.+)$/, m => `${m[1]} ${m[1] === "1" ? "persona" : "personas"} · ${m[2]}`],
   [/^(\d+) quiz results? to review$/, m => `${m[1]} ${m[1] === "1" ? "resultado de quiz por revisar" : "resultados de quiz por revisar"}`],
   [/^Posted to the (\d+) (?:person|people) working today\.$/, m => m[1] === "1" ? "Publicado para la persona que trabaja hoy." : `Publicado para las ${m[1]} personas que trabajan hoy.`],
   [/^Which menu category contains (.+)\?$/, m => `¿En qué categoría del menú está ${m[1]}?`],
