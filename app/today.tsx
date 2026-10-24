@@ -41,6 +41,8 @@ export function TodayFigures({restaurantId, canSchedule}: {restaurantId: string;
 }
 
 type SideWork = {total: number; done: number};
+// A first post stamps both times within a blink; anything past a few seconds apart is a real edit.
+const EDIT_GAP = 5000;
 
 function Row({title, sub, dot, right, onClick}: {title: string; sub: string; dot?: boolean; right?: ReactNode; onClick: () => void}) {
   return <li><button type="button" className="today-row" onClick={onClick}>
@@ -50,7 +52,7 @@ function Row({title, sub, dot, right, onClick}: {title: string; sub: string; dot
 }
 
 export function TodayStatus({restaurantId, canPreshift, canReports, onPreshift, onSideWork, onReport}: {
-  restaurantId: string; canPreshift: boolean; canReports: boolean; onPreshift: () => void; onSideWork: () => void; onReport: () => void;
+  restaurantId: string; canPreshift: boolean; canReports: boolean; onPreshift: (edit: boolean) => void; onSideWork: () => void; onReport: () => void;
 }) {
   const [board, setBoard] = useState<ShiftBoardResponse["board"] | undefined>(undefined);
   const [side, setSide] = useState<SideWork | undefined>(undefined);
@@ -89,7 +91,7 @@ export function TodayStatus({restaurantId, canPreshift, canReports, onPreshift, 
     return () => {alive = false;};
   }, [restaurantId, canPreshift, canReports]);
   const posted = !!board && board.restaurant_id === restaurantId && (!!board.note.trim() || !!board.entries.length || !!board.focus_item_ids?.length || !!board.focus_item_id);
-  const edited = posted && !!board?.created_at && !!board?.updated_at && new Date(board.updated_at).getTime() - new Date(board.created_at).getTime() > 60000;
+  const edited = posted && !!board?.created_at && !!board?.updated_at && new Date(board.updated_at).getTime() - new Date(board.created_at).getTime() > EDIT_GAP;
   const by = board?.posted_by_name?.trim();
   const when = board?.created_at ? shortTime(new Date(board.created_at)) : "";
   const preSub = posted
@@ -98,7 +100,7 @@ export function TodayStatus({restaurantId, canPreshift, canReports, onPreshift, 
   const arrow = <ChevronRight size={14} aria-hidden="true" />;
   const sideSub = !side || !side.total ? "No jobs handed out yet" : side.done >= side.total ? `${side.total} ${side.total === 1 ? "job" : "jobs"} · all finished` : `${side.total} ${side.total === 1 ? "job" : "jobs"} · ${side.done} done`;
   const rows: ReactNode[] = [];
-  if (canPreshift && board !== undefined) rows.push(<Row key="pre" title="Pre-shift" sub={preSub} dot={posted} onClick={onPreshift}
+  if (canPreshift && board !== undefined) rows.push(<Row key="pre" title="Pre-shift" sub={preSub} dot={posted} onClick={() => onPreshift(posted)}
     right={posted ? <span className="icon-chip" aria-label="Edit today’s pre-shift"><Pencil size={14} aria-hidden="true" /></span> : <span className="today-pill fail">Not posted{arrow}</span>} />);
   if (canPreshift && side) rows.push(<Row key="side" title="Side work" sub={sideSub} dot={!!side.total && side.done >= side.total} onClick={onSideWork}
     right={!side.total ? <span className="today-pill fail">Not posted{arrow}</span> : side.done < side.total ? <span className="today-pill warn">In progress{arrow}</span> : undefined} />);

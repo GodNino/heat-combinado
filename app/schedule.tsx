@@ -1141,7 +1141,7 @@ export function WhoWorksToday({restaurantId, onOpen}: {restaurantId: string; onO
 // The manager's Today roster: one folded line, "Who is working today · 3". Open it and it is the
 // day's roster, one short line per person in the order they start, with the full schedule one tap
 // away at the end. Built for a night with thirty people on it: nothing here needs the schedule page.
-export function TodayRoster({restaurantId, onOpen}: {restaurantId: string; onOpen: () => void}) {
+export function TodayRoster({restaurantId}: {restaurantId: string; onOpen?: () => void}) {
   const {settings} = useScheduleSettings(restaurantId);
   const {changes} = useShiftChanges(restaurantId);
   const [shifts, setShifts] = useState<Shift[] | null>(null);
@@ -1177,10 +1177,9 @@ export function TodayRoster({restaurantId, onOpen}: {restaurantId: string; onOpe
         {changing(s) && <ArrowLeftRight size={13} aria-label="Change asked" />}
         <span className="today-time">{shiftLabel(s)}</span>
       </li>)}</ul> : <p className="muted">Nobody is scheduled today.</p>}
-      <div className="today-roster-foot">
-        <span className="muted">{ordered.length ? `${people} ${people === 1 ? "person" : "people"} · ${formatHours(hours)}` : ""}</span>
-        <button type="button" className="btn secondary shrink-0" onClick={onOpen}>{ordered.length ? "Full schedule" : "Build the week"}<ArrowRight size={15} aria-hidden="true" /></button>
-      </div>
+      {ordered.length > 0 && <div className="today-roster-foot">
+        <span className="muted">{`${people} ${people === 1 ? "person" : "people"} · ${formatHours(hours)}`}</span>
+      </div>}
     </div>}
   </section>;
 }
