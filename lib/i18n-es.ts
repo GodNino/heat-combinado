@@ -752,6 +752,7 @@ const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Not quizzed yet · (\d+)$/, m => `Sin quiz todavía · ${m[1]}`],
   [/^Assign all (\d+)$/, m => `Asignar los ${m[1]}`],
   [/^Assign (\d+) dishes to this person\?$/, m => `¿Asignar ${m[1]} platos a esta persona?`],
+  [/^Quiz updated · (\d+\/\d+)$/, m => `Quiz actualizado · ${m[1]}`],
   [/^(Passed|Needs practice) (\d+\/\d+)$/, m => `${m[1] === "Passed" ? "Aprobado" : "Falta práctica"} ${m[2]}`],
   [/^Assign (?!study$|all )(.+)$/, m => `Asignar ${m[1]}`],
   [/^No dish called “(.+)”\.$/, m => `No hay ningún plato llamado “${m[1]}”.`],
