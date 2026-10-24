@@ -106,7 +106,7 @@ const PHRASES: Record<string, string> = {
   "Today’s side work": "Tareas de hoy", "New for you": "Nuevo para ti", "Nothing posted yet": "Todavía no hay nada publicado",
   "Your manager will post today’s jobs here.": "Tu manager va a publicar aquí las tareas de hoy.", "Check again": "Revisar de nuevo",
   "You don’t have a job today": "Hoy no tienes tarea", "A note for your manager": "Una nota para tu manager", "A note for your manager (optional)": "Una nota para tu manager (opcional)",
-  "In progress": "En curso", "Not yet": "Todavía no", "Checklists aren’t ready yet.": "Los checklists todavía no están listos.", "Mark my job done": "Marcar mi tarea como hecha",
+  "Not yet": "Todavía no", "Checklists aren’t ready yet.": "Los checklists todavía no están listos.", "Mark my job done": "Marcar mi tarea como hecha",
   "Waiting on": "Esperando a", "Everyone is done. Great shift.": "Todos terminaron. ¡Gran turno!", "Steps": "Pasos", "Add a step": "Agregar un paso",
   "Drag to move this step": "Arrastra para mover este paso", "The next thing they do…": "Lo siguiente que hacen…", "Remove this step": "Quitar este paso",
   "Assign a job": "Asignar una tarea", "Job": "Tarea", "New job": "Tarea nueva", "It is also saved in Jobs, so you can use it again.": "También se guarda en Tareas, para que la vuelvas a usar.",
@@ -555,6 +555,7 @@ const PHRASES: Record<string, string> = {
 
   // ── Found on screen after the first pass ──
   "(not posted yet)": "(sin publicar)", "(posted)": "(publicado)", "(all done)": "(todo listo)", "(jobs still open)": "(tareas pendientes)",
+  "People today": "Personas hoy", "Scheduled": "Programadas", "Not posted": "Sin publicar", "In progress": "En curso", "Your team sees nothing yet": "Tu equipo todavía no ve nada", "No jobs handed out yet": "Todavía no hay tareas asignadas", "Last shift report": "Reporte del último turno",
   "Assigned": "Asignado", "Add a note or due date": "Agregar una nota o fecha límite", "Due date (optional)": "Fecha límite (opcional)", "Yes, assign": "Sí, asignar", "Study item assigned.": "Plato asignado.", "All dishes": "Todos los platos", "No dishes on this menu yet.": "Todavía no hay platos en este menú.",
   "Edited": "Editado", "Edit today’s pre-shift": "Editar el pre-turno de hoy",
   "Owner": "Dueño", "History": "Historial", "Detail (optional)": "Detalle (opcional)", "Download": "Descargar",
@@ -741,6 +742,9 @@ const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^(\d+) (?:dish|dishes) under 80%$/, m => `${m[1]} ${m[1] === "1" ? "platillo" : "platillos"} por debajo de 80%`],
   [/^A short tour of the things you'll use every day at (.+)\. Skip it now and replay it any time\.$/, m => `Un tour corto de lo que usarás cada día en ${m[1]}. Sáltalo ahora y repítelo cuando quieras.`],
   [/^Working today · (\d+)$/, m => `Trabajan hoy · ${m[1]}`],
+  [/^(\d+) jobs? · all finished$/, m => `${m[1]} ${m[1] === "1" ? "tarea" : "tareas"} · todas listas`],
+  [/^(\d+) jobs? · (\d+) done$/, m => `${m[1]} ${m[1] === "1" ? "tarea" : "tareas"} · ${m[2]} ${m[2] === "1" ? "lista" : "listas"}`],
+  [/^(.+) · Filed by (.+)$/, m => `${m[1]} · Enviado por ${m[2]}`],
   [/^Needs practice · (\d+)$/, m => `Por practicar · ${m[1]}`],
   [/^Not quizzed yet · (\d+)$/, m => `Sin quiz todavía · ${m[1]}`],
   [/^Assign all (\d+)$/, m => `Asignar los ${m[1]}`],
