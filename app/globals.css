@@ -2807,3 +2807,29 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .dash-stats-notes p.fail { color:var(--c-fail); }
 :root:root:root:root:root:root:root .dash-stats-notes p.fail i { background:var(--c-fail); }
 :root:root:root:root:root:root:root .dash-more { display:flex; width:100%; align-items:center; justify-content:space-between; margin-top:14px; }
+
+/* Dashboard "Today": Pre-shift and Side work buttons with a status dot, the folded roster of who is working.
+   Buttons keep the 30px / 12px size from the design rules; no lime anywhere here; spacing is 14 and 16 only.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .today { display:grid; gap:14px; }
+:root:root:root:root:root:root:root .today > * { margin:0; }
+:root:root:root:root:root:root:root .today-chips { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+:root:root:root:root:root:root:root .today-chips .btn { width:100%; }
+:root:root:root:root:root:root:root .today-state { width:10px; height:10px; border-radius:50%; flex:none; }
+:root:root:root:root:root:root:root .today-state.on { background:var(--c-pass); }
+:root:root:root:root:root:root:root .today-state.off { background:var(--c-fail); }
+:root:root:root:root:root:root:root .today-card { padding:16px; }
+:root:root:root:root:root:root:root .today-roster { display:grid; gap:14px; }
+:root:root:root:root:root:root:root .today-roster-toggle { width:100%; justify-content:space-between; }
+:root:root:root:root:root:root:root .today-roster-body { padding:16px; }
+:root:root:root:root:root:root:root .today-roster-body ul { margin:0; padding:0; list-style:none; }
+:root:root:root:root:root:root:root .today-roster-body li { display:flex; align-items:center; gap:8px; min-height:36px; font-size:13px; border-top:1px solid var(--c-line-5); }
+:root:root:root:root:root:root:root .today-roster-body li:first-child { border-top:0; }
+:root:root:root:root:root:root:root .today-roster-body li.draft { opacity:.75; }
+:root:root:root:root:root:root:root .today-roster-body li > .today-time { margin-left:auto; font-size:12px; white-space:nowrap; }
+:root:root:root:root:root:root:root .today-dot { width:10px; height:10px; border-radius:50%; flex:none; background:var(--pos, var(--c-muted)); }
+:root:root:root:root:root:root:root .today-name { display:flex; flex:1; min-width:0; align-items:baseline; gap:8px; }
+:root:root:root:root:root:root:root .today-name b { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+:root:root:root:root:root:root:root .today-name small { color:var(--c-muted); font-size:12px; white-space:nowrap; }
+:root:root:root:root:root:root:root .today-roster-foot { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:14px; padding-top:14px; border-top:1px solid var(--c-line-5); font-size:12px; }
+:root:root:root:root:root:root:root .today-roster-body > p { margin:0; font-size:13px; }

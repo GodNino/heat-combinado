@@ -1138,6 +1138,53 @@ export function WhoWorksToday({restaurantId, onOpen}: {restaurantId: string; onO
   </section>;
 }
 
+// The manager's Today roster: one folded line, "Who is working today · 3". Open it and it is the
+// day's roster, one short line per person in the order they start, with the full schedule one tap
+// away at the end. Built for a night with thirty people on it: nothing here needs the schedule page.
+export function TodayRoster({restaurantId, onOpen}: {restaurantId: string; onOpen: () => void}) {
+  const {settings} = useScheduleSettings(restaurantId);
+  const {changes} = useShiftChanges(restaurantId);
+  const [shifts, setShifts] = useState<Shift[] | null>(null);
+  const [names, setNames] = useState<Map<string, string>>(new Map());
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    let live = true;
+    const from = new Date(); from.setHours(0, 0, 0, 0);
+    void Promise.all([
+      supabase!.from("schedule_shifts").select("*").eq("restaurant_id", restaurantId).gte("starts_at", from.toISOString()).lt("starts_at", addDays(from, 1).toISOString()).order("starts_at"),
+      supabase!.rpc("schedule_team", {rid: restaurantId}),
+    ]).then(([today, team]) => {
+      if (!live) return;
+      setShifts(today.error ? [] : (today.data ?? []) as Shift[]);
+      setNames(new Map(((team.data ?? []) as Person[]).map(p => [p.user_id, p.name || "Team member"])));
+    });
+    return () => {live = false;};
+  }, [restaurantId]);
+  if (!shifts || !settings) return null;
+  const people = new Set(shifts.map(s => s.user_id)).size;
+  const hours = shifts.reduce((sum, s) => sum + shiftHours(s), 0);
+  const changing = (shift: Shift) => changes.some(c => isLive(c) && (c.shift_id === shift.id || c.swap_shift_id === shift.id));
+  const ordered = [...shifts].sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at) || (names.get(a.user_id) ?? "").localeCompare(names.get(b.user_id) ?? ""));
+  return <section className="today-roster" aria-label="Working today">
+    <button type="button" className="btn secondary today-roster-toggle" aria-expanded={open} onClick={() => setOpen(value => !value)}>
+      <span>{`Who is working today · ${people}`}</span><ChevronDown size={16} aria-hidden="true" />
+    </button>
+    {open && <div className="panel today-roster-body">
+      {ordered.length ? <ul>{ordered.map(s => <li key={s.id} className={s.published ? "" : "draft"}>
+        <span className={`today-dot ${paint(s.position, settings)}`} aria-hidden="true" />
+        <span className="today-name"><b>{names.get(s.user_id) ?? "Team member"}</b><small>{s.position}</small></span>
+        {!s.published && <small className="muted">Draft</small>}
+        {changing(s) && <ArrowLeftRight size={13} aria-label="Change asked" />}
+        <span className="today-time">{shiftLabel(s)}</span>
+      </li>)}</ul> : <p className="muted">Nobody is scheduled today.</p>}
+      <div className="today-roster-foot">
+        <span className="muted">{ordered.length ? `${people} ${people === 1 ? "person" : "people"} · ${formatHours(hours)}` : ""}</span>
+        <button type="button" className="btn secondary shrink-0" onClick={onOpen}>{ordered.length ? "Full schedule" : "Build the week"}<ArrowRight size={15} aria-hidden="true" /></button>
+      </div>
+    </div>}
+  </section>;
+}
+
 // An employee's "waiting for you": shifts a coworker asked them to cover or swap, shifts up for grabs
 // in their position, and what happened to their own requests lately. Nothing to show, nothing shown.
 export function ShiftChangesWaiting({restaurantId, userId, onOpen, setMessage}: {restaurantId: string; userId: string; onOpen: () => void; setMessage: (text: string) => void}) {
