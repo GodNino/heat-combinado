@@ -1,6 +1,6 @@
 "use client";
 
-// Dashboard > Labor. Four date buttons (Today, Yesterday, This week, Date range), a small search icon that
+// Dashboard > Labor. Opens on Today. Four date buttons (Today, Yesterday, This week, Date range), a small search icon that
 // opens a box to find one person, and a print icon for the report. Everyone: hours, people and the hours by position. One person: their hours, shifts, overtime and
 // the list of their shifts. Read only, with the manager's own access, like the rest of the dashboard.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -30,7 +30,7 @@ function DatePill({label, value, min, onChange}: {label: string; value: string; 
 const PRESETS: [Preset, string][] = [["today", "Today"], ["yesterday", "Yesterday"], ["week", "This week"], ["custom", "Date range"]];
 
 export function LaborView({restaurantId, settings, people, released, timeOff, restaurantName}: {restaurantId: string; restaurantName: string; settings: ScheduleSettings; people: Person[]; released: number; timeOff: TimeOff[]}) {
-  const [preset, setPreset] = useState<Preset>("week");
+  const [preset, setPreset] = useState<Preset>("today");
   const [fromText, setFromText] = useState(() => dayKey(weekStart(new Date(), settings.week_start)));
   const [toText, setToText] = useState(() => dayKey(addDays(weekStart(new Date(), settings.week_start), 6)));
   const [query, setQuery] = useState("");
