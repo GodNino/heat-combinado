@@ -156,3 +156,21 @@ export function ProgressRing({percent, label}: {percent: number; label: string})
   const done = Math.max(0, Math.min(100, percent));
   return <div className="progress-ring" role="img" aria-label={label}><svg viewBox="0 0 46 46" aria-hidden="true"><circle className="progress-ring-track" cx="23" cy="23" r="19"/>{done > 0 && <circle className="progress-ring-arc" cx="23" cy="23" r="19" strokeDasharray={119.38} strokeDashoffset={119.38 * (1 - done / 100)}/>}</svg><span aria-hidden="true">{Math.round(percent)}%</span></div>;
 }
+
+// A row of figures on ONE card, with no box around each. A box looks like a button; these are only
+// numbers to read, so nothing in here looks tappable. `notes` is the one thing worth saying about
+// them: neutral, "pass" (a green dot) or "fail" (a red dot).
+export type Stat = {value: string; label: string; alert?: boolean; note?: string | null};
+export type StatNote = {text: ReactNode; tone?: "pass" | "fail"};
+export function Stats({items, notes = []}: {items: Stat[]; notes?: StatNote[]}) {
+  return (
+    <div className="panel dash-stats">
+      <ul className="dash-stats-row">
+        {items.map(item => <li key={item.label} className={item.alert ? "alert" : ""}><b>{item.value}</b><span>{item.label}</span>{item.note && <small>{item.note}</small>}</li>)}
+      </ul>
+      {notes.length > 0 && <div className="dash-stats-notes">
+        {notes.map((note, index) => <p key={index} className={note.tone ?? ""}>{note.tone && <i aria-hidden="true" />}{note.text}</p>)}
+      </div>}
+    </div>
+  );
+}
