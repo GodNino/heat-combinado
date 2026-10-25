@@ -2,7 +2,8 @@
 // Tonight: the whole night's side work, worked out from the published schedule, so the manager only
 // has to look it over and send it. The floor (sections, S.A.s, running side work) comes from the
 // floor plan (050); opening and closing jobs are handed out by their rules (051, lib/sidework-plan):
-// one person rotating, everyone, or the closer -- whoever comes in last.
+// one person rotating, everyone, or the closer -- whoever comes in last. The rotation reads the
+// week before from side work already sent, so nobody gets the same job two days running.
 //
 // Until it's sent, the plan is only on this screen. Sending saves the floor plan and gives every job
 // to its person, the same assignments side work has always used, so each person's phone shows it.
@@ -12,7 +13,7 @@ import { Check, Pencil, RefreshCw, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Notice } from "./ui";
 import { FloorPlan, defaultService, helpers, localDate, startingRows, suggestedList, type FloorRow, type Plan, type SideworkList, type Working } from "./floor-plan";
-import { closers, peopleIn, planJobs, roleOf, type Phase, type Role, type RuledJob } from "@/lib/sidework-plan";
+import { closers, dayNumber, peopleIn, planJobs, roleOf, type PastJob, type Phase, type Role, type RuledJob } from "@/lib/sidework-plan";
 
 type Sent = {id: string; title: string; user_id: string | null; phase: Phase; done_at: string | null; job_id: string | null; steps_done: number[]};
 type Line = {key: string; title: string; user_id: string | null; phase: Phase; done?: boolean; jobId?: string | null; who?: string};
@@ -20,6 +21,8 @@ type Line = {key: string; title: string; user_id: string | null; phase: Phase; d
 const SERVICES = ["Lunch", "Dinner"] as const;
 const JOB_COLUMNS = "id, name, group_name, steps, sort_order, phase, role, who, days";
 const PHASES: [Phase | "during", string][] = [["opening", "Opening"], ["during", "During the shift"], ["closing", "Closing"]];
+// The rotation looks back a week (History keeps the same).
+const weekBefore = (day: string) => new Date((dayNumber(day) - 7) * 864e5).toISOString().slice(0, 10);
 const longDay = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {weekday: "long"});
 
 export function Tonight({restaurantId}: {restaurantId: string}) {
@@ -27,6 +30,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   const [service, setService] = useState<string>(defaultService);
   const [working, setWorking] = useState<Working[]>([]);
   const [jobs, setJobs] = useState<RuledJob[]>([]);
+  const [past, setPast] = useState<PastJob[]>([]);
   const [lists, setLists] = useState<SideworkList[]>([]);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [shiftId, setShiftId] = useState<string | null>(null);
@@ -49,14 +53,25 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
     if (!supabase) return;
     setLoading(true); setError("");
     try {
-      const [people, savedJobs, savedLists, floor, shift] = await Promise.all([
+      const [people, savedJobs, savedLists, floor, shift, before] = await Promise.all([
         supabase.rpc("floor_plan_people", {rid: restaurantId, day}),
         supabase.from("checklist_jobs").select(JOB_COLUMNS).eq("restaurant_id", restaurantId).eq("archived", false),
         supabase.from("running_sidework_lists").select("id, name, tasks").eq("restaurant_id", restaurantId).order("name"),
         supabase.from("floor_plans").select("id, service_date, service, list_id, rows, updated_at").eq("restaurant_id", restaurantId).eq("service_date", day).eq("service", service).maybeSingle(),
         supabase.from("checklist_shifts").select("id, posted_at").eq("restaurant_id", restaurantId).eq("shift_date", day).eq("label", service).maybeSingle(),
+        supabase.from("checklist_shifts").select("id, shift_date").eq("restaurant_id", restaurantId).gte("shift_date", weekBefore(day)).lt("shift_date", day),
       ]);
-      for (const r of [people, savedJobs, savedLists, floor, shift]) if (r.error) throw r.error;
+      for (const r of [people, savedJobs, savedLists, floor, shift, before]) if (r.error) throw r.error;
+      // Who did which job in the week before, so nobody gets the same job again tomorrow.
+      const earlier = (before.data ?? []) as {id: string; shift_date: string}[];
+      let history: PastJob[] = [];
+      if (earlier.length) {
+        const done = await supabase.from("checklist_assignments").select("shift_id, job_id, user_id").in("shift_id", earlier.map(s => s.id)).not("job_id", "is", null).not("user_id", "is", null);
+        if (done.error) throw done.error;
+        const dayOf = new Map(earlier.map(s => [s.id, s.shift_date]));
+        history = ((done.data ?? []) as {shift_id: string; job_id: string; user_id: string}[]).map(a => ({job_id: a.job_id, user_id: a.user_id, day: dayOf.get(a.shift_id)!}));
+      }
+      setPast(history);
       const team = (people.data ?? []) as Working[];
       const ruled = (savedJobs.data ?? []) as RuledJob[];
       setWorking(team); setJobs(ruled); setLists((savedLists.data ?? []) as SideworkList[]); setPlan(floor.data as Plan | null);
@@ -70,7 +85,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
       }
       setSent(given);
       setSentAt(given.length ? shiftRow?.posted_at ?? null : null);
-      setDraft(planJobs(ruled, peopleIn(service, team), day).map((p, i) => ({key: `${p.job.id}-${i}`, title: p.job.name, user_id: p.user_id, phase: p.phase, jobId: p.job.id})));
+      setDraft(planJobs(ruled, peopleIn(service, team), day, history).map((p, i) => ({key: `${p.job.id}-${i}`, title: p.job.name, user_id: p.user_id, phase: p.phase, jobId: p.job.id})));
     } catch (e) { setError(explain(e)); }
     finally { setLoading(false); }
   }, [restaurantId, day, service]);
@@ -126,7 +141,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
         const live = await supabase.from("checklist_shifts").update({status: "posted", posted_at: new Date().toISOString()}).eq("id", id);
         if (live.error) throw live.error;
       }
-      const fresh = rebuild || !isSent ? (rebuild ? planJobs(jobs, people, day).map((p, i) => ({key: String(i), title: p.job.name, user_id: p.user_id, phase: p.phase, jobId: p.job.id})) : draft) : [];
+      const fresh = rebuild || !isSent ? (rebuild ? planJobs(jobs, people, day, past).map((p, i) => ({key: String(i), title: p.job.name, user_id: p.user_id, phase: p.phase, jobId: p.job.id})) : draft) : [];
       if (isSent && rebuild) {
         const cleared = await supabase.from("checklist_assignments").delete().eq("shift_id", id).not("phase", "is", null).is("done_at", null).eq("steps_done", "{}");
         if (cleared.error) throw cleared.error;

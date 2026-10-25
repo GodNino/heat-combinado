@@ -46,3 +46,39 @@ test("S.A.s spread across the servers' rows", () => {
   assert.equal(spread.flatMap(r => r.sa).length, 3);
   assert.ok(spread.every(r => r.sa.length >= 1));
 });
+
+test("with history, nobody gets yesterday's job, even when tonight's team isn't yesterday's", () => {
+  const sa = (id: string, name: string) => person(id, name, "Server assistant", at(16));
+  const jobs = [job("ice", {sort_order: 1}), job("bread", {sort_order: 2}), job("napkins", {sort_order: 3}), job("glasses", {sort_order: 4})];
+  const friday = [sa("a", "Ana"), sa("b", "Beto"), sa("c", "Carla"), sa("d", "Dani")];
+  const history = planJobs(jobs, friday, "2026-10-23").map(p => ({job_id: p.job.id, user_id: p.user_id!, day: "2026-10-23"}));
+  // Eva comes in on Saturday: five people, so the plain rotation would shift differently.
+  const saturday = planJobs(jobs, [...friday, sa("e", "Eva")], "2026-10-24", history);
+  for (const p of saturday) assert.ok(!history.some(h => h.job_id === p.job.id && h.user_id === p.user_id), `${p.user_id} had ${p.job.id} yesterday`);
+  assert.equal(new Set(saturday.map(p => p.user_id)).size, 4, "still one job each");
+});
+
+test("the job done longest ago comes back first, and a repeat only happens when it must", () => {
+  const two = [person("a", "Ana", "Server assistant", at(16)), person("b", "Beto", "Server assistant", at(16))];
+  const jobs = [job("ice", {sort_order: 1}), job("bread", {sort_order: 2})];
+  const history = [
+    {job_id: "ice", user_id: "a", day: "2026-10-23"}, {job_id: "bread", user_id: "b", day: "2026-10-23"},
+    {job_id: "bread", user_id: "a", day: "2026-10-20"}, {job_id: "ice", user_id: "b", day: "2026-10-20"},
+  ];
+  assert.deepEqual(planJobs(jobs, two, "2026-10-24", history).map(p => [p.job.id, p.user_id]), [["ice", "b"], ["bread", "a"]]);
+  // One person and one job she did yesterday: it is still hers, as nobody else is on.
+  assert.deepEqual(planJobs([job("ice", {})], two.slice(0, 1), "2026-10-24", history).map(p => p.user_id), ["a"]);
+  // Today's own jobs (a rebuild) and jobs from the future don't count.
+  const same = planJobs(jobs, two, "2026-10-24");
+  assert.deepEqual(planJobs(jobs, two, "2026-10-24", [{job_id: "ice", user_id: same[0].user_id!, day: "2026-10-24"}]), same);
+});
+
+test("more jobs than people: everybody gets one before anybody gets two", () => {
+  const two = [person("a", "Ana", "Server assistant", at(16)), person("b", "Beto", "Server assistant", at(16))];
+  const jobs = ["j1", "j2", "j3", "j4", "j5"].map((id, i) => job(id, {sort_order: i}));
+  const history = [{job_id: "j1", user_id: "a", day: "2026-10-23"}, {job_id: "j2", user_id: "a", day: "2026-10-23"}];
+  const plan = planJobs(jobs, two, "2026-10-24", history);
+  const count = (id: string) => plan.filter(p => p.user_id === id).length;
+  assert.deepEqual([count("a"), count("b")].sort(), [2, 3]);
+  assert.deepEqual(plan.slice(0, 2).map(p => p.user_id), ["b", "b"], "Ana had j1 and j2 yesterday, so Beto takes both");
+});
