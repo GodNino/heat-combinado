@@ -13,17 +13,26 @@ import { StepsEditor } from "./checklist-steps";
 import { Today } from "./checklist-today";
 import { MyShift } from "./checklist-mine";
 import { History } from "./checklist-history";
-import { FloorPlan, MyFloorPlan } from "./floor-plan";
+import { SideworkLists, type SideworkList } from "./floor-plan";
+import { MyShiftCard } from "./my-shift-card";
+import { Tonight } from "./sidework-tonight";
+import type { Phase, Role, Who } from "@/lib/sidework-plan";
 
-export type Job = {id: string; name: string; group_name: string; steps: string[]; sort_order: number};
-type Draft = {name: string; steps: string[]};
-type Tab = "today" | "floor" | "saved" | "history";
+// How a job hands itself out (051): when, to which role, one person / everyone / the closer, which weekdays.
+export type Job = {id: string; name: string; group_name: string; steps: string[]; sort_order: number; phase?: Phase | null; role?: Role | null; who?: Who; days?: number[]};
+type Draft = {name: string; steps: string[]; phase: Phase | ""; role: Role; who: Who; days: number[]};
+type Tab = "tonight" | "setup" | "today" | "history";
 
-const EMPTY: Draft = {name: "", steps: [""]};
-const TABS: Array<[Tab, string]> = [["today", "Today"], ["floor", "Floor plan"], ["saved", "Jobs"], ["history", "History"]];
+const EMPTY: Draft = {name: "", steps: [""], phase: "", role: "server", who: "one", days: []};
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const PHASE_LABEL: Record<string, string> = {opening: "Opening", closing: "Closing"};
+const WHO_LABEL: Record<Who, string> = {one: "One person, rotating", all: "Everyone", closer: "The closer"};
+const describe = (row: Job) => row.phase ? [PHASE_LABEL[row.phase], row.role === "sa" ? "S.A.s" : "Servers", WHO_LABEL[row.who ?? "one"], row.days?.length ? row.days.map(d => WEEKDAYS[d]).join(" ") : ""].filter(Boolean).join(" · ") : "Given by hand";
+const TABS: Array<[Tab, string]> = [["tonight", "Tonight"], ["setup", "Setup"], ["history", "History"]];
 
 export function Checklists({restaurantId, canManage}: {restaurantId: string; canManage: boolean}) {
-  const [tab, setTab] = useState<Tab>("today");
+  const [tab, setTab] = useState<Tab>("tonight");
+  const [lists, setLists] = useState<SideworkList[] | null>(null);
   // True while a single job or the Assign screen is open, when the tabs are put away.
   const [deep, setDeep] = useState(false);
   const [rows, setRows] = useState<Job[]>([]);
@@ -38,7 +47,7 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
   const load = useCallback(async () => {
     if (!supabase || !restaurantId) return;
     setLoading(true);
-    const result = await supabase.from("checklist_jobs").select("id, name, group_name, steps, sort_order")
+    const result = await supabase.from("checklist_jobs").select("id, name, group_name, steps, sort_order, phase, role, who, days")
       .eq("restaurant_id", restaurantId).eq("archived", false);
     if (result.error) setError(explain(result.error)); else setRows((result.data ?? []) as Job[]);
     setLoading(false);
@@ -61,7 +70,7 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
 
   function closeForm() { setForm(null); setConfirmDelete(false); setError(""); }
   function openForm(row?: Job) {
-    setDraft(row ? {name: row.name, steps: row.steps.length ? [...row.steps] : [""]} : EMPTY);
+    setDraft(row ? {name: row.name, steps: row.steps.length ? [...row.steps] : [""], phase: row.phase ?? "", role: row.role ?? "server", who: row.who ?? "one", days: row.days ?? []} : EMPTY);
     setForm({row}); setError(""); setMessage(""); setConfirmDelete(false);
     window.scrollTo(0, 0);
   }
@@ -75,7 +84,7 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
     const clash = rows.find(r => r.name.trim().toLowerCase() === name.toLowerCase() && r.id !== row?.id);
     if (clash) { setError("“" + clash.name + "” already exists. Find it in the list and tap it."); return; }
     await run(async () => {
-      const values = {name, steps, updated_at: new Date().toISOString()};
+      const values = {name, steps, phase: draft.phase || null, role: draft.phase ? draft.role : null, who: draft.who, days: draft.days, updated_at: new Date().toISOString()};
       const result = row
         ? await supabase!.from("checklist_jobs").update(values).eq("id", row.id).eq("restaurant_id", restaurantId)
         : await supabase!.from("checklist_jobs").insert({...values, group_name: "", restaurant_id: restaurantId, sort_order: rows.reduce((top, r) => Math.max(top, r.sort_order), 0) + 1});
@@ -100,6 +109,22 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
         <fieldset disabled={busy} className="space-y-5">
           <Field label="Name"><input id="job-name" maxLength={80} value={draft.name} onChange={e => setDraft({...draft, name: e.target.value})} placeholder="Silverware" required /></Field>
           <StepsEditor steps={draft.steps} onChange={steps => setDraft({...draft, steps})} idPrefix="job-step" />
+          <fieldset className="job-rules">
+            <legend>Hand it out on its own</legend>
+            <Field label="When"><select id="job-phase" value={draft.phase} onChange={e => setDraft({...draft, phase: e.target.value as Phase | ""})}>
+              <option value="">Not automatic (I give it by hand)</option><option value="opening">Opening</option><option value="closing">Closing</option>
+            </select></Field>
+            {draft.phase && <>
+              <Field label="For"><select id="job-role" value={draft.role} onChange={e => setDraft({...draft, role: e.target.value as Role})}><option value="server">Servers</option><option value="sa">S.A.s</option></select></Field>
+              <Field label="Who does it"><select id="job-who" value={draft.who} onChange={e => setDraft({...draft, who: e.target.value as Who})}>
+                <option value="one">One person, rotating every day</option><option value="all">Everyone</option><option value="closer">The closer (whoever comes in last)</option>
+              </select></Field>
+              <div className="field"><label id="job-days-label">Days</label>
+                <div className="word-chips" role="group" aria-labelledby="job-days-label">{WEEKDAYS.map((d, i) => <button key={d} type="button" className="word-chip" aria-pressed={draft.days.includes(i)} onClick={() => setDraft({...draft, days: draft.days.includes(i) ? draft.days.filter(x => x !== i) : [...draft.days, i].sort()})}>{d}</button>)}</div>
+                <p className="muted mt-1 text-xs">{draft.days.length ? "Only on the days marked." : "Every day. Mark days to limit it."}</p>
+              </div>
+            </>}
+          </fieldset>
           <button className="btn w-full" type="submit">{busy ? "Saving…" : "Save job"}</button>
           {row && (confirmDelete
             ? <div className="flex flex-wrap gap-3"><button className="btn secondary card-admin-danger" type="button" onClick={() => void remove(row)}>Delete for good</button><button className="btn secondary" type="button" onClick={() => setConfirmDelete(false)}>Keep</button></div>
@@ -112,7 +137,7 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
   // Everyone else sees their own job and the floor, nothing to set up.
   if (!canManage) return <section className="mx-auto max-w-3xl">
     <ScreenHeader eyebrow="Know the floor" title="Side work" info="Your job for this shift, and how the rest of the floor is doing." />
-    <MyFloorPlan restaurantId={restaurantId} />
+    <MyShiftCard restaurantId={restaurantId} />
     <MyShift restaurantId={restaurantId} />
   </section>;
 
@@ -122,24 +147,29 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
       title="Side work"
       info="Who does which job before, during and after service, and when it is done."
     />
-    {!(tab === "today" && deep) && <div className="category-tabs" role="group" aria-label="Side work">
+    {!lists && !(tab === "today" && deep) && <div className="category-tabs" role="group" aria-label="Side work">
       {TABS.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} style={{fontWeight: 700, border: "1.5px solid var(--edge)"}} onClick={() => {setTab(key); setError(""); setMessage("");}}>{label}</button>)}
     </div>}
     <div><Notice text={error} error /><Notice text={message} /></div>
-    {tab === "today" && <Today restaurantId={restaurantId} jobs={rows} onOpenSaved={() => setTab("saved")} onSavedJobsChanged={() => void load()} onDeep={setDeep} />}
-    {tab === "floor" && <FloorPlan restaurantId={restaurantId} />}
+    {tab === "tonight" && <Tonight restaurantId={restaurantId} />}
+    {tab === "today" && <Today restaurantId={restaurantId} jobs={rows} onOpenSaved={() => setTab("setup")} onSavedJobsChanged={() => void load()} onDeep={setDeep} />}
     {tab === "history" && <History restaurantId={restaurantId} />}
-    {tab === "saved" && <>
+    {tab === "setup" && lists && <SideworkLists restaurantId={restaurantId} lists={lists} onBack={() => setLists(null)} />}
+    {tab === "setup" && !lists && <>
       {loading ? <p className="muted py-6" role="status">Loading jobs…</p> : <div className="mt-4">
         {!!sorted.length && <div className="space-y-2">{sorted.map(row => <button key={row.id} type="button" className="panel flex w-full items-center gap-3 text-left" style={{padding: "10px 16px"}} onClick={() => openForm(row)}>
           <span className="min-w-0 flex-1">
             <span className="block font-semibold">{row.name}</span>
-            <span className="muted block text-xs">{row.steps.length} step{row.steps.length === 1 ? "" : "s"}</span>
+            <span className="muted block text-xs">{`${row.steps.length} ${row.steps.length === 1 ? "step" : "steps"} · ${describe(row)}`}</span>
           </span>
           <ChevronRight size={18} className="muted shrink-0" aria-hidden="true" />
         </button>)}</div>}
         {!rows.length && <p className="muted py-6">No jobs yet. Start with one your team does every shift.</p>}
-        <button className="btn mt-4" type="button" onClick={() => openForm()}><Plus size={16} />New job</button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="btn" type="button" onClick={() => openForm()}><Plus size={16} />New job</button>
+          <button className="btn secondary" type="button" onClick={() => void supabase!.from("running_sidework_lists").select("id, name, tasks").eq("restaurant_id", restaurantId).order("name").then(({data, error}) => error ? setError(explain(error)) : setLists((data ?? []) as SideworkList[]))}>Running side work lists</button>
+          <button className="btn secondary" type="button" onClick={() => setTab("today")}>Give a job by hand</button>
+        </div>
       </div>}
     </>}
   </section>;

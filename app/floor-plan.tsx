@@ -9,30 +9,42 @@ import { ArrowLeft, ChevronRight, Plus, RotateCw, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Field, Notice } from "./ui";
 import { StepsEditor } from "./checklist-steps";
+import { spreadHelpers } from "@/lib/sidework-plan";
 
 export type Helper = {id: string; name: string};
 export type FloorRow = {server_id: string | null; server_name: string; sa: Helper[]; section: string; task: string};
-type SideworkList = {id: string; name: string; tasks: string[]};
-type Working = {user_id: string; name: string; shift_position: string; starts_at: string};
-type Plan = {id: string; service_date: string; service: string; list_id: string | null; rows: FloorRow[]; updated_at: string};
+export type SideworkList = {id: string; name: string; tasks: string[]};
+export type Working = {user_id: string; name: string; shift_position: string; starts_at: string};
+export type Plan = {id: string; service_date: string; service: string; list_id: string | null; rows: FloorRow[]; updated_at: string};
 
 const SERVICES = ["Lunch", "Dinner"] as const;
-const localDate = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const defaultService = () => new Date().getHours() < 16 ? "Lunch" : "Dinner";
+export const localDate = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+export const defaultService = () => new Date().getHours() < 16 ? "Lunch" : "Dinner";
 // Lunch is anything starting before 4pm; the rest is dinner, the same split as side work.
 const serviceOf = (startsAt: string) => new Date(startsAt).getHours() < 16 ? "Lunch" : "Dinner";
 const isServer = (position: string) => /^\s*server\s*$/i.test(position);
 const isHelper = (position: string) => /assistant|^\s*s\.?\s*a\.?\s*$|runner|busser/i.test(position);
-const helpers = (sa: Helper[]) => sa.map(h => h.name || "Team member").join(" / ");
+export const helpers = (sa: Helper[]) => sa.map(h => h.name || "Team member").join(" / ");
+
+// A new plan: the servers in order, their section numbers, the list's jobs down the rows, and the S.A.s spread across them.
+export function startingRows(working: Working[], service: string, day: string, list: SideworkList | undefined): FloorRow[] {
+  const onService = working.filter(p => serviceOf(p.starts_at) === service);
+  return spreadHelpers(blankRows(onService.filter(p => isServer(p.shift_position)), list), onService.filter(p => isHelper(p.shift_position)), day);
+}
+export function suggestedList(working: Working[], service: string, lists: SideworkList[]) {
+  const servers = working.filter(p => serviceOf(p.starts_at) === service && isServer(p.shift_position)).length;
+  return lists.find(l => l.tasks.length === servers) ?? lists[0];
+}
 
 function blankRows(servers: Working[], list: SideworkList | undefined): FloorRow[] {
   return servers.map((s, i) => ({server_id: s.user_id, server_name: s.name || "Team member", sa: [], section: String(i + 1), task: list?.tasks[i] ?? ""}));
 }
 
 // ── The manager's screen ──
-export function FloorPlan({restaurantId}: {restaurantId: string}) {
-  const [day, setDay] = useState(localDate);
-  const [service, setService] = useState<string>(defaultService);
+// Opened from Tonight, it comes with that night's day and service and a way back.
+export function FloorPlan({restaurantId, initialDay, initialService, onBack}: {restaurantId: string; initialDay?: string; initialService?: string; onBack?: () => void}) {
+  const [day, setDay] = useState(initialDay ?? localDate());
+  const [service, setService] = useState<string>(initialService ?? defaultService());
   const [working, setWorking] = useState<Working[]>([]);
   const [lists, setLists] = useState<SideworkList[]>([]);
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -73,9 +85,8 @@ export function FloorPlan({restaurantId}: {restaurantId: string}) {
         setListId(existing.list_id ?? "");
       } else {
         // A new plan starts from the servers on tonight's schedule and the list that fits how many there are.
-        const servers = team.filter(p => serviceOf(p.starts_at) === service && isServer(p.shift_position));
-        const fits = savedLists.find(l => l.tasks.length === servers.length) ?? savedLists[0];
-        setRows(blankRows(servers, fits));
+        const fits = suggestedList(team, service, savedLists);
+        setRows(startingRows(team, service, day, fits));
         setListId(fits?.id ?? "");
       }
       setDirty(false);
@@ -99,10 +110,7 @@ export function FloorPlan({restaurantId}: {restaurantId: string}) {
   };
   // Everyone moves one job down the list (the last one comes back to the top), for a fair week.
   const rotate = () => { if (rows.length > 1) change(rows.map((row, i) => ({...row, task: rows[(i - 1 + rows.length) % rows.length].task}))); };
-  const restart = () => {
-    const servers = onService.filter(p => isServer(p.shift_position));
-    change(blankRows(servers, list));
-  };
+  const restart = () => change(startingRows(working, service, day, list));
 
   async function save() {
     if (!supabase || busy) return;
@@ -129,6 +137,7 @@ export function FloorPlan({restaurantId}: {restaurantId: string}) {
   if (editingLists) return <SideworkLists restaurantId={restaurantId} lists={lists} onBack={() => {setEditingLists(false); void load();}} />;
 
   return <div className="floor-plan mt-4">
+    {onBack && <button type="button" className="btn secondary mb-4" onClick={onBack}><ArrowLeft size={16} />Tonight</button>}
     <div className="floor-bar">
       <input type="date" aria-label="Day" value={day} onChange={e => e.target.value && setDay(e.target.value)} />
       <div className="category-tabs" role="group" aria-label="Service">
@@ -189,7 +198,7 @@ export function FloorPlan({restaurantId}: {restaurantId: string}) {
 }
 
 // ── Saved running side work lists ──
-function SideworkLists({restaurantId, lists, onBack}: {restaurantId: string; lists: SideworkList[]; onBack: () => void}) {
+export function SideworkLists({restaurantId, lists, onBack}: {restaurantId: string; lists: SideworkList[]; onBack: () => void}) {
   const [open, setOpen] = useState<SideworkList | "new" | null>(lists.length ? null : "new");
   const [name, setName] = useState("");
   const [tasks, setTasks] = useState<string[]>([""]);

@@ -2961,3 +2961,39 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .floor-mine-main b { font-size:20px; }
 :root:root:root:root:root:root:root .floor-mine-main span { font-weight:600; }
 :root:root:root:root:root:root:root .floor-mine-toggle { margin-top:10px; font-size:12px; font-weight:600; text-decoration:underline; text-underline-offset:4px; }
+
+
+/* ===== Side work · Tonight and the My shift card. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .tonight-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px 16px; padding:14px 16px; border:1.5px solid var(--c-text); border-radius:16px; background:var(--c-surface); }
+:root:root:root:root:root:root:root .tonight-title { font-size:18px; font-weight:600; text-transform:capitalize; }
+:root:root:root:root:root:root:root .tonight-actions { display:flex; gap:8px; flex-wrap:wrap; }
+:root:root:root:root:root:root:root .tonight-actions .btn, :root:root:root:root:root:root:root .tonight-block-head .btn { display:inline-flex; gap:6px; align-items:center; }
+:root:root:root:root:root:root:root .tonight-block { margin-top:16px; }
+:root:root:root:root:root:root:root .tonight-block-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+:root:root:root:root:root:root:root .tonight-block-head h3 { font-size:15px; font-weight:600; }
+:root:root:root:root:root:root:root .tonight-sections { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:8px; }
+:root:root:root:root:root:root:root .tonight-section { display:grid; gap:2px; padding:10px; text-align:center; border:1px solid var(--c-line-5); border-radius:12px; background:var(--c-surface); }
+:root:root:root:root:root:root:root .tonight-section b { font-size:18px; }
+:root:root:root:root:root:root:root .tonight-section span { font-weight:600; font-size:13px; }
+:root:root:root:root:root:root:root .tonight-section small { color:var(--c-muted); font-size:12px; }
+:root:root:root:root:root:root:root .tonight-section.closer { background:var(--c-heat-bg); border-color:var(--lime); }
+:root:root:root:root:root:root:root .tonight-phases { display:grid; gap:10px; }
+@media (min-width: 900px) { :root:root:root:root:root:root:root .tonight-phases { grid-template-columns:repeat(3, minmax(0, 1fr)); } }
+:root:root:root:root:root:root:root .tonight-phase { padding:12px; border-radius:14px; background:var(--c-surface-2); border:1px solid var(--c-line); }
+:root:root:root:root:root:root:root .tonight-phase-title { font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--c-muted); margin-bottom:6px; }
+:root:root:root:root:root:root:root .tonight-line { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-top:1px solid var(--c-line); font-size:13px; }
+:root:root:root:root:root:root:root .tonight-line:first-of-type { border-top:0; }
+:root:root:root:root:root:root:root .tonight-line span { display:inline-flex; gap:4px; align-items:center; }
+:root:root:root:root:root:root:root .tonight-line select { width:auto; max-width:55%; min-height:30px; padding:0 8px; font-size:12px; }
+:root:root:root:root:root:root:root .tonight-line small { color:var(--c-muted); font-weight:600; }
+:root:root:root:root:root:root:root .job-rules { display:grid; gap:12px; padding:14px; border:1px solid var(--c-line-5); border-radius:16px; }
+:root:root:root:root:root:root:root .job-rules legend { padding:0 6px; font-weight:600; font-size:14px; }
+:root:root:root:root:root:root:root .job-rules .field { margin:0; }
+:root:root:root:root:root:root:root .my-shift { padding:16px 18px; }
+:root:root:root:root:root:root:root .my-shift-floor { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; margin-top:6px; }
+:root:root:root:root:root:root:root .my-shift-floor b { font-size:22px; }
+:root:root:root:root:root:root:root .my-shift-phases { display:grid; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid var(--c-line); }
+:root:root:root:root:root:root:root .my-shift-phases p { font-weight:600; font-size:14px; }
+:root:root:root:root:root:root:root .my-shift-phases small { display:block; font-size:12px; }
+:root:root:root:root:root:root:root .my-shift-links { display:flex; flex-wrap:wrap; gap:14px; margin-top:10px; }
+:root:root:root:root:root:root:root .my-shift-links button { font-size:12px; font-weight:600; text-decoration:underline; text-underline-offset:4px; }
