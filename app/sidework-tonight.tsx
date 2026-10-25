@@ -15,7 +15,7 @@ import { FloorPlan, defaultService, helpers, localDate, startingRows, suggestedL
 import { closers, peopleIn, planJobs, roleOf, type Phase, type RuledJob } from "@/lib/sidework-plan";
 
 type Sent = {id: string; title: string; user_id: string | null; phase: Phase; done_at: string | null; job_id: string | null; steps_done: number[]};
-type Line = {key: string; title: string; user_id: string | null; phase: Phase; done?: boolean; jobId?: string | null};
+type Line = {key: string; title: string; user_id: string | null; phase: Phase; done?: boolean; jobId?: string | null; who?: string};
 
 const SERVICES = ["Lunch", "Dinner"] as const;
 const JOB_COLUMNS = "id, name, group_name, steps, sort_order, phase, role, who, days";
@@ -85,7 +85,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   const rows: FloorRow[] = useMemo(() => plan?.rows ?? startingRows(working, service, day, suggestedList(working, service, lists)), [plan, working, service, day, lists]);
   const isSent = sent.length > 0;
   const lines: Line[] = isSent ? sent.map(s => ({key: s.id, title: s.title, user_id: s.user_id, phase: s.phase, done: !!s.done_at, jobId: s.job_id})) : draft;
-  const during: Line[] = rows.filter(r => r.task).map((r, i) => ({key: `during-${i}`, title: r.task, user_id: r.server_id, phase: "opening"}));
+  const during: Line[] = rows.filter(r => r.task).map((r, i) => ({key: `during-${i}`, title: r.task, user_id: r.server_id, phase: "opening", who: r.server_name || (r.section ? "Pick-up" : "")}));
   const unruled = jobs.filter(j => !j.phase).length;
   const choicesFor = (line: Line) => {
     const role = jobs.find(j => j.id === line.jobId)?.role;
@@ -185,7 +185,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
               {list.length ? list.map(l => <div key={l.key} className="tonight-line">
                 <span className="min-w-0">{l.done && <Check size={13} aria-label="Done" />}{l.title}</span>
                 {phase === "during"
-                  ? <small>{nameOf(l.user_id)}</small>
+                  ? <small>{l.who || nameOf(l.user_id)}</small>
                   : <select aria-label={`Who does ${l.title}`} value={l.user_id ?? ""} onChange={e => void changePerson(l, e.target.value)}>
                       <option value="">Nobody yet</option>
                       {choicesFor(l).map(p => <option key={p.user_id} value={p.user_id}>{`${p.name || "Team member"}${closing.has(p.user_id) ? " ©" : ""}`}</option>)}
