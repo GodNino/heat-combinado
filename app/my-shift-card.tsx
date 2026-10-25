@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { FloorTable, defaultService, helpers, localDate, type FloorRow } from "./floor-plan";
 
 type Plan = {service: string; rows: FloorRow[]};
-type Mine = {title: string; phase: "opening" | "closing"; done_at: string | null; shift_id: string};
+type Mine = {title: string; phase: "opening" | "during" | "closing"; done_at: string | null; shift_id: string};
 type Shift = {id: string; label: string};
 
 export function MyShiftCard({restaurantId, userId: given, onOpen}: {restaurantId: string; userId?: string; onOpen?: () => void}) {
@@ -48,6 +48,9 @@ export function MyShiftCard({restaurantId, userId: given, onOpen}: {restaurantId
   const jobs = mine.filter(m => shifts.find(x => x.id === m.shift_id)?.label === service);
   const opening = jobs.filter(j => j.phase === "opening");
   const closing = jobs.filter(j => j.phase === "closing");
+  // During-the-shift tasks are handed out like the rest now; a floor plan saved before that keeps its own.
+  const during = jobs.filter(j => j.phase === "during").map(j => j.title);
+  if (!during.length && asServer && row?.task) during.push(row.task);
 
   return <section className="panel my-shift mb-4" aria-label="My shift">
     <p className="eyebrow muted">{`My shift · ${service}`}</p>
@@ -57,7 +60,7 @@ export function MyShiftCard({restaurantId, userId: given, onOpen}: {restaurantId
     </div>}
     <div className="my-shift-phases">
       {opening.length > 0 && <div><small className="muted">Opening</small>{opening.map((j, i) => <p key={i}>{j.title}{j.done_at ? " ✓" : ""}</p>)}</div>}
-      {asServer && row?.task && <div><small className="muted">During the shift</small><p>{row.task}</p></div>}
+      {during.length > 0 && <div><small className="muted">During the shift</small>{during.map((t, i) => <p key={i}>{t}</p>)}</div>}
       {closing.length > 0 && <div><small className="muted">Closing</small>{closing.map((j, i) => <p key={i}>{j.title}{j.done_at ? " ✓" : ""}</p>)}</div>}
     </div>
     <div className="my-shift-links">

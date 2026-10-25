@@ -6,7 +6,8 @@
 //   * "Everyone" jobs go to everybody in the role; "closer" jobs to that role's closer.
 //   * A job set for certain weekdays only appears on those days.
 
-export type Phase = "opening" | "closing";
+export type Phase = "opening" | "during" | "closing";
+export const PHASES: Phase[] = ["opening", "during", "closing"];
 export type Role = "server" | "sa";
 export type Who = "one" | "all" | "closer";
 export type RuledJob = {id: string; name: string; group_name: string; steps: string[]; sort_order: number; phase: Phase | null; role: Role | null; who: Who; days: number[]};
@@ -53,13 +54,16 @@ export function planJobs(jobs: RuledJob[], people: OnShift[], day: string): Plan
     const team = people.filter(p => roleOf(p.shift_position) === role).sort((a, b) => a.name.localeCompare(b.name) || a.user_id.localeCompare(b.user_id));
     const closing = closers(team);
     const mine = jobs.filter(j => j.phase && j.role === role && (!j.days.length || j.days.includes(weekday))).sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
-    let turn = 0;
+    // Each phase deals its one-person jobs round the team on its own, starting one person further
+    // along than the phase before, so nobody gets the first job of every phase.
+    const turns: Record<string, number> = {};
     for (const job of mine) {
       const phase = job.phase!;
       if (job.who === "all") { for (const p of team) planned.push({job, user_id: p.user_id, phase}); continue; }
       if (job.who === "closer") { for (const id of closing.length ? closing : [null]) planned.push({job, user_id: id, phase}); continue; }
-      planned.push({job, user_id: team.length ? team[(turn + shift) % team.length].user_id : null, phase});
-      turn++;
+      const turn = turns[phase] ?? 0;
+      planned.push({job, user_id: team.length ? team[(turn + shift + PHASES.indexOf(phase)) % team.length].user_id : null, phase});
+      turns[phase] = turn + 1;
     }
   }
   return planned;
