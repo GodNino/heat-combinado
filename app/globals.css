@@ -2927,3 +2927,37 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .sched-copy-option:disabled { opacity:.5; cursor:default; }
 :root:root:root:root:root:root:root .sched-copy-option small { color:var(--c-muted); font-size:12px; }
 :root:root:root:root:root:root:root .sched-copy-option span { margin-top:4px; font-size:12px; font-weight:600; }
+
+/* ===== Floor plan (Side work): section, server, S.A. and running side work per row, like the sheet at the station. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .floor-bar { display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; margin-bottom:14px; }
+:root:root:root:root:root:root:root .floor-bar input[type="date"] { width:auto; min-height:36px; padding:0 14px; }
+:root:root:root:root:root:root:root .floor-bar .category-tabs { margin:0; }
+:root:root:root:root:root:root:root .floor-list-row { display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px; margin-bottom:8px; }
+:root:root:root:root:root:root:root .floor-list-row .field { flex:1 1 220px; margin:0; }
+:root:root:root:root:root:root:root .floor-table { border:1.5px solid var(--c-text); border-radius:16px; overflow:hidden; background:var(--c-surface); }
+:root:root:root:root:root:root:root .floor-head, :root:root:root:root:root:root:root .floor-row { display:grid; grid-template-columns:72px minmax(0,1.1fr) minmax(0,1.3fr) minmax(0,1.2fr) 40px; gap:8px; align-items:center; padding:8px 12px; }
+:root:root:root:root:root:root:root .floor-table.readonly .floor-head, :root:root:root:root:root:root:root .floor-table.readonly .floor-row { grid-template-columns:64px minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr); }
+:root:root:root:root:root:root:root .floor-head { background:var(--c-heat-bg); font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--c-text); }
+:root:root:root:root:root:root:root .floor-row { border-top:1px solid var(--c-line); font-size:14px; }
+:root:root:root:root:root:root:root .floor-row.me { background:var(--c-heat-bg); font-weight:600; }
+:root:root:root:root:root:root:root .floor-row select, :root:root:root:root:root:root:root .floor-row input { width:100%; min-height:34px; padding:0 10px; font-size:14px; }
+:root:root:root:root:root:root:root .floor-row .floor-section { text-align:center; font-weight:700; }
+:root:root:root:root:root:root:root .floor-sa { display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
+:root:root:root:root:root:root:root .floor-sa .word-chip { display:inline-flex; gap:4px; align-items:center; }
+:root:root:root:root:root:root:root .floor-sa .floor-add-sa { width:auto; min-width:84px; }
+@media (max-width: 700px) {
+  :root:root:root:root:root:root:root .floor-head { display:none; }
+  :root:root:root:root:root:root:root .floor-row { grid-template-columns:56px 1fr 34px; grid-template-areas:"section server remove" "sa sa sa" "task task task"; }
+  :root:root:root:root:root:root:root .floor-row > :nth-child(1) { grid-area:section; }
+  :root:root:root:root:root:root:root .floor-row > :nth-child(2) { grid-area:server; }
+  :root:root:root:root:root:root:root .floor-row > :nth-child(3) { grid-area:sa; }
+  :root:root:root:root:root:root:root .floor-row > :nth-child(4) { grid-area:task; }
+  :root:root:root:root:root:root:root .floor-row > :nth-child(5) { grid-area:remove; }
+  :root:root:root:root:root:root:root .floor-table.readonly .floor-row { grid-template-columns:44px 1fr 1fr; grid-template-areas:"section server sa" "section task task"; }
+}
+:root:root:root:root:root:root:root .floor-mine { padding:16px 18px; }
+:root:root:root:root:root:root:root .floor-mine-main { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 14px; margin-top:8px; }
+:root:root:root:root:root:root:root .floor-mine-main div { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; }
+:root:root:root:root:root:root:root .floor-mine-main b { font-size:20px; }
+:root:root:root:root:root:root:root .floor-mine-main span { font-weight:600; }
+:root:root:root:root:root:root:root .floor-mine-toggle { margin-top:10px; font-size:12px; font-weight:600; text-decoration:underline; text-underline-offset:4px; }

@@ -13,13 +13,14 @@ import { StepsEditor } from "./checklist-steps";
 import { Today } from "./checklist-today";
 import { MyShift } from "./checklist-mine";
 import { History } from "./checklist-history";
+import { FloorPlan, MyFloorPlan } from "./floor-plan";
 
 export type Job = {id: string; name: string; group_name: string; steps: string[]; sort_order: number};
 type Draft = {name: string; steps: string[]};
-type Tab = "today" | "saved" | "history";
+type Tab = "today" | "floor" | "saved" | "history";
 
 const EMPTY: Draft = {name: "", steps: [""]};
-const TABS: Array<[Tab, string]> = [["today", "Today"], ["saved", "Jobs"], ["history", "History"]];
+const TABS: Array<[Tab, string]> = [["today", "Today"], ["floor", "Floor plan"], ["saved", "Jobs"], ["history", "History"]];
 
 export function Checklists({restaurantId, canManage}: {restaurantId: string; canManage: boolean}) {
   const [tab, setTab] = useState<Tab>("today");
@@ -111,6 +112,7 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
   // Everyone else sees their own job and the floor, nothing to set up.
   if (!canManage) return <section className="mx-auto max-w-3xl">
     <ScreenHeader eyebrow="Know the floor" title="Side work" info="Your job for this shift, and how the rest of the floor is doing." />
+    <MyFloorPlan restaurantId={restaurantId} />
     <MyShift restaurantId={restaurantId} />
   </section>;
 
@@ -125,6 +127,7 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
     </div>}
     <div><Notice text={error} error /><Notice text={message} /></div>
     {tab === "today" && <Today restaurantId={restaurantId} jobs={rows} onOpenSaved={() => setTab("saved")} onSavedJobsChanged={() => void load()} onDeep={setDeep} />}
+    {tab === "floor" && <FloorPlan restaurantId={restaurantId} />}
     {tab === "history" && <History restaurantId={restaurantId} />}
     {tab === "saved" && <>
       {loading ? <p className="muted py-6" role="status">Loading jobs…</p> : <div className="mt-4">

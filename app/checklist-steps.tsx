@@ -6,7 +6,8 @@ import { GripVertical, Plus, X } from "lucide-react";
 
 export const MAX_STEPS = 30;
 
-export function StepsEditor({steps, onChange, idPrefix}: {steps: string[]; onChange: (next: string[]) => void; idPrefix: string}) {
+// The words default to a job's steps; the running side work lists (floor-plan.tsx) say "jobs" instead.
+export function StepsEditor({steps, onChange, idPrefix, label = "Steps", addLabel = "Add a step", placeholder = "The next thing they do…"}: {steps: string[]; onChange: (next: string[]) => void; idPrefix: string; label?: string; addLabel?: string; placeholder?: string}) {
   // The step being dragged, and where each step row sits so the drag knows what it is over.
   const [dragging, setDragging] = useState<number | null>(null);
   const rows = useRef<Array<HTMLDivElement | null>>([]);
@@ -28,7 +29,7 @@ export function StepsEditor({steps, onChange, idPrefix}: {steps: string[]; onCha
     if (target >= 0 && target !== dragging) { moveStep(dragging, target); setDragging(target); }
   }
   return <div>
-    <label htmlFor={idPrefix + "-0"}>Steps</label>
+    <label htmlFor={idPrefix + "-0"}>{label}</label>
     <div className="mt-2 space-y-2">{steps.map((step, index) => <div key={index} ref={el => {rows.current[index] = el;}} className="flex items-center gap-2" style={dragging === index ? {outline: "2px solid var(--lime)", outlineOffset: 4, borderRadius: 12} : undefined}>
       <button type="button" className="icon-chip shrink-0" style={{touchAction: "none", cursor: dragging === index ? "grabbing" : "grab"}} aria-label={"Drag step " + (index + 1) + " to move it"} title="Drag to move this step"
         onPointerDown={e => {e.currentTarget.setPointerCapture(e.pointerId); setDragging(index);}}
@@ -36,9 +37,9 @@ export function StepsEditor({steps, onChange, idPrefix}: {steps: string[]; onCha
         onPointerUp={() => setDragging(null)}
         onPointerCancel={() => setDragging(null)}><GripVertical size={15} /></button>
       <span className="step-number shrink-0">{index + 1}</span>
-      <input id={idPrefix + "-" + index} className="min-w-0 flex-1" maxLength={200} value={step} onChange={e => setStep(index, e.target.value)} placeholder="The next thing they do…" />
+      <input id={idPrefix + "-" + index} className="min-w-0 flex-1" maxLength={200} value={step} onChange={e => setStep(index, e.target.value)} placeholder={placeholder} />
       <button type="button" className="icon-chip shrink-0" onClick={() => dropStep(index)} aria-label={"Remove step " + (index + 1)} title="Remove this step"><X size={15} /></button>
     </div>)}</div>
-    {steps.length < MAX_STEPS && <button type="button" className="muted mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line p-3 text-sm" onClick={addStep}><Plus size={15} />Add a step</button>}
+    {steps.length < MAX_STEPS && <button type="button" className="muted mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line p-3 text-sm" onClick={addStep}><Plus size={15} />{addLabel}</button>}
   </div>;
 }
