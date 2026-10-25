@@ -158,7 +158,7 @@ export function FloorPlan({restaurantId}: {restaurantId: string}) {
           return <div key={index} className="floor-row" role="row">
             <span role="cell"><input aria-label="Section" className="floor-section" maxLength={8} value={row.section} onChange={e => setRow(index, {section: e.target.value})} /></span>
             <span role="cell"><select aria-label="Server" value={row.server_id ?? ""} onChange={e => {const who = onService.find(p => p.user_id === e.target.value); setRow(index, {server_id: who?.user_id ?? null, server_name: who?.name ?? ""});}}>
-              <option value="">Choose a server</option>
+              <option value="">{row.server_name && !row.server_id ? row.server_name : "Choose a server"}</option>
               {options.map(p => <option key={p.user_id} value={p.user_id}>{p.name || "Team member"}</option>)}
               {onService.filter(p => !isServer(p.shift_position) && !options.some(o => o.user_id === p.user_id)).map(p => <option key={p.user_id} value={p.user_id}>{`${p.name || "Team member"} · ${p.shift_position}`}</option>)}
             </select></span>
