@@ -75,7 +75,7 @@ export function Schedule({restaurantId, restaurantName, userId, canManage, setMe
   const tabs: [Tab, string][] = canManage
     ? [["week", "Build the week"], ["requests", awaitingManager ? `Requests · ${awaitingManager}` : "Requests"], ["timeoff", pending ? `Time off · ${pending}` : "Time off"], ["mine", askedOfMe ? `My shifts · ${askedOfMe}` : "My shifts"], ["availability", "My availability"]]
     : [["mine", askedOfMe ? `My shifts · ${askedOfMe}` : "My shifts"], ...(settings?.team_sees_all === false ? [] : [["week", "Team schedule"] as [Tab, string]]), ["availability", "My availability"], ["timeoff", "Time off"]];
-  return <section className="mx-auto max-w-6xl">
+  return <section className="mx-auto w-full">
     <p className="eyebrow muted">{canManage ? "Manager workspace" : "Your schedule"}</p>
     <h1 className="mt-3 mb-5 text-2xl font-semibold">Schedule</h1>
     <div className="category-tabs mb-5" role="group" aria-label="Schedule">

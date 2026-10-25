@@ -1632,6 +1632,29 @@ function Workspace({
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [navOpen, setNavOpen] = useState(false);
+  // The side menu sticks to the top of the screen, so it's one screen tall. Until the header and the
+  // demo banner have scrolled away it starts lower down, so it gives up exactly that much height and
+  // its last links stay on screen instead of hanging below the bottom edge.
+  const sideNav = useRef<HTMLElement | null>(null);
+  const fitSideNav = useRef<() => void>(() => {});
+  // The menu only exists once the workspace has loaded, so it fits itself the moment it appears too.
+  const attachSideNav = useCallback((node: HTMLElement | null) => {sideNav.current = node; if (node) fitSideNav.current();}, []);
+  useEffect(() => {
+    let frame = 0;
+    const fit = fitSideNav.current = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const nav = sideNav.current;
+        if (!nav) return;
+        if (!window.matchMedia("(min-width: 768px)").matches) { nav.style.height = ""; return; }
+        nav.style.height = `${window.innerHeight - Math.max(0, nav.getBoundingClientRect().top)}px`;
+      });
+    };
+    fit();
+    window.addEventListener("scroll", fit, {passive: true});
+    window.addEventListener("resize", fit);
+    return () => {cancelAnimationFrame(frame); window.removeEventListener("scroll", fit); window.removeEventListener("resize", fit);};
+  }, []);
   const [libraryExpanded, setLibraryExpanded] = useState(false);
   const [hideTaken, setHideTaken] = useState(false);
   const [studyType, setStudyType] = useState<ContentType>("food");
@@ -1972,7 +1995,7 @@ function Workspace({
     <CardRowsContext.Provider value={cards.rows}>
     <div className="min-h-screen">
       <header className="app-header border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-9">
+        <div className="mx-auto flex max-w-[1920px] items-center justify-between gap-3 px-4 py-3 md:px-9">
           <div className="flex items-center gap-3">
             <button className="rounded-lg p-2 hover:bg-raised md:hidden" aria-label="Toggle navigation" aria-expanded={navOpen} aria-controls="workspace-navigation" onClick={event => {const header = event.currentTarget.closest("header"); if (header) document.documentElement.style.setProperty("--header-h", `${Math.round(header.getBoundingClientRect().bottom)}px`); setNavOpen(!navOpen);}}><Menu size={22} /></button>
             {restaurant && !isManager ? <div className="flex items-center gap-3"><button type="button" className="header-home" aria-label="Go to Home" onClick={() => navigate("home")}><HeatIcon /></button><div><p className="text-sm font-semibold">{learnerName}</p><p className="muted text-xs uppercase tracking-widest">{restaurant.name}</p></div></div> : <button type="button" className="header-home" aria-label="Go to Home" onClick={() => navigate("home")}><Brand /></button>}
@@ -2090,8 +2113,8 @@ function Workspace({
       </div> : isOwner && restaurant?.trial_ends_at && <div className="preview-bar" role="note">
         <span>{trialLabel(restaurant.trial_ends_at)}</span>
       </div>}
-      <div className="mx-auto grid max-w-7xl md:grid-cols-[225px_1fr]">
-        <aside id="workspace-navigation" className={`mobile-drawer ${navOpen ? "block" : "hidden"} border-b border-line bg-surface p-5 md:sticky md:top-0 md:block md:h-screen md:self-start md:overflow-y-auto md:border-r md:border-b-0 md:p-6`}>
+      <div className="mx-auto grid max-w-[1920px] md:grid-cols-[225px_1fr]">
+        <aside id="workspace-navigation" ref={attachSideNav} className={`mobile-drawer ${navOpen ? "block" : "hidden"} border-b border-line bg-surface p-5 md:sticky md:top-0 md:block md:h-screen md:self-start md:overflow-y-auto md:border-r md:border-b-0 md:p-6`}>
           <p className="eyebrow muted mb-3">Workspace</p>
           {restaurants.length > 0 && (
             <>
