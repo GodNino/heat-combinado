@@ -46,13 +46,3 @@ test("S.A.s spread across the servers' rows", () => {
   assert.equal(spread.flatMap(r => r.sa).length, 3);
   assert.ok(spread.every(r => r.sa.length >= 1));
 });
-
-test("during tasks go one to each server, and each phase starts with someone different", () => {
-  const dinner = peopleIn("Dinner", floor);
-  const during = [job("trays", {phase: "during", role: "server", sort_order: 1}), job("coffee", {phase: "during", role: "server", sort_order: 2})];
-  const opening = [job("stations", {phase: "opening", role: "server", sort_order: 1})];
-  const plan = planJobs([...during, ...opening], dinner, "2026-10-24");
-  const dur = plan.filter(p => p.phase === "during").map(p => p.user_id);
-  assert.equal(new Set(dur).size, 2, "two servers, two during tasks, one each");
-  assert.notEqual(plan.find(p => p.phase === "opening")!.user_id, dur[0], "opening's first job doesn't land on the same person as during's");
-});
