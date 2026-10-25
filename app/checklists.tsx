@@ -157,13 +157,22 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
     {tab === "setup" && lists && <SideworkLists restaurantId={restaurantId} lists={lists} onBack={() => setLists(null)} />}
     {tab === "setup" && !lists && <>
       {loading ? <p className="muted py-6" role="status">Loading jobs…</p> : <div className="mt-4">
-        {!!sorted.length && <div className="space-y-2">{sorted.map(row => <button key={row.id} type="button" className="panel flex w-full items-center gap-3 text-left" style={{padding: "10px 16px"}} onClick={() => openForm(row)}>
-          <span className="min-w-0 flex-1">
-            <span className="block font-semibold">{row.name}</span>
-            <span className="muted block text-xs">{`${row.steps.length} ${row.steps.length === 1 ? "step" : "steps"} · ${describe(row)}`}</span>
-          </span>
-          <ChevronRight size={18} className="muted shrink-0" aria-hidden="true" />
-        </button>)}</div>}
+        {/* Servers and S.A.s have different side work: each gets its own group, opening before closing. */}
+        {([["server", "Servers"], ["sa", "S.A.s"], ["", "Given by hand"]] as const).map(([role, label]) => {
+          const group = sorted.filter(row => role ? row.phase && row.role === role : !row.phase)
+            .sort((a, b) => (a.phase === b.phase ? 0 : a.phase === "opening" ? -1 : 1) || a.sort_order - b.sort_order);
+          if (!group.length) return null;
+          return <div key={label} className="setup-group">
+            <p className="setup-group-title">{label}</p>
+            <div className="space-y-2">{group.map(row => <button key={row.id} type="button" className="panel flex w-full items-center gap-3 text-left" style={{padding: "10px 16px"}} onClick={() => openForm(row)}>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">{row.name}</span>
+                <span className="muted block text-xs">{`${row.steps.length} ${row.steps.length === 1 ? "step" : "steps"} · ${describe(row)}`}</span>
+              </span>
+              <ChevronRight size={18} className="muted shrink-0" aria-hidden="true" />
+            </button>)}</div>
+          </div>;
+        })}
         {!rows.length && <p className="muted py-6">No jobs yet. Start with one your team does every shift.</p>}
         <div className="mt-4 flex flex-wrap gap-2">
           <button className="btn" type="button" onClick={() => openForm()}><Plus size={16} />New job</button>

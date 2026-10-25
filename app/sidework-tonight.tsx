@@ -12,7 +12,7 @@ import { Check, Pencil, RefreshCw, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Notice } from "./ui";
 import { FloorPlan, defaultService, helpers, localDate, startingRows, suggestedList, type FloorRow, type Plan, type SideworkList, type Working } from "./floor-plan";
-import { closers, peopleIn, planJobs, roleOf, type Phase, type RuledJob } from "@/lib/sidework-plan";
+import { closers, peopleIn, planJobs, roleOf, type Phase, type Role, type RuledJob } from "@/lib/sidework-plan";
 
 type Sent = {id: string; title: string; user_id: string | null; phase: Phase; done_at: string | null; job_id: string | null; steps_done: number[]};
 type Line = {key: string; title: string; user_id: string | null; phase: Phase; done?: boolean; jobId?: string | null; who?: string};
@@ -77,7 +77,10 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   useEffect(() => { void load(); }, [load]);
 
   const people = useMemo(() => peopleIn(service, working), [working, service]);
-  const nameOf = (id: string | null) => (id && working.find(p => p.user_id === id)?.name) || "Nobody yet";
+  const nameOf = (id: string | null) => {
+    const person = id ? working.find(p => p.user_id === id) : undefined;
+    return person ? person.name || "Team member" : "Nobody yet";
+  };
   const closing = useMemo(() => new Set([...closers(people.filter(p => roleOf(p.shift_position) === "server")), ...closers(people.filter(p => roleOf(p.shift_position) === "sa"))]), [people]);
   const servers = people.filter(p => roleOf(p.shift_position) === "server").length;
   const sas = people.filter(p => roleOf(p.shift_position) === "sa").length;
@@ -87,6 +90,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   const lines: Line[] = isSent ? sent.map(s => ({key: s.id, title: s.title, user_id: s.user_id, phase: s.phase, done: !!s.done_at, jobId: s.job_id})) : draft;
   const during: Line[] = rows.filter(r => r.task).map((r, i) => ({key: `during-${i}`, title: r.task, user_id: r.server_id, phase: "opening", who: r.server_name || (r.section ? "Pick-up" : "")}));
   const unruled = jobs.filter(j => !j.phase).length;
+  // Which side of the floor a task belongs to: its job says so; failing that, whoever has it.
+  const lineRole = (l: Line): Role => jobs.find(j => j.id === l.jobId)?.role ?? (roleOf(working.find(p => p.user_id === l.user_id)?.shift_position ?? "") ?? "server");
   const choicesFor = (line: Line) => {
     const role = jobs.find(j => j.id === line.jobId)?.role;
     const same = people.filter(p => !role || roleOf(p.shift_position) === role);
@@ -175,26 +180,34 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
         {closing.size > 0 && <p className="muted mt-2 text-xs">{`© Closer: ${[...closing].map(nameOf).join(", ")}. Whoever comes in last closes.`}</p>}
       </section>
 
-      <section className="tonight-block" aria-label="Side work">
-        <div className="tonight-block-head"><h3>Side work</h3>{unruled > 0 && <span className="muted text-xs">{`${unruled} ${unruled === 1 ? "job isn't" : "jobs aren't"} set up to hand out yet (Setup)`}</span>}</div>
-        <div className="tonight-phases">
-          {PHASES.map(([phase, label]) => {
-            const list = phase === "during" ? during : lines.filter(l => l.phase === phase);
-            return <div key={phase} className="tonight-phase">
-              <p className="tonight-phase-title">{label}</p>
-              {list.length ? list.map(l => <div key={l.key} className="tonight-line">
-                <span className="min-w-0">{l.done && <Check size={13} aria-label="Done" />}{l.title}</span>
-                {phase === "during"
-                  ? <small>{l.who || nameOf(l.user_id)}</small>
-                  : <select aria-label={`Who does ${l.title}`} value={l.user_id ?? ""} onChange={e => void changePerson(l, e.target.value)}>
-                      <option value="">Nobody yet</option>
-                      {choicesFor(l).map(p => <option key={p.user_id} value={p.user_id}>{`${p.name || "Team member"}${closing.has(p.user_id) ? " ©" : ""}`}</option>)}
-                    </select>}
-              </div>) : <p className="muted text-xs">{phase === "during" ? "Comes from the floor plan's running side work." : "Nothing set up for this yet."}</p>}
-            </div>;
-          })}
-        </div>
-      </section>
+      {unruled > 0 && <p className="muted mt-4 text-xs">{`${unruled} ${unruled === 1 ? "job isn't" : "jobs aren't"} set up to hand out yet (Setup)`}</p>}
+      {(["server", "sa"] as Role[]).map(role => {
+        // During the shift: servers keep their running side work; S.A.s cover the sections they're on.
+        const duringFor: Line[] = role === "server" ? during : people.filter(p => roleOf(p.shift_position) === "sa").map(p => {
+          const covers = rows.filter(r => r.sa.some(h => h.id === p.user_id)).map(r => r.section).filter(Boolean);
+          return {key: `cover-${p.user_id}`, title: covers.length ? `Sections ${covers.join("/")}` : "No section yet", user_id: p.user_id, phase: "opening" as Phase, who: p.name || "Team member"};
+        });
+        return <section key={role} className={`tonight-block tonight-role ${role}`} aria-label={role === "server" ? "Side work · Servers" : "Side work · S.A.s"}>
+          <div className="tonight-block-head"><h3>{role === "server" ? "Side work · Servers" : "Side work · S.A.s"}</h3></div>
+          <div className="tonight-phases">
+            {PHASES.map(([phase, label]) => {
+              const list = phase === "during" ? duringFor : lines.filter(l => l.phase === phase && lineRole(l) === role);
+              return <div key={phase} className="tonight-phase">
+                <p className="tonight-phase-title">{label}</p>
+                {list.length ? list.map(l => <div key={l.key} className="tonight-line">
+                  <span className="min-w-0">{l.done && <Check size={13} aria-label="Done" />}{l.title}</span>
+                  {phase === "during"
+                    ? <small>{l.who || nameOf(l.user_id)}</small>
+                    : <select aria-label={`Who does ${l.title}`} value={l.user_id ?? ""} onChange={e => void changePerson(l, e.target.value)}>
+                        <option value="">Nobody yet</option>
+                        {choicesFor(l).map(p => <option key={p.user_id} value={p.user_id}>{`${p.name || "Team member"}${closing.has(p.user_id) ? " ©" : ""}`}</option>)}
+                      </select>}
+                </div>) : <p className="muted text-xs">{phase === "during" ? (role === "server" ? "Comes from the floor plan's running side work." : "No S.A.s on the schedule.") : "Nothing set up for this yet."}</p>}
+              </div>;
+            })}
+          </div>
+        </section>;
+      })}
     </>}
   </div>;
 }
