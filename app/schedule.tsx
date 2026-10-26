@@ -2,12 +2,12 @@
 // The schedule (migration 040), stage 1 of replacing Sling. Managers with Team access build the week
 // person by person, see hours, overtime and conflicts as they go, and publish; the team sees their
 // shifts and their coworkers', and keeps their own availability and time off.
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Check, ChevronDown, Copy, Plus, Settings, SlidersHorizontal, Users, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
+import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, Clock, ChevronLeft, ChevronRight, Check, ChevronDown, Copy, Plus, Settings, SlidersHorizontal, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   PALETTE, POSITIONS, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, newCopies, dayBlocks, dayKey,
-  dayTotals, defaultShift, formatHours, hoursByPerson, initials, isLive, movedShift, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, weekDays, weekStart,
+  dayTotals, defaultShift, formatHours, hoursByPerson, initials, isLive, movedShift, positionAfterDrop, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, weekDays, weekStart,
   changeWindowOpen, canSchedule, isKitchen, KITCHEN_POSITIONS, type ScheduleAccess, type ScheduleSettings, type Shift, type ShiftChange, type ShiftPreset, type TimeOff, type Unavailability, type Warning,
 } from "@/lib/schedule";
 import { scheduleSheet } from "@/lib/sheets";
@@ -102,6 +102,18 @@ type Press = {shift: Shift; x: number; y: number; dx: number; dy: number; width:
 const BLOCK_TEXT = {unavailable: "Unavailable", time_off: "Time off", time_off_pending: "Asked off"} as const;
 const cellKey = (userId: string, day: Date) => `${userId}|${dayKey(day)}`;
 
+// A value shown as a small pill. The real field (a menu, a date or a time box) sits on top of it, invisible,
+// so tapping the pill opens the phone's own picker. Safari draws a bare date or time box as a tall pill of its own.
+function PillField({label, htmlFor, text, icon, children}: {label: string; htmlFor: string; text: string; icon: ReactNode; children: ReactElement}) {
+  return <div className="sched-pillfield">
+    <label htmlFor={htmlFor}>{label}</label>
+    <span className="sched-pill"><span>{text}</span>{icon}{children}</span>
+  </div>;
+}
+const openPicker = (event: MouseEvent<HTMLInputElement>) => { try { event.currentTarget.showPicker?.(); } catch { /* the phone opens it by itself */ } };
+const dayText = (key: string) => { const [y, m, d] = key.split("-").map(Number); return y ? new Date(y, m - 1, d).toLocaleDateString("en-US", {month: "short", day: "numeric", year: "numeric"}) : "Pick a day"; };
+const timeText = (clockText: string) => { const [h, m] = clockText.split(":").map(Number); return Number.isNaN(h) ? "Pick a time" : `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+
 function WeekView({restaurantId, restaurantName, canManage, setMessage, settings, settingsMissing, onSettings, changes, access}: {restaurantId: string; restaurantName: string; canManage: boolean; setMessage: (text: string) => void; settings: ScheduleSettings; settingsMissing: boolean; onSettings: (settings: ScheduleSettings) => void; changes: ShiftChange[]; access: ScheduleAccess}) {
   // A floor manager builds the floor, a head chef the kitchen; Team access builds everything (048).
   const mayEdit = (position: string) => canManage && canSchedule(position, access, settings);
@@ -115,6 +127,8 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   const [unavailable, setUnavailable] = useState<Unavailability[]>([]);
   const [timeOff, setTimeOff] = useState<TimeOff[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
+  // The position chips show the team's own positions; "Other" opens the whole list.
+  const [otherPosition, setOtherPosition] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [viewBy, setViewBy] = useState<ViewBy>("name");
@@ -196,9 +210,11 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     return own && mayEdit(own) ? {position: own, covering: false} : {position: editablePositions[0] ?? own, covering: true};
   }
   function openNew(person: Person, day: Date) {
+    setOtherPosition(false);
     setDraft({user_id: person.user_id, ...forPerson(person.user_id), day: dayKey(day), ...defaultShift(settings), note: ""});
   }
   function openShift(shift: Shift) {
+    setOtherPosition(false);
     const from = new Date(shift.starts_at);
     const own = ownPosition(shift.user_id);
     setDraft({id: shift.id, user_id: shift.user_id, position: shift.position, covering: !own || !samePosition(own, shift.position), day: dayKey(from), start: clock(from), end: clock(new Date(shift.ends_at)), note: shift.note});
@@ -264,13 +280,15 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     const [y, m, d] = key.split("-").map(Number);
     const times = movedShift(shift, new Date(y, m - 1, d));
     if (!copy && userId === shift.user_id && times.starts_at === shift.starts_at) return;
+    const own = ownPosition(userId);
+    const position = positionAfterDrop(shift.position, userId === shift.user_id, own, !!own && mayEdit(own));
     const name = people.find(p => p.user_id === userId)?.name ?? "Team member";
-    setShifts(list => copy ? [...(list ?? []), {...shift, id: `copy-${Date.now()}`, user_id: userId, ...times, published: false}]
-      : (list ?? []).map(s => s.id === shift.id ? {...s, user_id: userId, ...times, published: false} : s));
+    setShifts(list => copy ? [...(list ?? []), {...shift, id: `copy-${Date.now()}`, user_id: userId, position, ...times, published: false}]
+      : (list ?? []).map(s => s.id === shift.id ? {...s, user_id: userId, position, ...times, published: false} : s));
     void act(async () => {
       const result = copy
-        ? await supabase!.from("schedule_shifts").insert({restaurant_id: restaurantId, user_id: userId, position: shift.position, note: shift.note, ...times})
-        : await supabase!.from("schedule_shifts").update({user_id: userId, ...times}).eq("id", shift.id);
+        ? await supabase!.from("schedule_shifts").insert({restaurant_id: restaurantId, user_id: userId, position, note: shift.note, ...times})
+        : await supabase!.from("schedule_shifts").update({user_id: userId, position, ...times}).eq("id", shift.id);
       if (result.error) { await load(); throw new Error(result.error.message.includes("row-level security") ? "That person isn't on this team's schedule." : result.error.message); }
       setMessage(`${copy ? "Copied" : "Moved"} to ${name}, ${dayHeading(new Date(y, m - 1, d))}.`);
       await load();
@@ -551,28 +569,46 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
           <button type="button" className="ml-auto muted" aria-label="Close" onClick={() => setDraft(null)}><X size={18} /></button>
         </div>
         <fieldset disabled={busy}>
-          <Field label="Who"><select id="shift-who" value={draft.user_id} onChange={e => setDraft({...draft, user_id: e.target.value, ...(draft.covering ? {} : forPerson(e.target.value))})}>{people.map(p => <option key={p.user_id} value={p.user_id}>{p.name}</option>)}</select></Field>
+          <PillField label="Who" htmlFor="shift-who" text={people.find(p => p.user_id === draft.user_id)?.name ?? "Team member"} icon={<ChevronDown size={14} aria-hidden="true" />}>
+            <select id="shift-who" value={draft.user_id} onChange={e => setDraft({...draft, user_id: e.target.value, ...forPerson(e.target.value)})}>{people.map(p => <option key={p.user_id} value={p.user_id}>{p.name}</option>)}</select>
+          </PillField>
           {(() => {
+            // A shift starts as the position the person was hired for (set in Team). Another one is a choice, and says so.
             const own = ownPosition(draft.user_id);
-            const canOwn = !!own && mayEdit(own);
-            if (!draft.covering) return <div className="field" role="group" aria-labelledby="shift-own-label">
-              <label id="shift-own-label">Position</label>
-              <div className="sched-own-row"><b>{draft.position}</b><span className="muted text-xs">Their position</span>
-                <button type="button" className="btn secondary ml-auto" onClick={() => setDraft({...draft, covering: true, position: editablePositions.find(p => !samePosition(p, draft.position)) ?? draft.position})}>Cover another position</button></div>
+            const seen = new Map<string, string>();
+            for (const name of [own, ...people.map(p => p.role.trim()), draft.position]) if (name && !seen.has(name.toLowerCase()) && (samePosition(name, draft.position) || mayEdit(name))) seen.set(name.toLowerCase(), name);
+            const chips = [...seen.values()].sort((x, y) => Number(samePosition(y, own)) - Number(samePosition(x, own)) || x.localeCompare(y));
+            const pick = (name: string) => setDraft({...draft, position: name, covering: !own || !samePosition(own, name)});
+            const covering = !!own && !samePosition(own, draft.position);
+            return <div className="sched-pillfield" role="group" aria-labelledby="shift-position-label">
+              <span id="shift-position-label" className="sched-label">Position</span>
+              <div className="category-tabs">
+                {chips.map(name => <button key={name} type="button" aria-pressed={samePosition(name, draft.position)} onClick={() => pick(name)}>{name}</button>)}
+                <button type="button" aria-pressed={otherPosition} aria-expanded={otherPosition} onClick={() => setOtherPosition(open => !open)}>Other</button>
+              </div>
+              {otherPosition && <span className="sched-pill"><span>{draft.position}</span><ChevronDown size={14} aria-hidden="true" />
+                <select id="shift-position" aria-label="Other position" value={draft.position} onChange={e => pick(e.target.value)}>{(editablePositions.includes(draft.position) ? editablePositions : [draft.position, ...editablePositions]).map(p => <option key={p}>{p}</option>)}</select>
+              </span>}
+              <p className="muted sched-hint">{!own ? "No position on their profile yet. Set it in Team." : covering ? `Covering ${draft.position}. Hired as ${own}.` : `Hired as ${own}.`}</p>
             </div>;
-            return <>
-              <Field label="Covering another position"><select id="shift-position" value={draft.position} onChange={e => setDraft({...draft, position: e.target.value})}>{(editablePositions.includes(draft.position) ? editablePositions : [draft.position, ...editablePositions]).map(p => <option key={p}>{p}</option>)}</select></Field>
-              <p className="muted -mt-2 mb-4 text-xs">{own ? `Hired as ${own}.` : "No position on their profile yet. Set it in Team."}{canOwn && <> <button type="button" className="underline underline-offset-4" onClick={() => setDraft({...draft, covering: false, position: own})}>Back to their position</button></>}</p>
-            </>;
           })()}
-          <Field label="Day"><input id="shift-day" type="date" required value={draft.day} onChange={e => setDraft({...draft, day: e.target.value})} /></Field>
           {settings.shift_presets.length > 0 && <div className="sched-presets" role="group" aria-label="Quick shifts">{settings.shift_presets.map(preset =>
             <button key={preset.name} type="button" className="word-chip" aria-pressed={draft.start === preset.start && draft.end === preset.end} onClick={() => setDraft({...draft, start: preset.start, end: preset.end})}>{preset.name}<small>{presetLabel(preset)}</small></button>)}</div>}
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Starts"><input id="shift-start" type="time" required step={900} value={draft.start} onChange={e => setDraft({...draft, start: e.target.value})} /></Field>
-            <Field label="Ends"><input id="shift-end" type="time" required step={900} value={draft.end} onChange={e => setDraft({...draft, end: e.target.value})} /></Field>
+          <div className="sched-when">
+            <PillField label="Day" htmlFor="shift-day" text={dayText(draft.day)} icon={<CalendarDays size={14} aria-hidden="true" />}>
+              <input id="shift-day" type="date" required value={draft.day} onClick={openPicker} onChange={e => setDraft({...draft, day: e.target.value})} />
+            </PillField>
+            <PillField label="Starts" htmlFor="shift-start" text={timeText(draft.start)} icon={<Clock size={14} aria-hidden="true" />}>
+              <input id="shift-start" type="time" required step={900} value={draft.start} onClick={openPicker} onChange={e => setDraft({...draft, start: e.target.value})} />
+            </PillField>
+            <PillField label="Ends" htmlFor="shift-end" text={timeText(draft.end)} icon={<Clock size={14} aria-hidden="true" />}>
+              <input id="shift-end" type="time" required step={900} value={draft.end} onClick={openPicker} onChange={e => setDraft({...draft, end: e.target.value})} />
+            </PillField>
           </div>
-          <Field label="Note (optional)"><input id="shift-note" maxLength={300} value={draft.note} placeholder="e.g. Patio, private party" onChange={e => setDraft({...draft, note: e.target.value})} /></Field>
+          <div className="sched-pillfield">
+            <label htmlFor="shift-note">Note (optional)</label>
+            <input id="shift-note" className="sched-note" maxLength={300} value={draft.note} placeholder="e.g. Patio, private party" onChange={e => setDraft({...draft, note: e.target.value})} />
+          </div>
           {(() => {
             const [y, m, d] = draft.day.split("-").map(Number);
             const {from, to} = draft.day && draft.start && draft.end ? shiftTimes(new Date(y, m - 1, d), draft.start, draft.end) : {from: null, to: null};
@@ -582,7 +618,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
               {length > 16
                 ? <p role="alert" className="notice bad mb-4 text-xs">{`That's ${length} hours${overnight ? ", ending the next day" : ""}. Check AM and PM: a shift can be at most 16 hours.`}</p>
                 : <p className="muted mb-4 text-xs">{length ? `${length} ${length === 1 ? "hour" : "hours"}${overnight ? ", ending the next day" : ""}.` : "An end time before the start means the shift closes after midnight."}</p>}
-              <div className="flex flex-wrap gap-2">
+              <div className="sched-actions">
                 <button className="btn" disabled={length > 16}>{draft.id ? "Save changes" : "Add shift"}</button>
                 {draft.id && <button type="button" className="btn secondary" onClick={remove}>Delete shift</button>}
               </div>

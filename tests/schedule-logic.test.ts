@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SETTINGS, allWarnings, colorFor, copiedWeek, newCopies, dayBlocks, dayKey, dayTotals, defaultShift, hoursByPerson, initials, movedShift, readSettings, shiftLabel, shiftTimes, shiftWarnings, weekStart, type Shift } from "../lib/schedule.ts";
+import { DEFAULT_SETTINGS, allWarnings, colorFor, copiedWeek, newCopies, dayBlocks, dayKey, dayTotals, defaultShift, hoursByPerson, initials, movedShift, positionAfterDrop, readSettings, shiftLabel, shiftTimes, shiftWarnings, weekStart, type Shift } from "../lib/schedule.ts";
 
 const shift = (id: string, user: string, from: Date, to: Date): Shift => ({
   id, restaurant_id: "r", user_id: user, position: "Server", note: "", published: false, starts_at: from.toISOString(), ends_at: to.toISOString(),
@@ -80,4 +80,12 @@ test("copying a week moves every shift by whole weeks and never doubles one alre
   assert.equal(copiedWeek([a], 2)[0].starts_at, "2026-10-15T21:00:00.000Z");
   const fresh = newCopies(copies, [{user_id: "u1", starts_at: "2026-10-08T21:00:00.000Z"}]);
   assert.deepEqual(fresh.map(s => s.user_id), ["u2"]);
+});
+
+test("a dragged or copied shift takes the position of the person it lands on", () => {
+  assert.equal(positionAfterDrop("Manager", false, "Bartender", true), "Bartender", "onto someone else: their own position");
+  assert.equal(positionAfterDrop("Manager", true, "Bartender", true), "Manager", "same person, another day: it stays what it was");
+  assert.equal(positionAfterDrop("Manager", false, "", false), "Manager", "nobody set a position for them: it keeps its own");
+  assert.equal(positionAfterDrop("Manager", false, "Sushi Chef", false), "Manager", "a position this manager may not schedule: it keeps its own");
+  assert.equal(positionAfterDrop("Manager", false, "  Server ", true), "Server", "stray spaces are ignored");
 });
