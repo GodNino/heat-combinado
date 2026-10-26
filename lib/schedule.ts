@@ -11,11 +11,28 @@ export type Shift = {
   ends_at: string;
   note: string;
   published: boolean;
+  /** Opener, mid or closer (053); empty when the shift has no tag. */
+  shift_kind?: ShiftKind | null;
 };
 export type Unavailability = {id: string; user_id: string; weekday: number; starts: string | null; ends: string | null; note: string};
 export type TimeOff = {id: string; user_id: string; starts_on: string; ends_on: string; note: string; status: "pending" | "approved" | "denied"; created_at?: string};
 
 export const OVERTIME_HOURS = 40;
+// The tag a shift can carry (053): when in the day it works.
+export const SHIFT_KINDS = ["opener", "mid", "closer"] as const;
+// Off until database update 053 has been run (Supabase SQL editor). While it is off, the pop-up and the settings
+// don't offer the tags, so nobody meets a "needs database update" message. Switch to true once 053 is in.
+export const SHIFT_TYPES_READY = false;
+export type ShiftKind = typeof SHIFT_KINDS[number];
+export const KIND_LABEL: Record<ShiftKind, string> = {opener: "Opener", mid: "Mid", closer: "Closer"};
+export const KIND_LETTER: Record<ShiftKind, string> = {opener: "O", mid: "M", closer: "C"};
+export const kindOf = (value: unknown): ShiftKind | null => SHIFT_KINDS.find(k => k === value) ?? null;
+/** The time a few minutes later (or earlier, with a negative number), wrapping around midnight: "23:45" + 15 is "00:00". */
+export function stepClock(time: string, minutes: number) {
+  const [h, m] = time.split(":").map(Number);
+  const next = (((h * 60 + m + minutes) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(next / 60)).padStart(2, "0")}:${String(next % 60).padStart(2, "0")}`;
+}
 // Front of house and kitchen (back of house). Each side has its own schedulers (048): the floor
 // managers build the front of house, the head chef or sous chef the kitchen; Team access does both.
 export const FOH_POSITIONS = ["Server", "Server assistant", "Bartender", "Barback", "Host", "Runner", "Busser", "Sommelier", "Bar Manager", "Manager", "GM"];
@@ -139,6 +156,7 @@ export const initials = (name: string) => name.split(/\s+/).filter(Boolean).slic
 export function copiedWeek(shifts: Shift[], weeks = 1) {
   return shifts.map(s => ({
     restaurant_id: s.restaurant_id, user_id: s.user_id, position: s.position, note: s.note,
+    ...(s.shift_kind ? {shift_kind: s.shift_kind} : {}),
     starts_at: addDays(new Date(s.starts_at), 7 * weeks).toISOString(), ends_at: addDays(new Date(s.ends_at), 7 * weeks).toISOString(),
   }));
 }
@@ -151,12 +169,15 @@ export function newCopies<T extends {user_id: string; starts_at: string}>(copies
 
 // ── Schedule settings (migration 044) ──
 export type ShiftPreset = {name: string; start: string; end: string};
+export type KindHours = Partial<Record<ShiftKind, {start: string; end: string}>>;
 export type ScheduleSettings = {
   week_start: number;
   position_colors: Record<string, string>;
   overtime_weekly: number;
   overtime_daily: number | null;
   shift_presets: ShiftPreset[];
+  /** The usual hours of an opener, a mid and a closer (053). */
+  shift_kind_hours: KindHours;
   team_sees_all: boolean;
   /** The positions that count as kitchen (back of house) here, or null for the usual ones (048). */
   kitchen_positions: string[] | null;
@@ -165,7 +186,7 @@ export type ScheduleSettings = {
 };
 // What a restaurant without saved settings gets: the schedule as it always was.
 export const DEFAULT_SETTINGS: ScheduleSettings = {
-  week_start: 1, position_colors: {}, overtime_weekly: OVERTIME_HOURS, overtime_daily: null, shift_presets: [], team_sees_all: true, change_cutoff_hours: 24, kitchen_positions: null,
+  week_start: 1, position_colors: {}, overtime_weekly: OVERTIME_HOURS, overtime_daily: null, shift_presets: [], shift_kind_hours: {}, team_sees_all: true, change_cutoff_hours: 24, kitchen_positions: null,
 };
 // Whatever the database row holds, read safely: anything missing or malformed falls back to the default.
 export function readSettings(row: Partial<Record<keyof ScheduleSettings, unknown>> | null | undefined): ScheduleSettings {
@@ -173,12 +194,16 @@ export function readSettings(row: Partial<Record<keyof ScheduleSettings, unknown
   const colors = row.position_colors && typeof row.position_colors === "object" ? row.position_colors as Record<string, unknown> : {};
   const presets = Array.isArray(row.shift_presets) ? row.shift_presets : [];
   const time = /^\d\d:\d\d$/;
+  const kinds = row.shift_kind_hours && typeof row.shift_kind_hours === "object" ? row.shift_kind_hours as Record<string, {start?: unknown; end?: unknown} | null> : {};
+  const kindHours: KindHours = {};
+  for (const kind of SHIFT_KINDS) { const k = kinds[kind]; if (k && typeof k.start === "string" && typeof k.end === "string" && time.test(k.start) && time.test(k.end)) kindHours[kind] = {start: k.start, end: k.end}; }
   return {
     week_start: Number.isInteger(Number(row.week_start)) && Number(row.week_start) >= 0 && Number(row.week_start) <= 6 ? Number(row.week_start) : 1,
     position_colors: Object.fromEntries(Object.entries(colors).filter(([, c]) => typeof c === "string" && c in PALETTE)) as Record<string, string>,
     overtime_weekly: Number(row.overtime_weekly) > 0 ? Number(row.overtime_weekly) : OVERTIME_HOURS,
     overtime_daily: row.overtime_daily == null || !(Number(row.overtime_daily) > 0) ? null : Number(row.overtime_daily),
     shift_presets: presets.filter((p): p is ShiftPreset => !!p && typeof p.name === "string" && time.test(p.start) && time.test(p.end)).slice(0, 12),
+    shift_kind_hours: kindHours,
     team_sees_all: row.team_sees_all !== false,
     kitchen_positions: Array.isArray(row.kitchen_positions) ? (row.kitchen_positions as unknown[]).filter((p): p is string => typeof p === "string") : null,
     change_cutoff_hours: Number.isInteger(Number(row.change_cutoff_hours)) && Number(row.change_cutoff_hours) >= 0 ? Number(row.change_cutoff_hours) : 24,

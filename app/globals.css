@@ -3047,3 +3047,23 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .avail-form { display:grid; gap:16px; margin-top:16px; }
 :root:root:root:root:root:root:root .avail-form .category-tabs { flex-wrap:wrap; overflow:visible; padding:0; }
 :root:root:root:root:root:root:root .avail-times { display:grid; grid-template-columns:1fr 1fr; gap:14px; max-width:320px; }
+
+/* Schedule: the shift's Opener / Mid / Closer tag (a small dark circle with O, M or C beside the hours), and the
+   time stepper (a pill with − and + at its ends) that replaces the long list of times. Spacing 14. The stepper's
+   ends are 30px tall, the height of every button.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .sched-kind { display:inline-flex; align-items:center; justify-content:center; flex:none; width:16px; height:16px; margin-left:5px; border-radius:999px; background:var(--c-text); color:var(--c-surface); font-size:10px; font-weight:700; line-height:1; vertical-align:1px; }
+:root:root:root:root:root:root:root .sched-step { padding:0; overflow:hidden; gap:0; touch-action:manipulation; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+:root:root:root:root:root:root:root .sched-step > span { flex:1; min-width:0; text-align:center; white-space:nowrap; }
+:root:root:root:root:root:root:root .sched-step > button { display:inline-flex; align-items:center; justify-content:center; flex:none; width:28px; height:30px; min-height:0; margin:0; padding:0; border:0; border-radius:0; background:transparent; color:var(--c-text); cursor:pointer; }
+:root:root:root:root:root:root:root .sched-step > button:hover { background:var(--c-heat-bg); }
+:root:root:root:root:root:root:root .sched-step > button:focus-visible { outline:2px solid var(--c-heat); outline-offset:-2px; }
+:root:root:root:root:root:root:root .sched-when { grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1.1fr); }
+:root:root:root:root:root:root:root .set-kind > b { font-size:12px; }
+:root:root:root:root:root:root:root .set-kind .set-kind-add { grid-column:2 / 4; justify-self:start; }
+@media (max-width: 480px) {
+  :root:root:root:root:root:root:root .sched-when { grid-template-columns:1fr 1fr; }
+  :root:root:root:root:root:root:root .sched-when > :first-child { grid-column:1 / -1; }
+  :root:root:root:root:root:root:root .set-kind > b { grid-column:1 / -1; }
+  :root:root:root:root:root:root:root .set-kind .set-kind-add { grid-column:1 / -1; }
+}

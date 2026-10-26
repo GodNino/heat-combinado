@@ -3,12 +3,12 @@
 // person by person, see hours, overtime and conflicts as they go, and publish; the team sees their
 // shifts and their coworkers', and keeps their own availability and time off.
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
-import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Check, ChevronDown, Copy, Plus, Settings, SlidersHorizontal, Users, X } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Check, ChevronDown, Copy, Minus, Plus, Settings, SlidersHorizontal, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
-  PALETTE, POSITIONS, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, newCopies, dayBlocks, dayKey,
-  dayTotals, defaultShift, formatHours, hoursByPerson, initials, isLive, movedShift, positionAfterDrop, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, weekDays, weekStart,
-  changeWindowOpen, canSchedule, isKitchen, KITCHEN_POSITIONS, type ScheduleAccess, type ScheduleSettings, type Shift, type ShiftChange, type ShiftPreset, type TimeOff, type Unavailability, type Warning,
+  KIND_LABEL, KIND_LETTER, PALETTE, POSITIONS, SHIFT_KINDS, SHIFT_TYPES_READY, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, newCopies, dayBlocks, dayKey,
+  dayTotals, defaultShift, formatHours, hoursByPerson, initials, isLive, movedShift, positionAfterDrop, kindOf, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, stepClock, weekDays, weekStart,
+  changeWindowOpen, canSchedule, isKitchen, KITCHEN_POSITIONS, type ScheduleAccess, type ScheduleSettings, type Shift, type ShiftChange, type ShiftKind, type ShiftPreset, type TimeOff, type Unavailability, type Warning,
 } from "@/lib/schedule";
 import { scheduleSheet } from "@/lib/sheets";
 import type { PushEvent } from "@/lib/push-messages";
@@ -93,7 +93,7 @@ export function Schedule({restaurantId, restaurantName, userId, canManage, setMe
 
 // ── The week ─────────────────────────────────────────────────────────────────────────────────
 // `covering` is the extra step: the shift is for a position other than the one the person was hired for.
-type Draft = {id?: string; user_id: string; position: string; day: string; start: string; end: string; note: string; covering?: boolean};
+type Draft = {id?: string; user_id: string; position: string; day: string; start: string; end: string; kind: ShiftKind | null; was: ShiftKind | null; covering?: boolean};
 type ViewBy = "name" | "hours" | "position";
 // A shift being dragged: where it was grabbed, where the pointer is now, and the cell under it.
 type Drag = {shift: Shift; x: number; y: number; dx: number; dy: number; width: number; target: string | null; copy: boolean};
@@ -114,9 +114,31 @@ function PillField({label, htmlFor, text, icon, children}: {label: string; htmlF
 // and an invisible one can't be changed. A menu opens the same way on a computer and a phone.
 const dayText = (key: string) => { const [y, m, d] = key.split("-").map(Number); return y ? new Date(y, m - 1, d).toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"}) : "Pick a day"; };
 const timeText = (clockText: string) => { const [h, m] = clockText.split(":").map(Number); return Number.isNaN(h) ? "Pick a time" : `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
-// Every quarter hour. A time that isn't on the list (a preset, or an old shift) is added so it still shows.
-const QUARTER_HOURS = Array.from({length: 96}, (_, i) => `${String(Math.floor(i / 4)).padStart(2, "0")}:${String(i % 4 * 15).padStart(2, "0")}`);
-const timeChoices = (current: string) => !current || QUARTER_HOURS.includes(current) ? QUARTER_HOURS : [...QUARTER_HOURS, current].sort();
+// A time you nudge instead of pick from a list of 96: a tap on − or + moves it 15 minutes, holding either one
+// moves it an hour at a time. It wraps past midnight (11:45 PM + 15 is 12:00 AM), so an overnight shift is easy.
+function TimeStepper({label, value, onChange}: {label: string; value: string; onChange: (time: string) => void}) {
+  const held = useRef(false);
+  const timer = useRef<number | undefined>(undefined);
+  const repeat = useRef<number | undefined>(undefined);
+  const stop = () => { window.clearTimeout(timer.current); window.clearInterval(repeat.current); };
+  useEffect(() => stop, []);
+  const latest = useRef(value);
+  latest.current = value;
+  const move = (minutes: number) => { latest.current = stepClock(latest.current || "17:00", minutes); onChange(latest.current); };
+  const press = (direction: 1 | -1) => ({
+    onPointerDown: () => { held.current = false; stop(); timer.current = window.setTimeout(() => { held.current = true; move(direction * 60); repeat.current = window.setInterval(() => move(direction * 60), 300); }, 450); },
+    onPointerUp: stop, onPointerLeave: stop, onPointerCancel: stop,
+    onClick: () => { if (held.current) { held.current = false; return; } move(direction * 15); },
+  });
+  return <div className="sched-pillfield" role="group" aria-label={label}>
+    <span className="sched-label">{label}</span>
+    <span className="sched-pill sched-step">
+      <button type="button" aria-label={`${label} 15 minutes earlier`} {...press(-1)}><Minus size={14} aria-hidden="true" /></button>
+      <span aria-live="polite">{timeText(value)}</span>
+      <button type="button" aria-label={`${label} 15 minutes later`} {...press(1)}><Plus size={14} aria-hidden="true" /></button>
+    </span>
+  </div>;
+}
 
 function WeekView({restaurantId, restaurantName, canManage, setMessage, settings, settingsMissing, onSettings, changes, access}: {restaurantId: string; restaurantName: string; canManage: boolean; setMessage: (text: string) => void; settings: ScheduleSettings; settingsMissing: boolean; onSettings: (settings: ScheduleSettings) => void; changes: ShiftChange[]; access: ScheduleAccess}) {
   // A floor manager builds the floor, a head chef the kitchen; Team access builds everything (048).
@@ -215,13 +237,13 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   }
   function openNew(person: Person, day: Date) {
     setOtherPosition(false);
-    setDraft({user_id: person.user_id, ...forPerson(person.user_id), day: dayKey(day), ...defaultShift(settings), note: ""});
+    setDraft({user_id: person.user_id, ...forPerson(person.user_id), day: dayKey(day), ...defaultShift(settings), kind: null, was: null});
   }
   function openShift(shift: Shift) {
     setOtherPosition(false);
     const from = new Date(shift.starts_at);
     const own = ownPosition(shift.user_id);
-    setDraft({id: shift.id, user_id: shift.user_id, position: shift.position, covering: !own || !samePosition(own, shift.position), day: dayKey(from), start: clock(from), end: clock(new Date(shift.ends_at)), note: shift.note});
+    setDraft({id: shift.id, user_id: shift.user_id, position: shift.position, covering: !own || !samePosition(own, shift.position), day: dayKey(from), start: clock(from), end: clock(new Date(shift.ends_at)), kind: kindOf(shift.shift_kind), was: kindOf(shift.shift_kind)});
   }
   async function act(work: () => Promise<void>) {
     setBusy(true); setError("");
@@ -230,9 +252,10 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   const save = (event: FormEvent) => { event.preventDefault(); if (draft) void act(async () => {
     const [y, m, d] = draft.day.split("-").map(Number);
     const {from, to} = shiftTimes(new Date(y, m - 1, d), draft.start, draft.end);
-    const row = {restaurant_id: restaurantId, user_id: draft.user_id, position: draft.position, note: draft.note.trim(), starts_at: from.toISOString(), ends_at: to.toISOString()};
+    // The tag is only sent when it is new or changed, so saving a shift works even before database update 053.
+    const row = {restaurant_id: restaurantId, user_id: draft.user_id, position: draft.position, starts_at: from.toISOString(), ends_at: to.toISOString(), ...(draft.kind !== draft.was ? {shift_kind: draft.kind} : {})};
     const result = draft.id ? await supabase!.from("schedule_shifts").update(row).eq("id", draft.id) : await supabase!.from("schedule_shifts").insert(row);
-    if (result.error) throw new Error(result.error.message.includes("check constraint") ? "A shift can be at most 16 hours." : result.error.message);
+    if (result.error) throw new Error(/shift_kind/.test(result.error.message) ? "Shift types need database update 053." : result.error.message.includes("check constraint") ? "A shift can be at most 16 hours." : result.error.message);
     setDraft(null); await load();
   }); };
   const remove = () => { if (draft?.id) void act(async () => {
@@ -291,7 +314,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
       : (list ?? []).map(s => s.id === shift.id ? {...s, user_id: userId, position, ...times, published: false} : s));
     void act(async () => {
       const result = copy
-        ? await supabase!.from("schedule_shifts").insert({restaurant_id: restaurantId, user_id: userId, position, note: shift.note, ...times})
+        ? await supabase!.from("schedule_shifts").insert({restaurant_id: restaurantId, user_id: userId, position, note: shift.note, ...(shift.shift_kind ? {shift_kind: shift.shift_kind} : {}), ...times})
         : await supabase!.from("schedule_shifts").update({user_id: userId, position, ...times}).eq("id", shift.id);
       if (result.error) { await load(); throw new Error(result.error.message.includes("row-level security") ? "That person isn't on this team's schedule." : result.error.message); }
       setMessage(`${copy ? "Copied" : "Moved"} to ${name}, ${dayHeading(new Date(y, m - 1, d))}.`);
@@ -373,7 +396,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
 
   const changing = (shift: Shift) => changes.find(c => isLive(c) && (c.shift_id === shift.id || c.swap_shift_id === shift.id));
   const card = (shift: Shift, warnings: Warning[]) => <>
-    <b><Hours shift={shift} /></b>
+    <b><Hours shift={shift} />{kindOf(shift.shift_kind) && <span className="sched-kind" role="img" aria-label={KIND_LABEL[kindOf(shift.shift_kind)!]} title={KIND_LABEL[kindOf(shift.shift_kind)!]}>{KIND_LETTER[kindOf(shift.shift_kind)!]}</span>}</b>
     {changing(shift) && <small className="sched-change"><ArrowLeftRight size={12} aria-hidden="true" />{changing(shift)!.status === "pending" ? "Change to approve" : "Change asked"}</small>}
     <small>{shift.position}{shift.published ? "" : " · Draft"}</small>
     {warnings.length > 0 && <small className="sched-warn"><AlertTriangle size={12} aria-hidden="true" />{WARNING_TEXT[warnings[0]]}</small>}
@@ -394,7 +417,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
           name: person.name, hours: formatHours(mine), overtime: mine > settings.overtime_weekly,
           days: days.map(day => ({
             shifts: week.filter(s => s.user_id === person.user_id && dayKey(new Date(s.starts_at)) === dayKey(day))
-              .map(s => ({time: shiftLabel(s), detail: [s.position, s.note].filter(Boolean).join(" · "), draft: !s.published})),
+              .map(s => ({time: shiftLabel(s), detail: [s.position, kindOf(s.shift_kind) ? KIND_LABEL[kindOf(s.shift_kind)!] : ""].filter(Boolean).join(" · "), draft: !s.published})),
             notes: canManage ? dayBlocks(person.user_id, day, unavailable, timeOff).map(b => `${BLOCK_TEXT[b.kind]} · ${b.label}`) : [],
           })),
         };
@@ -599,22 +622,25 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
               <p className="muted sched-hint">{!own ? "No position on their profile yet. Set it in Team." : covering ? `Covering ${draft.position}. Hired as ${own}.` : `Hired as ${own}.`}</p>
             </div>;
           })()}
+          {SHIFT_TYPES_READY && <div className="sched-pillfield" role="group" aria-labelledby="shift-kind-label">
+            <span id="shift-kind-label" className="sched-label">Shift type</span>
+            <div className="category-tabs">
+              {SHIFT_KINDS.map(kind => <button key={kind} type="button" aria-pressed={draft.kind === kind} onClick={() => {
+                if (draft.kind === kind) return setDraft({...draft, kind: null});
+                const usual = settings.shift_kind_hours[kind];
+                setDraft({...draft, kind, ...(usual ? {start: usual.start, end: usual.end} : {})});
+              }}>{KIND_LABEL[kind]}</button>)}
+            </div>
+            {draft.kind && <p className="muted sched-hint">{settings.shift_kind_hours[draft.kind] ? `${KIND_LABEL[draft.kind]} · ${timeText(settings.shift_kind_hours[draft.kind]!.start)} – ${timeText(settings.shift_kind_hours[draft.kind]!.end)}` : "Set the usual hours of each type in the schedule settings."}</p>}
+          </div>}
           {settings.shift_presets.length > 0 && <div className="sched-presets" role="group" aria-label="Quick shifts">{settings.shift_presets.map(preset =>
             <button key={preset.name} type="button" className="word-chip" aria-pressed={draft.start === preset.start && draft.end === preset.end} onClick={() => setDraft({...draft, start: preset.start, end: preset.end})}>{preset.name}<small>{presetLabel(preset)}</small></button>)}</div>}
           <div className="sched-when">
             <PillField label="Day" htmlFor="shift-day" text={dayText(draft.day)} icon={<ChevronDown size={14} aria-hidden="true" />}>
               <select id="shift-day" required value={draft.day} onChange={e => setDraft({...draft, day: e.target.value})}>{[...new Set([...days.map(dayKey), draft.day])].sort().map(key => <option key={key} value={key}>{dayText(key)}</option>)}</select>
             </PillField>
-            <PillField label="Starts" htmlFor="shift-start" text={timeText(draft.start)} icon={<ChevronDown size={14} aria-hidden="true" />}>
-              <select id="shift-start" required value={draft.start} onChange={e => setDraft({...draft, start: e.target.value})}>{timeChoices(draft.start).map(t => <option key={t} value={t}>{timeText(t)}</option>)}</select>
-            </PillField>
-            <PillField label="Ends" htmlFor="shift-end" text={timeText(draft.end)} icon={<ChevronDown size={14} aria-hidden="true" />}>
-              <select id="shift-end" required value={draft.end} onChange={e => setDraft({...draft, end: e.target.value})}>{timeChoices(draft.end).map(t => <option key={t} value={t}>{timeText(t)}</option>)}</select>
-            </PillField>
-          </div>
-          <div className="sched-pillfield">
-            <label htmlFor="shift-line-note">Note (optional)</label>
-            <input id="shift-line-note" className="sched-note" maxLength={300} value={draft.note} placeholder="e.g. Patio, private party" onChange={e => setDraft({...draft, note: e.target.value})} />
+            <TimeStepper label="Starts" value={draft.start} onChange={start => setDraft(d => d && {...d, start})} />
+            <TimeStepper label="Ends" value={draft.end} onChange={end => setDraft(d => d && {...d, end})} />
           </div>
           {(() => {
             const [y, m, d] = draft.day.split("-").map(Number);
@@ -651,6 +677,12 @@ function SettingsSheet({restaurantId, settings, positions, missing, onClose, onS
     return {...current, position_colors: color ? {...colors, [position]: color} : colors};
   });
   const setPreset = (index: number, change: Partial<ShiftPreset>) => setForm(current => ({...current, shift_presets: current.shift_presets.map((p, i) => i === index ? {...p, ...change} : p)}));
+  const USUAL: Record<ShiftKind, {start: string; end: string}> = {opener: {start: "11:00", end: "17:00"}, mid: {start: "13:00", end: "21:00"}, closer: {start: "17:00", end: "23:00"}};
+  const setKind = (kind: ShiftKind, hours: {start: string; end: string} | null) => setForm(current => {
+    const next = {...current.shift_kind_hours};
+    if (hours) next[kind] = hours; else delete next[kind];
+    return {...current, shift_kind_hours: next};
+  });
   async function save(event: FormEvent) {
     event.preventDefault();
     const presets = form.shift_presets.map(p => ({...p, name: p.name.trim()})).filter(p => p.name);
@@ -659,13 +691,15 @@ function SettingsSheet({restaurantId, settings, positions, missing, onClose, onS
       restaurant_id: restaurantId, week_start: form.week_start, position_colors: form.position_colors,
       overtime_weekly: form.overtime_weekly, overtime_daily: daily ? form.overtime_daily ?? 8 : null,
       shift_presets: presets, team_sees_all: form.team_sees_all, change_cutoff_hours: form.change_cutoff_hours,
+      // Only sent when there is something to say, so the rest of the settings still save before database update 053.
+      ...(Object.keys(form.shift_kind_hours).length || Object.keys(settings.shift_kind_hours).length ? {shift_kind_hours: form.shift_kind_hours} : {}),
       time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
       kitchen_positions: form.kitchen_positions,
     };
     setBusy(true); setError("");
     const result = await supabase!.from("schedule_settings").upsert(row);
     setBusy(false);
-    if (result.error) return setError(/schedule_settings|PGRST205|42P01/.test(result.error.message) ? "Schedule settings need database update 044." : result.error.message);
+    if (result.error) return setError(/shift_kind_hours/.test(result.error.message) ? "Shift types need database update 053." : /schedule_settings|PGRST205|42P01/.test(result.error.message) ? "Schedule settings need database update 044." : result.error.message);
     onSaved(readSettings(row));
   }
   return <div className="sched-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -707,6 +741,19 @@ function SettingsSheet({restaurantId, settings, positions, missing, onClose, onS
           <label className="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={daily} onChange={e => {setDaily(e.target.checked);if (e.target.checked && form.overtime_daily === null) setForm({...form, overtime_daily: 8});}} />Also count overtime by the day</label>
           {daily && <div className="set-inline mt-2"><span>After</span><input id="settings-daily" aria-label="Daily overtime hours" type="number" min={1} max={24} step={0.5} required value={form.overtime_daily ?? 8} onChange={e => setForm({...form, overtime_daily: Number(e.target.value)})} /><span>hours in a day</span></div>}
         </fieldset>
+
+        {SHIFT_TYPES_READY && <fieldset className="mb-5">
+          <legend className="mb-1 block text-sm font-semibold">Shift types</legend>
+          <p className="muted mb-2 text-xs">Tag a shift Opener, Mid or Closer. Give each its usual hours and tapping it in the shift pop-up fills them in.</p>
+          {SHIFT_KINDS.map(kind => { const hours = form.shift_kind_hours[kind]; return <div key={kind} className="set-preset set-kind">
+            <b>{KIND_LABEL[kind]}</b>
+            {hours ? <>
+              <input aria-label={`${KIND_LABEL[kind]} starts`} type="time" step={900} required value={hours.start} onChange={e => setKind(kind, {...hours, start: e.target.value})} />
+              <input aria-label={`${KIND_LABEL[kind]} ends`} type="time" step={900} required value={hours.end} onChange={e => setKind(kind, {...hours, end: e.target.value})} />
+              <button type="button" className="muted" aria-label={`Remove the hours of ${KIND_LABEL[kind]}`} onClick={() => setKind(kind, null)}><X size={16} /></button>
+            </> : <button type="button" className="btn secondary set-kind-add" onClick={() => setKind(kind, USUAL[kind])}><Plus size={15} />Set usual hours</button>}
+          </div>; })}
+        </fieldset>}
 
         <fieldset className="mb-5">
           <legend className="mb-1 block text-sm font-semibold">Quick shifts</legend>
@@ -840,7 +887,7 @@ function MyShifts({restaurantId, userId, settings, changes, reloadChanges, setMe
           <span className="sched-date">{dayHeading(new Date(shift.starts_at))}</span>
           <span className="min-w-0 flex-1">
             <b className="block">{shiftLabel(shift)}</b>
-            <small className="muted">{shift.position}{shift.note ? ` · ${shift.note}` : ""}</small>
+            <small className="muted">{shift.position}{kindOf(shift.shift_kind) ? ` · ${KIND_LABEL[kindOf(shift.shift_kind)!]}` : ""}</small>
             {live && <small className="sched-change block"><ArrowLeftRight size={12} aria-hidden="true" />{STATUS_WORDS[live.status]}</small>}
           </span>
           <span className="flex flex-col items-end gap-1">
@@ -986,7 +1033,7 @@ export function NextShift({restaurantId, userId, onOpen}: {restaurantId: string;
   return <button type="button" className="panel report-handover" onClick={onOpen}>
     <span className="eyebrow muted">{started ? "On shift now" : "Your next shift"}</span>
     <span className="mt-1 block font-semibold">{`${dayHeading(new Date(shift.starts_at))} · ${shiftLabel(shift)}`}</span>
-    <span className="muted block text-sm">{shift.position}{shift.note ? ` · ${shift.note}` : ""}</span>
+    <span className="muted block text-sm">{shift.position}{kindOf(shift.shift_kind) ? ` · ${KIND_LABEL[kindOf(shift.shift_kind)!]}` : ""}</span>
   </button>;
 }
 
@@ -1104,12 +1151,8 @@ function Availability({restaurantId, userId}: {restaurantId: string; userId: str
         <button type="button" aria-pressed={allDay} onClick={() => setAllDay(value => !value)}>All day</button>
       </div>
       {!allDay && <div className="avail-times">
-        <PillField label="From" htmlFor="avail-from" text={timeText(from)} icon={<ChevronDown size={14} aria-hidden="true" />}>
-          <select id="avail-from" value={from} onChange={e => setFrom(e.target.value)}>{timeChoices(from).map(t => <option key={t} value={t}>{timeText(t)}</option>)}</select>
-        </PillField>
-        <PillField label="To" htmlFor="avail-to" text={timeText(to)} icon={<ChevronDown size={14} aria-hidden="true" />}>
-          <select id="avail-to" value={to} onChange={e => setTo(e.target.value)}>{timeChoices(to).map(t => <option key={t} value={t}>{timeText(t)}</option>)}</select>
-        </PillField>
+        <TimeStepper label="From" value={from} onChange={setFrom} />
+        <TimeStepper label="To" value={to} onChange={setTo} />
       </div>}
       <div><button className="btn">Add</button></div>
     </form>
