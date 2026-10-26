@@ -3025,3 +3025,25 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .sched-form .sched-presets { margin:0; }
 :root:root:root:root:root:root:root .sched-form .muted.mb-4 { margin:0; font-size:12px; }
 :root:root:root:root:root:root:root .sched-actions { display:flex; flex-wrap:wrap; gap:14px; }
+
+/* Schedule, the pop-up fixed: the note is a 30px pill like the others (a rule meant for the Pre-shift note,
+   which shares its id, had made it 92px tall and grey), and Day, Starts and Ends are menus under their pills.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .sched-note { width:100%; background:var(--c-surface); border:1px solid var(--c-line-5); color:var(--c-text); }
+:root:root:root:root:root:root:root .sched-note::placeholder { font-size:12px; color:var(--c-muted); opacity:1; }
+
+/* Schedule: the Team column has room on its left (the "Team" label and the Hours / People totals were touching the
+   line), and each person's role from Team sits under their name, with the hours on the right.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .sched-grid th:first-child { padding-left:14px; padding-right:14px; }
+:root:root:root:root:root:root:root .sched-who { display:grid; flex:1; gap:2px; min-width:0; }
+:root:root:root:root:root:root:root .sched-who-line { display:flex; align-items:baseline; justify-content:space-between; gap:14px; min-width:0; }
+:root:root:root:root:root:root:root .sched-who-line .sched-hours { flex:none; }
+:root:root:root:root:root:root:root .sched-role { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-muted); font-size:12px; font-weight:400; }
+
+/* Schedule > My availability: the day is a row of chips, "All day" is a chip, From and To are small pills (shown
+   only when it is not all day), and Add is the one lime button. Spacing 14 and 16.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .avail-form { display:grid; gap:16px; margin-top:16px; }
+:root:root:root:root:root:root:root .avail-form .category-tabs { flex-wrap:wrap; overflow:visible; padding:0; }
+:root:root:root:root:root:root:root .avail-times { display:grid; grid-template-columns:1fr 1fr; gap:14px; max-width:320px; }

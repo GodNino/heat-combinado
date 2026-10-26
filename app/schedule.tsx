@@ -2,8 +2,8 @@
 // The schedule (migration 040), stage 1 of replacing Sling. Managers with Team access build the week
 // person by person, see hours, overtime and conflicts as they go, and publish; the team sees their
 // shifts and their coworkers', and keeps their own availability and time off.
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
-import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, Clock, ChevronLeft, ChevronRight, Check, ChevronDown, Copy, Plus, Settings, SlidersHorizontal, Users, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
+import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Check, ChevronDown, Copy, Plus, Settings, SlidersHorizontal, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   PALETTE, POSITIONS, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, newCopies, dayBlocks, dayKey,
@@ -110,9 +110,13 @@ function PillField({label, htmlFor, text, icon, children}: {label: string; htmlF
     <span className="sched-pill"><span>{text}</span>{icon}{children}</span>
   </div>;
 }
-const openPicker = (event: MouseEvent<HTMLInputElement>) => { try { event.currentTarget.showPicker?.(); } catch { /* the phone opens it by itself */ } };
-const dayText = (key: string) => { const [y, m, d] = key.split("-").map(Number); return y ? new Date(y, m - 1, d).toLocaleDateString("en-US", {month: "short", day: "numeric", year: "numeric"}) : "Pick a day"; };
+// Day and times are menus under the pill, not date and time boxes: Safari on a Mac draws those as typing fields,
+// and an invisible one can't be changed. A menu opens the same way on a computer and a phone.
+const dayText = (key: string) => { const [y, m, d] = key.split("-").map(Number); return y ? new Date(y, m - 1, d).toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"}) : "Pick a day"; };
 const timeText = (clockText: string) => { const [h, m] = clockText.split(":").map(Number); return Number.isNaN(h) ? "Pick a time" : `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+// Every quarter hour. A time that isn't on the list (a preset, or an old shift) is added so it still shows.
+const QUARTER_HOURS = Array.from({length: 96}, (_, i) => `${String(Math.floor(i / 4)).padStart(2, "0")}:${String(i % 4 * 15).padStart(2, "0")}`);
+const timeChoices = (current: string) => !current || QUARTER_HOURS.includes(current) ? QUARTER_HOURS : [...QUARTER_HOURS, current].sort();
 
 function WeekView({restaurantId, restaurantName, canManage, setMessage, settings, settingsMissing, onSettings, changes, access}: {restaurantId: string; restaurantName: string; canManage: boolean; setMessage: (text: string) => void; settings: ScheduleSettings; settingsMissing: boolean; onSettings: (settings: ScheduleSettings) => void; changes: ShiftChange[]; access: ScheduleAccess}) {
   // A floor manager builds the floor, a head chef the kitchen; Team access builds everything (048).
@@ -465,9 +469,12 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
               <th scope="row">
                 <span className="sched-person">
                   <span className="sched-avatar" aria-hidden="true">{initials(person.name)}</span>
-                  <span className="min-w-0">
-                    <span className="block truncate font-semibold">{person.name}</span>
-                    <span className={`sched-hours ${mine > settings.overtime_weekly ? "over" : ""}`}>{formatHours(mine)}{mine > settings.overtime_weekly ? " · Overtime" : ""}</span>
+                  <span className="sched-who">
+                    <span className="sched-who-line">
+                      <span className="block truncate font-semibold">{person.name}</span>
+                      <span className={`sched-hours ${mine > settings.overtime_weekly ? "over" : ""}`}>{formatHours(mine)}{mine > settings.overtime_weekly ? " · Overtime" : ""}</span>
+                    </span>
+                    <span className="sched-role">{person.role.trim() || "No role"}</span>
                   </span>
                 </span>
               </th>
@@ -595,19 +602,19 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
           {settings.shift_presets.length > 0 && <div className="sched-presets" role="group" aria-label="Quick shifts">{settings.shift_presets.map(preset =>
             <button key={preset.name} type="button" className="word-chip" aria-pressed={draft.start === preset.start && draft.end === preset.end} onClick={() => setDraft({...draft, start: preset.start, end: preset.end})}>{preset.name}<small>{presetLabel(preset)}</small></button>)}</div>}
           <div className="sched-when">
-            <PillField label="Day" htmlFor="shift-day" text={dayText(draft.day)} icon={<CalendarDays size={14} aria-hidden="true" />}>
-              <input id="shift-day" type="date" required value={draft.day} onClick={openPicker} onChange={e => setDraft({...draft, day: e.target.value})} />
+            <PillField label="Day" htmlFor="shift-day" text={dayText(draft.day)} icon={<ChevronDown size={14} aria-hidden="true" />}>
+              <select id="shift-day" required value={draft.day} onChange={e => setDraft({...draft, day: e.target.value})}>{[...new Set([...days.map(dayKey), draft.day])].sort().map(key => <option key={key} value={key}>{dayText(key)}</option>)}</select>
             </PillField>
-            <PillField label="Starts" htmlFor="shift-start" text={timeText(draft.start)} icon={<Clock size={14} aria-hidden="true" />}>
-              <input id="shift-start" type="time" required step={900} value={draft.start} onClick={openPicker} onChange={e => setDraft({...draft, start: e.target.value})} />
+            <PillField label="Starts" htmlFor="shift-start" text={timeText(draft.start)} icon={<ChevronDown size={14} aria-hidden="true" />}>
+              <select id="shift-start" required value={draft.start} onChange={e => setDraft({...draft, start: e.target.value})}>{timeChoices(draft.start).map(t => <option key={t} value={t}>{timeText(t)}</option>)}</select>
             </PillField>
-            <PillField label="Ends" htmlFor="shift-end" text={timeText(draft.end)} icon={<Clock size={14} aria-hidden="true" />}>
-              <input id="shift-end" type="time" required step={900} value={draft.end} onClick={openPicker} onChange={e => setDraft({...draft, end: e.target.value})} />
+            <PillField label="Ends" htmlFor="shift-end" text={timeText(draft.end)} icon={<ChevronDown size={14} aria-hidden="true" />}>
+              <select id="shift-end" required value={draft.end} onChange={e => setDraft({...draft, end: e.target.value})}>{timeChoices(draft.end).map(t => <option key={t} value={t}>{timeText(t)}</option>)}</select>
             </PillField>
           </div>
           <div className="sched-pillfield">
-            <label htmlFor="shift-note">Note (optional)</label>
-            <input id="shift-note" className="sched-note" maxLength={300} value={draft.note} placeholder="e.g. Patio, private party" onChange={e => setDraft({...draft, note: e.target.value})} />
+            <label htmlFor="shift-line-note">Note (optional)</label>
+            <input id="shift-line-note" className="sched-note" maxLength={300} value={draft.note} placeholder="e.g. Patio, private party" onChange={e => setDraft({...draft, note: e.target.value})} />
           </div>
           {(() => {
             const [y, m, d] = draft.day.split("-").map(Number);
@@ -1088,14 +1095,23 @@ function Availability({restaurantId, userId}: {restaurantId: string; userId: str
       <span className="min-w-0 flex-1">{WEEKDAYS[block.weekday]}{" · "}{block.starts && block.ends ? `${block.starts.slice(0, 5)}–${block.ends.slice(0, 5)}` : "All day"}</span>
       <button type="button" className="muted" aria-label={`Remove ${WEEKDAYS[block.weekday]}`} onClick={() => void remove(block.id)}><X size={16} /></button>
     </li>)}</ul> : <p className="muted mt-3 text-sm">You're available every day.</p>)}
-    <form className="mt-4" onSubmit={add}>
-      <div className="report-row">
-        <Field label="Day"><select id="avail-day" value={weekday} onChange={e => setWeekday(Number(e.target.value))}>{order.map(d => <option key={d} value={d}>{WEEKDAYS[d]}</option>)}</select></Field>
-        <Field label="From"><input id="avail-from" type="time" disabled={allDay} value={from} onChange={e => setFrom(e.target.value)} /></Field>
-        <Field label="To"><input id="avail-to" type="time" disabled={allDay} value={to} onChange={e => setTo(e.target.value)} /></Field>
+    <form className="avail-form" onSubmit={add}>
+      <div className="sched-pillfield" role="group" aria-labelledby="avail-day-label">
+        <span id="avail-day-label" className="sched-label">Day</span>
+        <div className="category-tabs">{order.map(d => <button key={d} type="button" aria-label={WEEKDAYS[d]} aria-pressed={weekday === d} onClick={() => setWeekday(d)}>{WEEKDAYS[d].slice(0, 3)}</button>)}</div>
       </div>
-      <label className="mb-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={allDay} onChange={e => setAllDay(e.target.checked)} />All day</label>
-      <button className="btn">Add</button>
+      <div className="category-tabs" role="group" aria-label="Hours">
+        <button type="button" aria-pressed={allDay} onClick={() => setAllDay(value => !value)}>All day</button>
+      </div>
+      {!allDay && <div className="avail-times">
+        <PillField label="From" htmlFor="avail-from" text={timeText(from)} icon={<ChevronDown size={14} aria-hidden="true" />}>
+          <select id="avail-from" value={from} onChange={e => setFrom(e.target.value)}>{timeChoices(from).map(t => <option key={t} value={t}>{timeText(t)}</option>)}</select>
+        </PillField>
+        <PillField label="To" htmlFor="avail-to" text={timeText(to)} icon={<ChevronDown size={14} aria-hidden="true" />}>
+          <select id="avail-to" value={to} onChange={e => setTo(e.target.value)}>{timeChoices(to).map(t => <option key={t} value={t}>{timeText(t)}</option>)}</select>
+        </PillField>
+      </div>}
+      <div><button className="btn">Add</button></div>
     </form>
   </div>;
 }
