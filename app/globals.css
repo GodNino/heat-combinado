@@ -3031,3 +3031,12 @@ span.dash-name { text-decoration:none; }
    To undo, revert the commit that added this block. */
 :root:root:root:root:root:root:root .sched-note { width:100%; background:var(--c-surface); border:1px solid var(--c-line-5); color:var(--c-text); }
 :root:root:root:root:root:root:root .sched-note::placeholder { font-size:12px; color:var(--c-muted); opacity:1; }
+
+/* Schedule: the Team column has room on its left (the "Team" label and the Hours / People totals were touching the
+   line), and each person's role from Team sits under their name, with the hours on the right.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .sched-grid th:first-child { padding-left:14px; padding-right:14px; }
+:root:root:root:root:root:root:root .sched-who { display:grid; flex:1; gap:2px; min-width:0; }
+:root:root:root:root:root:root:root .sched-who-line { display:flex; align-items:baseline; justify-content:space-between; gap:14px; min-width:0; }
+:root:root:root:root:root:root:root .sched-who-line .sched-hours { flex:none; }
+:root:root:root:root:root:root:root .sched-role { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-muted); font-size:12px; font-weight:400; }
