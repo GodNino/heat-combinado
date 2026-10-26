@@ -3032,6 +3032,24 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .sched-note { width:100%; background:var(--c-surface); border:1px solid var(--c-line-5); color:var(--c-text); }
 :root:root:root:root:root:root:root .sched-note::placeholder { font-size:12px; color:var(--c-muted); opacity:1; }
 
+/* Side work and the floor plan, tidied: the date is a small pill with a menu (like the Schedule's Day pill) instead of
+   the big grey browser date box; the floor plan's menus (list, server, + S.A.) are 30px pills, its boxes are 30px pills
+   with 12px text (16px on a phone, so iOS doesn't zoom in), the S.A. chips are 30px, and spacing is 14. Beside the Brunch / Lunch / Dinner chips it takes their dark 1.5px edge, and the chips sit
+   level with it (they had 12px of padding underneath that pushed them up; the 28px on the right stays for the edge fade).
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .floor-bar .day-pill { flex:none; min-width:176px; border:1.5px solid var(--c-text); font-weight:600; }
+:root:root:root:root:root:root:root .floor-bar .category-tabs { padding:0 28px 0 0; }
+:root:root:root:root:root:root:root .floor-list-row { gap:14px; }
+:root:root:root:root:root:root:root .floor-list-row .field { flex:1 1 220px; max-width:360px; }
+:root:root:root:root:root:root:root .floor-head, :root:root:root:root:root:root:root .floor-row { gap:14px; padding:14px; }
+:root:root:root:root:root:root:root .floor-row input { height:30px; min-height:30px; padding:0 14px; border:1px solid var(--c-line-5); border-radius:999px; background:var(--c-surface); color:var(--c-text); font-size:12px; font-weight:600; }
+:root:root:root:root:root:root:root .floor-row .floor-section { text-align:center; padding:0; }
+:root:root:root:root:root:root:root .floor-row .sched-pill, :root:root:root:root:root:root:root .floor-list-row .sched-pill { width:100%; }
+:root:root:root:root:root:root:root .floor-row .floor-sa .sched-pill { width:auto; min-width:96px; }
+:root:root:root:root:root:root:root .floor-sa { gap:6px; }
+:root:root:root:root:root:root:root .floor-sa .word-chip { height:30px; min-height:30px; padding:0 12px; font-size:12px; font-weight:600; }
+@media (max-width: 480px) { :root:root:root:root:root:root:root .floor-row input { font-size:16px; } }
+
 /* Schedule: the Team column has room on its left (the "Team" label and the Hours / People totals were touching the
    line), and each person's role from Team sits under their name, with the hours on the right.
    To undo, revert the commit that added this block. */

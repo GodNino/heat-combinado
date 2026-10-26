@@ -113,7 +113,7 @@ const PHRASES: Record<string, string> = {
   "Choose a person": "Elige a una persona", "Which meal?": "¿Qué servicio?", "Change person or delete": "Cambiar persona o eliminar", "Delete this job": "Eliminar esta tarea",
   "Job name": "Nombre de la tarea", "Silverware": "Cubiertos", "Who does it?": "¿Quién la hace?", "Give this job to": "Darle esta tarea a", "Meal": "Servicio",
   "Give the job a name.": "Ponle nombre a la tarea.", "A job needs at least one step.": "Una tarea necesita al menos un paso.", "Pick a job.": "Elige una tarea.",
-  "Choose who does it.": "Elige quién la hace.", "Lunch": "Almuerzo", "Dinner": "Cena", "Nobody yet": "Nadie todavía", "Assign": "Asignar",
+  "Choose who does it.": "Elige quién la hace.", "Lunch": "Almuerzo", "Dinner": "Cena", "Brunch needs database update 054.": "Brunch necesita la actualización 054 de la base de datos.", "Nobody yet": "Nadie todavía", "Assign": "Asignar",
   "Not started": "Sin empezar", "Jobs": "Tareas", "Delete job": "Eliminar tarea", "Loading jobs…": "Cargando tareas…",
   "No jobs yet. Start with one your team does every shift.": "Todavía no hay tareas. Empieza con una que tu equipo haga cada turno.", "Know the floor": "Conoce el piso",
   "Your job for this shift, and how the rest of the floor is doing.": "Tu tarea de este turno, y cómo va el resto del piso.",
@@ -739,23 +739,25 @@ const CODES: Record<string, string> = {
 
 const MONTHS: Record<string, string> = {Jan: "ene", Feb: "feb", Mar: "mar", Apr: "abr", May: "may", Jun: "jun", Jul: "jul", Aug: "ago", Sep: "sep", Oct: "oct", Nov: "nov", Dec: "dic"};
 const MONTHS_LONG: Record<string, string> = {January: "enero", February: "febrero", March: "marzo", April: "abril", May: "mayo", June: "junio", July: "julio", August: "agosto", September: "septiembre", October: "octubre", November: "noviembre", December: "diciembre"};
+const MEAL_ES: Record<string, string> = {Brunch: "Brunch", Lunch: "Almuerzo", Dinner: "Cena"};
 const DAYS: Record<string, string> = {Sunday: "domingo", Monday: "lunes", Tuesday: "martes", Wednesday: "miércoles", Thursday: "jueves", Friday: "viernes", Saturday: "sábado"};
 const DAYS_SHORT: Record<string, string> = {Sun: "dom", Mon: "lun", Tue: "mar", Wed: "mié", Thu: "jue", Fri: "vie", Sat: "sáb"};
 const lower = (text: string) => (translateCore(text) ?? text).toLowerCase();
 
 // Sentences with a name or a number inside: the automatic quiz's questions, and a few counters.
 const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
-  [/^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday) · (Lunch|Dinner)$/, m => `${DAYS[m[1]]} · ${m[2] === "Lunch" ? "Almuerzo" : "Cena"}`],
+  [/^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday) · (Brunch|Lunch|Dinner)$/, m => `${DAYS[m[1]]} · ${MEAL_ES[m[2]]}`],
   [/^From the schedule: (\d+) servers?, (\d+) S\.A\.s?$/, m => `Del horario: ${m[1]} ${m[1] === "1" ? "mesero" : "meseros"}, ${m[2]} S.A.`],
   [/^Sent (\d{1,2}:\d\d ?[AP]M)\. Changes go out as you make them\.$/, m => `Enviado ${m[1]}. Los cambios salen al momento.`],
   [/^© Closer: (.+)\. Whoever comes in last closes\.$/, m => `© Closer: ${m[1]}. Cierra quien entra de último.`],
   [/^(\d+) jobs? (?:isn't|aren't) set up to hand out yet \(Setup\)$/, m => `${m[1]} ${m[1] === "1" ? "trabajo todavía no está configurado" : "trabajos todavía no están configurados"} para repartirse (Configurar)`],
   [/^Who does (.+)$/, m => `Quién hace ${m[1]}`],
-  [/^My shift · (Lunch|Dinner)$/, m => `Mi turno · ${m[1] === "Lunch" ? "Almuerzo" : "Cena"}`],
+  [/^My shift · (Brunch|Lunch|Dinner)$/, m => `Mi turno · ${MEAL_ES[m[1]]}`],
   [/^Sections (\w{1,8}(?:\/\w{1,8})*)$/, m => `Secciones ${m[1]}`],
   [/^(\d+) steps? · (.+)$/, m => `${m[1]} ${m[1] === "1" ? "paso" : "pasos"} · ${m[2].replace("Given by hand", "Se da a mano").replace("Opening", "Apertura").replace("Closing", "Cierre").replace("S.A.s", "S.A.").replace("Servers", "Meseros").replace("One person, rotating", "Una persona, rotando").replace("Everyone", "Todos").replace("The closer", "El closer")}`],
   [/^Started from the (\d+) servers? on the published schedule\. Save it to send it out\.$/, m => `Armado con ${m[1] === "1" ? "el mesero" : `los ${m[1]} meseros`} del horario publicado. Guárdalo para enviarlo.`],
-  [/^Floor plan · (Lunch|Dinner)$/, m => `Plan de piso · ${m[1] === "Lunch" ? "Almuerzo" : "Cena"}`],
+  [/^Floor plan · (Brunch|Lunch|Dinner)$/, m => `Plan de piso · ${MEAL_ES[m[1]]}`],
+  [/^(Today|Tomorrow|Yesterday) · (.+)$/, m => `${{Today: "Hoy", Tomorrow: "Mañana", Yesterday: "Ayer"}[m[1] as "Today" | "Tomorrow" | "Yesterday"]} · ${m[2]}`],
   [/^Section (\w{1,8})$/, m => `Sección ${m[1]}`],
   [/^S\.A\.: (.+)$/, m => `S.A.: ${m[1]}`],
   [/^Server: (.+)$/, m => `Mesero: ${m[1]}`],

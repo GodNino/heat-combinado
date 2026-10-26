@@ -9,7 +9,9 @@ import { ArrowLeft, ChevronRight, Plus, RotateCw, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Field, Notice } from "./ui";
 import { StepsEditor } from "./checklist-steps";
-import { spreadHelpers } from "@/lib/sidework-plan";
+import { DayPill } from "./day-pill";
+import { PillSelect } from "./pill-select";
+import { SERVICES, defaultServiceAt, halfOf, spreadHelpers } from "@/lib/sidework-plan";
 
 export type Helper = {id: string; name: string};
 export type FloorRow = {server_id: string | null; server_name: string; sa: Helper[]; section: string; task: string};
@@ -17,10 +19,9 @@ export type SideworkList = {id: string; name: string; tasks: string[]};
 export type Working = {user_id: string; name: string; shift_position: string; starts_at: string};
 export type Plan = {id: string; service_date: string; service: string; list_id: string | null; rows: FloorRow[]; updated_at: string};
 
-const SERVICES = ["Lunch", "Dinner"] as const;
 export const localDate = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-export const defaultService = () => new Date().getHours() < 16 ? "Lunch" : "Dinner";
-// Lunch is anything starting before 4pm; the rest is dinner, the same split as side work.
+export const defaultService = () => defaultServiceAt();
+// Lunch (and Brunch) is anything starting before 4pm; the rest is dinner, the same split as side work.
 const serviceOf = (startsAt: string) => new Date(startsAt).getHours() < 16 ? "Lunch" : "Dinner";
 const isServer = (position: string) => /^\s*server\s*$/i.test(position);
 const isHelper = (position: string) => /assistant|^\s*s\.?\s*a\.?\s*$|runner|busser/i.test(position);
@@ -28,11 +29,11 @@ export const helpers = (sa: Helper[]) => sa.map(h => h.name || "Team member").jo
 
 // A new plan: the servers in order, their section numbers, the list's jobs down the rows, and the S.A.s spread across them.
 export function startingRows(working: Working[], service: string, day: string, list: SideworkList | undefined): FloorRow[] {
-  const onService = working.filter(p => serviceOf(p.starts_at) === service);
+  const onService = working.filter(p => serviceOf(p.starts_at) === halfOf(service));
   return spreadHelpers(blankRows(onService.filter(p => isServer(p.shift_position)), list), onService.filter(p => isHelper(p.shift_position)), day);
 }
 export function suggestedList(working: Working[], service: string, lists: SideworkList[]) {
-  const servers = working.filter(p => serviceOf(p.starts_at) === service && isServer(p.shift_position)).length;
+  const servers = working.filter(p => serviceOf(p.starts_at) === halfOf(service) && isServer(p.shift_position)).length;
   return lists.find(l => l.tasks.length === servers) ?? lists[0];
 }
 
@@ -59,7 +60,7 @@ export function FloorPlan({restaurantId, initialDay, initialService, onBack}: {r
 
   const explain = (e: unknown) => {
     const text = e instanceof Error ? e.message : String((e as {message?: string})?.message ?? e);
-    return /floor_plan|running_sidework|PGRST205|PGRST202|42P01|42883/.test(text) ? "The floor plan needs the database update (050)." : text;
+    return /floor_plans_service_check/.test(text) ? "Brunch needs database update 054." : /floor_plan|running_sidework|PGRST205|PGRST202|42P01|42883/.test(text) ? "The floor plan needs the database update (050)." : text;
   };
 
   const load = useCallback(async () => {
@@ -95,7 +96,7 @@ export function FloorPlan({restaurantId, initialDay, initialService, onBack}: {r
   }, [restaurantId, day, service]);
   useEffect(() => { void load(); }, [load]);
 
-  const onService = useMemo(() => working.filter(p => serviceOf(p.starts_at) === service), [working, service]);
+  const onService = useMemo(() => working.filter(p => serviceOf(p.starts_at) === halfOf(service)), [working, service]);
   const serverChoices = onService.filter(p => isServer(p.shift_position));
   const saChoices = [...onService.filter(p => isHelper(p.shift_position)), ...onService.filter(p => !isHelper(p.shift_position) && !isServer(p.shift_position))];
   const list = lists.find(l => l.id === listId);
@@ -139,7 +140,7 @@ export function FloorPlan({restaurantId, initialDay, initialService, onBack}: {r
   return <div className="floor-plan mt-4">
     {onBack && <button type="button" className="btn secondary mb-4" onClick={onBack}><ArrowLeft size={16} />Tonight</button>}
     <div className="floor-bar">
-      <input type="date" aria-label="Day" value={day} onChange={e => e.target.value && setDay(e.target.value)} />
+      <DayPill label="Day" value={day} onChange={setDay} />
       <div className="category-tabs" role="group" aria-label="Service">
         {SERVICES.map(s => <button key={s} type="button" aria-pressed={service === s} onClick={() => setService(s)}>{s}</button>)}
       </div>
@@ -148,10 +149,12 @@ export function FloorPlan({restaurantId, initialDay, initialService, onBack}: {r
     {loading ? <p className="muted py-6" role="status">Loading the floor plan…</p> : <>
       <div className="floor-list-row">
         <Field label="Running side work">
-          <select id="floor-list" value={listId} onChange={e => applyList(e.target.value)}>
-            <option value="">No list</option>
-            {lists.map(l => <option key={l.id} value={l.id}>{`${l.name} · ${l.tasks.length}`}</option>)}
-          </select>
+          <PillSelect id="floor-list" text={list ? `${list.name} · ${list.tasks.length}` : "No list"}>
+            <select id="floor-list" value={listId} onChange={e => applyList(e.target.value)}>
+              <option value="">No list</option>
+              {lists.map(l => <option key={l.id} value={l.id}>{`${l.name} · ${l.tasks.length}`}</option>)}
+            </select>
+          </PillSelect>
         </Field>
         <button type="button" className="btn secondary" onClick={() => setEditingLists(true)}>{lists.length ? "Edit lists" : "New list"}</button>
         <button type="button" className="btn secondary" disabled={rows.length < 2} onClick={rotate} title="Everyone moves one job down"><RotateCw size={14} />Rotate</button>
@@ -166,17 +169,17 @@ export function FloorPlan({restaurantId, initialDay, initialService, onBack}: {r
           const freeSA = saChoices.filter(p => !row.sa.some(h => h.id === p.user_id));
           return <div key={index} className="floor-row" role="row">
             <span role="cell"><input aria-label="Section" className="floor-section" maxLength={8} value={row.section} onChange={e => setRow(index, {section: e.target.value})} /></span>
-            <span role="cell"><select aria-label="Server" value={row.server_id ?? ""} onChange={e => {const who = onService.find(p => p.user_id === e.target.value); setRow(index, {server_id: who?.user_id ?? null, server_name: who?.name ?? ""});}}>
+            <span role="cell"><PillSelect text={options.find(p => p.user_id === row.server_id)?.name || (row.server_name && !row.server_id ? row.server_name : "Choose a server")}><select aria-label="Server" value={row.server_id ?? ""} onChange={e => {const who = onService.find(p => p.user_id === e.target.value); setRow(index, {server_id: who?.user_id ?? null, server_name: who?.name ?? ""});}}>
               <option value="">{row.server_name && !row.server_id ? row.server_name : "Choose a server"}</option>
               {options.map(p => <option key={p.user_id} value={p.user_id}>{p.name || "Team member"}</option>)}
               {onService.filter(p => !isServer(p.shift_position) && !options.some(o => o.user_id === p.user_id)).map(p => <option key={p.user_id} value={p.user_id}>{`${p.name || "Team member"} · ${p.shift_position}`}</option>)}
-            </select></span>
+            </select></PillSelect></span>
             <span role="cell" className="floor-sa">
               {row.sa.map(h => <button key={h.id} type="button" className="word-chip" aria-label={`Remove ${h.name}`} onClick={() => setRow(index, {sa: row.sa.filter(x => x.id !== h.id)})}>{h.name || "Team member"}<X size={12} aria-hidden="true" /></button>)}
-              {freeSA.length > 0 && row.sa.length < 3 && <select aria-label="Add an S.A." className="floor-add-sa" value="" onChange={e => {const who = onService.find(p => p.user_id === e.target.value); if (who) setRow(index, {sa: [...row.sa, {id: who.user_id, name: who.name}]});}}>
+              {freeSA.length > 0 && row.sa.length < 3 && <PillSelect text="+ S.A."><select aria-label="Add an S.A." className="floor-add-sa" value="" onChange={e => {const who = onService.find(p => p.user_id === e.target.value); if (who) setRow(index, {sa: [...row.sa, {id: who.user_id, name: who.name}]});}}>
                 <option value="">+ S.A.</option>
                 {freeSA.map(p => <option key={p.user_id} value={p.user_id}>{`${p.name || "Team member"} · ${p.shift_position}`}</option>)}
-              </select>}
+              </select></PillSelect>}
             </span>
             <span role="cell"><input aria-label="Running side work" list="floor-tasks" maxLength={60} value={row.task} placeholder="Coffee station" onChange={e => setRow(index, {task: e.target.value})} /></span>
             <span role="cell"><button type="button" className="icon-chip" aria-label={`Remove row ${index + 1}`} onClick={() => change(rows.filter((_, i) => i !== index))}><X size={14} /></button></span>

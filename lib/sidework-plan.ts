@@ -19,6 +19,17 @@ export const roleOf = (position: string): Role | null => isServer(position) ? "s
 
 // Lunch is anything starting before 4pm; the rest is dinner.
 export const serviceOf = (startsAt: string) => new Date(startsAt).getHours() < 16 ? "Lunch" : "Dinner";
+// The services a manager can pick. Brunch is the daytime service too (normally Saturday and Sunday, but the manager
+// decides): it has the same people as Lunch, the day's shifts that start before 4pm, under its own name and its own
+// floor plan and side work.
+export const ALL_SERVICES = ["Brunch", "Lunch", "Dinner"] as const;
+// Off until database update 054 has been run (Supabase SQL editor): until then a Brunch plan can't be saved, so the
+// Brunch chip isn't offered. Switch to true once 054 is in.
+export const BRUNCH_READY = false;
+export const SERVICES = BRUNCH_READY ? ALL_SERVICES : ALL_SERVICES.filter(s => s !== "Brunch");
+export const halfOf = (service: string) => service === "Dinner" ? "Dinner" : "Lunch";
+// Where the screen starts: Dinner from 4pm, otherwise Brunch on a Saturday or Sunday and Lunch on the other days.
+export const defaultServiceAt = (now = new Date(), brunch = BRUNCH_READY) => now.getHours() >= 16 ? "Dinner" : brunch && (now.getDay() === 0 || now.getDay() === 6) ? "Brunch" : "Lunch";
 
 // A day number that goes up by one every calendar day, for the rotation.
 export function dayNumber(day: string) {
@@ -31,7 +42,7 @@ export const weekdayOf = (day: string) => new Date(dayNumber(day) * 864e5).getUT
 export function peopleIn(service: string, onShift: OnShift[]) {
   const seen = new Map<string, OnShift>();
   for (const p of onShift) {
-    if (serviceOf(p.starts_at) !== service) continue;
+    if (serviceOf(p.starts_at) !== halfOf(service)) continue;
     const had = seen.get(p.user_id);
     if (!had || Date.parse(p.starts_at) < Date.parse(had.starts_at)) seen.set(p.user_id, p);
   }
