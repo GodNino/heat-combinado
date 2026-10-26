@@ -1095,14 +1095,23 @@ function Availability({restaurantId, userId}: {restaurantId: string; userId: str
       <span className="min-w-0 flex-1">{WEEKDAYS[block.weekday]}{" · "}{block.starts && block.ends ? `${block.starts.slice(0, 5)}–${block.ends.slice(0, 5)}` : "All day"}</span>
       <button type="button" className="muted" aria-label={`Remove ${WEEKDAYS[block.weekday]}`} onClick={() => void remove(block.id)}><X size={16} /></button>
     </li>)}</ul> : <p className="muted mt-3 text-sm">You're available every day.</p>)}
-    <form className="mt-4" onSubmit={add}>
-      <div className="report-row">
-        <Field label="Day"><select id="avail-day" value={weekday} onChange={e => setWeekday(Number(e.target.value))}>{order.map(d => <option key={d} value={d}>{WEEKDAYS[d]}</option>)}</select></Field>
-        <Field label="From"><input id="avail-from" type="time" disabled={allDay} value={from} onChange={e => setFrom(e.target.value)} /></Field>
-        <Field label="To"><input id="avail-to" type="time" disabled={allDay} value={to} onChange={e => setTo(e.target.value)} /></Field>
+    <form className="avail-form" onSubmit={add}>
+      <div className="sched-pillfield" role="group" aria-labelledby="avail-day-label">
+        <span id="avail-day-label" className="sched-label">Day</span>
+        <div className="category-tabs">{order.map(d => <button key={d} type="button" aria-label={WEEKDAYS[d]} aria-pressed={weekday === d} onClick={() => setWeekday(d)}>{WEEKDAYS[d].slice(0, 3)}</button>)}</div>
       </div>
-      <label className="mb-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={allDay} onChange={e => setAllDay(e.target.checked)} />All day</label>
-      <button className="btn">Add</button>
+      <div className="category-tabs" role="group" aria-label="Hours">
+        <button type="button" aria-pressed={allDay} onClick={() => setAllDay(value => !value)}>All day</button>
+      </div>
+      {!allDay && <div className="avail-times">
+        <PillField label="From" htmlFor="avail-from" text={timeText(from)} icon={<ChevronDown size={14} aria-hidden="true" />}>
+          <select id="avail-from" value={from} onChange={e => setFrom(e.target.value)}>{timeChoices(from).map(t => <option key={t} value={t}>{timeText(t)}</option>)}</select>
+        </PillField>
+        <PillField label="To" htmlFor="avail-to" text={timeText(to)} icon={<ChevronDown size={14} aria-hidden="true" />}>
+          <select id="avail-to" value={to} onChange={e => setTo(e.target.value)}>{timeChoices(to).map(t => <option key={t} value={t}>{timeText(t)}</option>)}</select>
+        </PillField>
+      </div>}
+      <div><button className="btn">Add</button></div>
     </form>
   </div>;
 }

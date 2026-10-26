@@ -3040,3 +3040,10 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .sched-who-line { display:flex; align-items:baseline; justify-content:space-between; gap:14px; min-width:0; }
 :root:root:root:root:root:root:root .sched-who-line .sched-hours { flex:none; }
 :root:root:root:root:root:root:root .sched-role { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-muted); font-size:12px; font-weight:400; }
+
+/* Schedule > My availability: the day is a row of chips, "All day" is a chip, From and To are small pills (shown
+   only when it is not all day), and Add is the one lime button. Spacing 14 and 16.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .avail-form { display:grid; gap:16px; margin-top:16px; }
+:root:root:root:root:root:root:root .avail-form .category-tabs { flex-wrap:wrap; overflow:visible; padding:0; }
+:root:root:root:root:root:root:root .avail-times { display:grid; grid-template-columns:1fr 1fr; gap:14px; max-width:320px; }
