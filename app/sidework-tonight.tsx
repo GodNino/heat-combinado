@@ -174,10 +174,10 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
       <section className="tonight-block" aria-label="Floor">
         <div className="tonight-block-head"><h3>Floor</h3><button type="button" className="btn secondary" onClick={() => setEditingFloor(true)}><Pencil size={13} />Edit floor</button></div>
         {rows.length ? <div className="tonight-sections">{rows.map((r, i) => <div key={i} className={`tonight-section${r.server_id && closing.has(r.server_id) ? " closer" : ""}`}>
-          <b>{r.section || "—"}</b><span>{r.server_name || "Pick-up"}{r.server_id && closing.has(r.server_id) ? " ©" : ""}</span>
+          <b>{r.section || "—"}</b><span>{r.server_name || "Pick-up"}{r.server_id && closing.has(r.server_id) && <span className="sched-kind" role="img" aria-label="Closer" title="Closer">C</span>}</span>
           {r.sa.length > 0 && <small>{helpers(r.sa)}</small>}
         </div>)}</div> : <p className="muted text-sm">No servers on the schedule for this service.</p>}
-        {closing.size > 0 && <p className="muted mt-2 text-xs">{`© Closer: ${[...closing].map(nameOf).join(", ")}. Whoever comes in last closes.`}</p>}
+        {closing.size > 0 && <p className="muted mt-2 text-xs">{`Closer: ${[...closing].map(nameOf).join(", ")}. Whoever comes in last closes.`}</p>}
       </section>
 
       {unruled > 0 && <p className="muted mt-4 text-xs">{`${unruled} ${unruled === 1 ? "job isn't" : "jobs aren't"} set up to hand out yet (Setup)`}</p>}
@@ -200,7 +200,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
                     ? <small>{l.who || nameOf(l.user_id)}</small>
                     : <select aria-label={`Who does ${l.title}`} value={l.user_id ?? ""} onChange={e => void changePerson(l, e.target.value)}>
                         <option value="">Nobody yet</option>
-                        {choicesFor(l).map(p => <option key={p.user_id} value={p.user_id}>{`${p.name || "Team member"}${closing.has(p.user_id) ? " ©" : ""}`}</option>)}
+                        {choicesFor(l).map(p => <option key={p.user_id} value={p.user_id}>{`${p.name || "Team member"}${closing.has(p.user_id) ? " · Closer" : ""}`}</option>)}
                       </select>}
                 </div>) : <p className="muted text-xs">{phase === "during" ? (role === "server" ? "Comes from the floor plan's running side work." : "No S.A.s on the schedule.") : "Nothing set up for this yet."}</p>}
               </div>;
