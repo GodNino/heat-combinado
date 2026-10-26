@@ -3005,3 +3005,7 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .tonight-role .tonight-phase { background:var(--c-surface); }
 :root:root:root:root:root:root:root .setup-group + .setup-group { margin-top:20px; }
 :root:root:root:root:root:root:root .setup-group-title { margin-bottom:8px; font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--c-muted); }
+
+/* Schedule: today's date in the week header is one line like the other days (it had turned into a tall stacked pill,
+   which also pushed the whole grid down). To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .sched-day { display:inline-flex; flex-direction:row; align-items:baseline; gap:5px; height:auto; min-height:0; padding:3px 10px; }
