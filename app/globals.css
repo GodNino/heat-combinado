@@ -3025,3 +3025,9 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .sched-form .sched-presets { margin:0; }
 :root:root:root:root:root:root:root .sched-form .muted.mb-4 { margin:0; font-size:12px; }
 :root:root:root:root:root:root:root .sched-actions { display:flex; flex-wrap:wrap; gap:14px; }
+
+/* Schedule, the pop-up fixed: the note is a 30px pill like the others (a rule meant for the Pre-shift note,
+   which shares its id, had made it 92px tall and grey), and Day, Starts and Ends are menus under their pills.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .sched-note { width:100%; background:var(--c-surface); border:1px solid var(--c-line-5); color:var(--c-text); }
+:root:root:root:root:root:root:root .sched-note::placeholder { font-size:12px; color:var(--c-muted); opacity:1; }
