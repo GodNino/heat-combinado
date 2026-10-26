@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { closers, peopleIn, planJobs, spreadHelpers, weekdayOf, type OnShift, type RuledJob } from "../lib/sidework-plan.ts";
+import { ALL_SERVICES, closers, defaultServiceAt, halfOf, peopleIn, planJobs, spreadHelpers, weekdayOf, type OnShift, type RuledJob } from "../lib/sidework-plan.ts";
+import { dayChoices, dayWords } from "../lib/day-words.ts";
 
 const at = (hour: number, minute = 0) => new Date(2026, 9, 24, hour, minute).toISOString();
 const person = (id: string, name: string, position: string, start: string): OnShift => ({user_id: id, name, shift_position: position, starts_at: start});
@@ -45,4 +46,31 @@ test("S.A.s spread across the servers' rows", () => {
   const spread = spreadHelpers(rows, peopleIn("Dinner", floor).filter(p => p.shift_position === "Server assistant"), "2026-10-24");
   assert.equal(spread.flatMap(r => r.sa).length, 3);
   assert.ok(spread.every(r => r.sa.length >= 1));
+});
+
+test("Brunch has the same people as Lunch, under its own name, and starts selected on a weekend morning", () => {
+  assert.deepEqual([...ALL_SERVICES], ["Brunch", "Lunch", "Dinner"]);
+  assert.equal(halfOf("Brunch"), "Lunch");
+  assert.equal(halfOf("Lunch"), "Lunch");
+  assert.equal(halfOf("Dinner"), "Dinner");
+  assert.deepEqual(peopleIn("Brunch", floor).map(p => p.user_id), peopleIn("Lunch", floor).map(p => p.user_id));
+  assert.equal(peopleIn("Dinner", floor).some(p => p.user_id === "l1"), false);
+  assert.equal(defaultServiceAt(new Date(2026, 9, 24, 11), true), "Brunch", "Saturday morning");
+  assert.equal(defaultServiceAt(new Date(2026, 9, 24, 11), false), "Lunch", "Saturday morning, before Brunch is switched on");
+  assert.equal(defaultServiceAt(new Date(2026, 9, 25, 14), true), "Brunch", "Sunday afternoon, before 4pm");
+  assert.equal(defaultServiceAt(new Date(2026, 9, 26, 11)), "Lunch", "Monday");
+  assert.equal(defaultServiceAt(new Date(2026, 9, 24, 17)), "Dinner", "Saturday night");
+});
+
+test("the day pill says Today, Tomorrow and Yesterday, and offers yesterday through two weeks", () => {
+  const now = new Date(2026, 9, 26, 15);
+  assert.equal(dayWords("2026-10-26", now), "Today · Mon, Oct 26");
+  assert.equal(dayWords("2026-10-27", now), "Tomorrow · Tue, Oct 27");
+  assert.equal(dayWords("2026-10-25", now), "Yesterday · Sun, Oct 25");
+  assert.equal(dayWords("2026-10-29", now), "Thu, Oct 29");
+  const days = dayChoices("2026-10-26", now);
+  assert.equal(days.length, 16);
+  assert.equal(days[0], "2026-10-25");
+  assert.equal(days[15], "2026-11-09");
+  assert.deepEqual(dayChoices("2026-09-01", now)[0], "2026-09-01", "a day outside the list is added so it still shows");
 });

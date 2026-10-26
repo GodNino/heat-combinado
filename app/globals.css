@@ -3032,6 +3032,24 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .sched-note { width:100%; background:var(--c-surface); border:1px solid var(--c-line-5); color:var(--c-text); }
 :root:root:root:root:root:root:root .sched-note::placeholder { font-size:12px; color:var(--c-muted); opacity:1; }
 
+/* Side work and the floor plan, tidied: the date is a small pill with a menu (like the Schedule's Day pill) instead of
+   the big grey browser date box; the floor plan's menus (list, server, + S.A.) are 30px pills, its boxes are 30px pills
+   with 12px text (16px on a phone, so iOS doesn't zoom in), the S.A. chips are 30px, and spacing is 14. Beside the Brunch / Lunch / Dinner chips it takes their dark 1.5px edge, and the chips sit
+   level with it (they had 12px of padding underneath that pushed them up; the 28px on the right stays for the edge fade).
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .floor-bar .day-pill { flex:none; min-width:176px; border:1.5px solid var(--c-text); font-weight:600; }
+:root:root:root:root:root:root:root .floor-bar .category-tabs { padding:0 28px 0 0; }
+:root:root:root:root:root:root:root .floor-list-row { gap:14px; }
+:root:root:root:root:root:root:root .floor-list-row .field { flex:1 1 220px; max-width:360px; }
+:root:root:root:root:root:root:root .floor-head, :root:root:root:root:root:root:root .floor-row { gap:14px; padding:14px; }
+:root:root:root:root:root:root:root .floor-row input { height:30px; min-height:30px; padding:0 14px; border:1px solid var(--c-line-5); border-radius:999px; background:var(--c-surface); color:var(--c-text); font-size:12px; font-weight:600; }
+:root:root:root:root:root:root:root .floor-row .floor-section { text-align:center; padding:0; }
+:root:root:root:root:root:root:root .floor-row .sched-pill, :root:root:root:root:root:root:root .floor-list-row .sched-pill { width:100%; }
+:root:root:root:root:root:root:root .floor-row .floor-sa .sched-pill { width:auto; min-width:96px; }
+:root:root:root:root:root:root:root .floor-sa { gap:6px; }
+:root:root:root:root:root:root:root .floor-sa .word-chip { height:30px; min-height:30px; padding:0 12px; font-size:12px; font-weight:600; }
+@media (max-width: 480px) { :root:root:root:root:root:root:root .floor-row input { font-size:16px; } }
+
 /* Schedule: the Team column has room on its left (the "Team" label and the Hours / People totals were touching the
    line), and each person's role from Team sits under their name, with the hours on the right.
    To undo, revert the commit that added this block. */
@@ -3047,3 +3065,23 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .avail-form { display:grid; gap:16px; margin-top:16px; }
 :root:root:root:root:root:root:root .avail-form .category-tabs { flex-wrap:wrap; overflow:visible; padding:0; }
 :root:root:root:root:root:root:root .avail-times { display:grid; grid-template-columns:1fr 1fr; gap:14px; max-width:320px; }
+
+/* Schedule: the shift's Opener / Mid / Closer tag (a small dark circle with O, M or C beside the hours), and the
+   time stepper (a pill with − and + at its ends) that replaces the long list of times. Spacing 14. The stepper's
+   ends are 30px tall, the height of every button.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .sched-kind { display:inline-flex; align-items:center; justify-content:center; flex:none; width:16px; height:16px; margin-left:5px; border-radius:999px; background:var(--c-text); color:var(--c-surface); font-size:10px; font-weight:700; line-height:1; vertical-align:1px; }
+:root:root:root:root:root:root:root .sched-step { padding:0; overflow:hidden; gap:0; touch-action:manipulation; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+:root:root:root:root:root:root:root .sched-step > span { flex:1; min-width:0; text-align:center; white-space:nowrap; }
+:root:root:root:root:root:root:root .sched-step > button { display:inline-flex; align-items:center; justify-content:center; flex:none; width:28px; height:30px; min-height:0; margin:0; padding:0; border:0; border-radius:0; background:transparent; color:var(--c-text); cursor:pointer; }
+:root:root:root:root:root:root:root .sched-step > button:hover { background:var(--c-heat-bg); }
+:root:root:root:root:root:root:root .sched-step > button:focus-visible { outline:2px solid var(--c-heat); outline-offset:-2px; }
+:root:root:root:root:root:root:root .sched-when { grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1.1fr); }
+:root:root:root:root:root:root:root .set-kind > b { font-size:12px; }
+:root:root:root:root:root:root:root .set-kind .set-kind-add { grid-column:2 / 4; justify-self:start; }
+@media (max-width: 480px) {
+  :root:root:root:root:root:root:root .sched-when { grid-template-columns:1fr 1fr; }
+  :root:root:root:root:root:root:root .sched-when > :first-child { grid-column:1 / -1; }
+  :root:root:root:root:root:root:root .set-kind > b { grid-column:1 / -1; }
+  :root:root:root:root:root:root:root .set-kind .set-kind-add { grid-column:1 / -1; }
+}

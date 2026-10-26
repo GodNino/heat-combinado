@@ -12,12 +12,12 @@ import { Check, Pencil, RefreshCw, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Notice } from "./ui";
 import { FloorPlan, defaultService, helpers, localDate, startingRows, suggestedList, type FloorRow, type Plan, type SideworkList, type Working } from "./floor-plan";
-import { closers, peopleIn, planJobs, roleOf, type Phase, type Role, type RuledJob } from "@/lib/sidework-plan";
+import { SERVICES, closers, peopleIn, planJobs, roleOf, type Phase, type Role, type RuledJob } from "@/lib/sidework-plan";
+import { DayPill } from "./day-pill";
 
 type Sent = {id: string; title: string; user_id: string | null; phase: Phase; done_at: string | null; job_id: string | null; steps_done: number[]};
 type Line = {key: string; title: string; user_id: string | null; phase: Phase; done?: boolean; jobId?: string | null; who?: string};
 
-const SERVICES = ["Lunch", "Dinner"] as const;
 const JOB_COLUMNS = "id, name, group_name, steps, sort_order, phase, role, who, days";
 const PHASES: [Phase | "during", string][] = [["opening", "Opening"], ["during", "During the shift"], ["closing", "Closing"]];
 const longDay = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {weekday: "long"});
@@ -42,7 +42,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
 
   const explain = (e: unknown) => {
     const text = e instanceof Error ? e.message : String((e as {message?: string})?.message ?? e);
-    return /phase|who|floor_plan|running_sidework|PGRST20[0-9]|42P01|42703|42883/.test(text) ? "Tonight needs the database updates (050 and 051)." : text;
+    return /floor_plans_service_check/.test(text) ? "Brunch needs database update 054." : /phase|who|floor_plan|running_sidework|PGRST20[0-9]|42P01|42703|42883/.test(text) ? "Tonight needs the database updates (050 and 051)." : text;
   };
 
   const load = useCallback(async () => {
@@ -152,7 +152,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
 
   return <div className="tonight mt-4">
     <div className="floor-bar">
-      <input type="date" aria-label="Day" value={day} onChange={e => e.target.value && setDay(e.target.value)} />
+      <DayPill label="Day" value={day} onChange={setDay} />
       <div className="category-tabs" role="group" aria-label="Service">
         {SERVICES.map(s => <button key={s} type="button" aria-pressed={service === s} onClick={() => setService(s)}>{s}</button>)}
       </div>

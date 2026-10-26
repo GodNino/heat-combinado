@@ -113,7 +113,7 @@ const PHRASES: Record<string, string> = {
   "Choose a person": "Elige a una persona", "Which meal?": "¿Qué servicio?", "Change person or delete": "Cambiar persona o eliminar", "Delete this job": "Eliminar esta tarea",
   "Job name": "Nombre de la tarea", "Silverware": "Cubiertos", "Who does it?": "¿Quién la hace?", "Give this job to": "Darle esta tarea a", "Meal": "Servicio",
   "Give the job a name.": "Ponle nombre a la tarea.", "A job needs at least one step.": "Una tarea necesita al menos un paso.", "Pick a job.": "Elige una tarea.",
-  "Choose who does it.": "Elige quién la hace.", "Lunch": "Almuerzo", "Dinner": "Cena", "Nobody yet": "Nadie todavía", "Assign": "Asignar",
+  "Choose who does it.": "Elige quién la hace.", "Lunch": "Almuerzo", "Dinner": "Cena", "Brunch needs database update 054.": "Brunch necesita la actualización 054 de la base de datos.", "Nobody yet": "Nadie todavía", "Assign": "Asignar",
   "Not started": "Sin empezar", "Jobs": "Tareas", "Delete job": "Eliminar tarea", "Loading jobs…": "Cargando tareas…",
   "No jobs yet. Start with one your team does every shift.": "Todavía no hay tareas. Empieza con una que tu equipo haga cada turno.", "Know the floor": "Conoce el piso",
   "Your job for this shift, and how the rest of the floor is doing.": "Tu tarea de este turno, y cómo va el resto del piso.",
@@ -685,6 +685,10 @@ const PHRASES: Record<string, string> = {
   "After": "Después de", "hours a week": "horas a la semana", "hours in a day": "horas en un día",
   "Also count overtime by the day": "Contar también horas extra por día", "Weekly overtime hours": "Horas extra por semana", "Daily overtime hours": "Horas extra por día",
   "Quick shifts": "Turnos rápidos", "Offered when you add a shift. The first one is what a new shift starts with.": "Aparecen al agregar un turno. El primero es el horario con el que empieza un turno nuevo.",
+  "Shift type": "Tipo de turno", "Shift types": "Tipos de turno", "Opener": "Apertura", "Mid": "Intermedio", "Closer": "Cierre",
+  "Tag a shift Opener, Mid or Closer. Give each its usual hours and tapping it in the shift pop-up fills them in.": "Marca un turno como Apertura, Intermedio o Cierre. Dale a cada uno su horario habitual y al tocarlo en la ventana del turno se llena solo.",
+  "Set the usual hours of each type in the schedule settings.": "Define el horario habitual de cada tipo en los ajustes del horario.", "Set usual hours": "Definir horario habitual",
+  "Shift types need database update 053.": "Los tipos de turno necesitan la actualización 053 de la base de datos.",
   "Quick shift name": "Nombre del turno rápido", "Add a quick shift": "Agregar un turno rápido", "quick shift": "turno rápido",
   "What the team sees": "Qué ve el equipo", "Everyone's published shifts": "Los turnos publicados de todos", "Only their own shifts": "Solo sus propios turnos",
   "Save settings": "Guardar ajustes", "Give each quick shift a different name.": "Ponle un nombre distinto a cada turno rápido.",
@@ -735,23 +739,25 @@ const CODES: Record<string, string> = {
 
 const MONTHS: Record<string, string> = {Jan: "ene", Feb: "feb", Mar: "mar", Apr: "abr", May: "may", Jun: "jun", Jul: "jul", Aug: "ago", Sep: "sep", Oct: "oct", Nov: "nov", Dec: "dic"};
 const MONTHS_LONG: Record<string, string> = {January: "enero", February: "febrero", March: "marzo", April: "abril", May: "mayo", June: "junio", July: "julio", August: "agosto", September: "septiembre", October: "octubre", November: "noviembre", December: "diciembre"};
+const MEAL_ES: Record<string, string> = {Brunch: "Brunch", Lunch: "Almuerzo", Dinner: "Cena"};
 const DAYS: Record<string, string> = {Sunday: "domingo", Monday: "lunes", Tuesday: "martes", Wednesday: "miércoles", Thursday: "jueves", Friday: "viernes", Saturday: "sábado"};
 const DAYS_SHORT: Record<string, string> = {Sun: "dom", Mon: "lun", Tue: "mar", Wed: "mié", Thu: "jue", Fri: "vie", Sat: "sáb"};
 const lower = (text: string) => (translateCore(text) ?? text).toLowerCase();
 
 // Sentences with a name or a number inside: the automatic quiz's questions, and a few counters.
 const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
-  [/^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday) · (Lunch|Dinner)$/, m => `${DAYS[m[1]]} · ${m[2] === "Lunch" ? "Almuerzo" : "Cena"}`],
+  [/^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday) · (Brunch|Lunch|Dinner)$/, m => `${DAYS[m[1]]} · ${MEAL_ES[m[2]]}`],
   [/^From the schedule: (\d+) servers?, (\d+) S\.A\.s?$/, m => `Del horario: ${m[1]} ${m[1] === "1" ? "mesero" : "meseros"}, ${m[2]} S.A.`],
   [/^Sent (\d{1,2}:\d\d ?[AP]M)\. Changes go out as you make them\.$/, m => `Enviado ${m[1]}. Los cambios salen al momento.`],
   [/^© Closer: (.+)\. Whoever comes in last closes\.$/, m => `© Closer: ${m[1]}. Cierra quien entra de último.`],
   [/^(\d+) jobs? (?:isn't|aren't) set up to hand out yet \(Setup\)$/, m => `${m[1]} ${m[1] === "1" ? "trabajo todavía no está configurado" : "trabajos todavía no están configurados"} para repartirse (Configurar)`],
   [/^Who does (.+)$/, m => `Quién hace ${m[1]}`],
-  [/^My shift · (Lunch|Dinner)$/, m => `Mi turno · ${m[1] === "Lunch" ? "Almuerzo" : "Cena"}`],
+  [/^My shift · (Brunch|Lunch|Dinner)$/, m => `Mi turno · ${MEAL_ES[m[1]]}`],
   [/^Sections (\w{1,8}(?:\/\w{1,8})*)$/, m => `Secciones ${m[1]}`],
   [/^(\d+) steps? · (.+)$/, m => `${m[1]} ${m[1] === "1" ? "paso" : "pasos"} · ${m[2].replace("Given by hand", "Se da a mano").replace("Opening", "Apertura").replace("Closing", "Cierre").replace("S.A.s", "S.A.").replace("Servers", "Meseros").replace("One person, rotating", "Una persona, rotando").replace("Everyone", "Todos").replace("The closer", "El closer")}`],
   [/^Started from the (\d+) servers? on the published schedule\. Save it to send it out\.$/, m => `Armado con ${m[1] === "1" ? "el mesero" : `los ${m[1]} meseros`} del horario publicado. Guárdalo para enviarlo.`],
-  [/^Floor plan · (Lunch|Dinner)$/, m => `Plan de piso · ${m[1] === "Lunch" ? "Almuerzo" : "Cena"}`],
+  [/^Floor plan · (Brunch|Lunch|Dinner)$/, m => `Plan de piso · ${MEAL_ES[m[1]]}`],
+  [/^(Today|Tomorrow|Yesterday) · (.+)$/, m => `${{Today: "Hoy", Tomorrow: "Mañana", Yesterday: "Ayer"}[m[1] as "Today" | "Tomorrow" | "Yesterday"]} · ${m[2]}`],
   [/^Section (\w{1,8})$/, m => `Sección ${m[1]}`],
   [/^S\.A\.: (.+)$/, m => `S.A.: ${m[1]}`],
   [/^Server: (.+)$/, m => `Mesero: ${m[1]}`],
@@ -831,6 +837,10 @@ const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^(\d+) new people need a position\. Until you choose one, they show as Server on the schedule\.$/, m => `${m[1]} personas nuevas necesitan un puesto. Hasta que elijas uno, aparecen como mesero en el horario.`],
   [/^Weeks run (Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday) to (Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday): the grid, Copy last week, publishing and weekly overtime all follow it\.$/, m => `La semana va de ${DAYS[m[1]]} a ${DAYS[m[2]]}: la cuadrícula, Copiar la semana pasada, publicar y las horas extra de la semana siguen ese orden.`],
   [/^Colour for (.+)$/, m => `Color para ${translateCore(m[1]) ?? m[1]}`],
+  [/^(Starts|Ends|From|To) 15 minutes (earlier|later)$/, m => `${translateCore(m[1]) ?? m[1]}: 15 minutos ${m[2] === "earlier" ? "antes" : "después"}`],
+  [/^(Opener|Mid|Closer) (starts|ends)$/, m => `${translateCore(m[1]) ?? m[1]}: ${m[2] === "starts" ? "empieza" : "termina"}`],
+  [/^Remove the hours of (Opener|Mid|Closer)$/, m => `Quitar el horario de ${(translateCore(m[1]) ?? m[1]).toLowerCase()}`],
+  [/^(Opener|Mid|Closer) · (.+)$/, m => `${translateCore(m[1]) ?? m[1]} · ${m[2]}`],
   [/^Remove quick shift (.*)$/, m => `Quitar turno rápido ${m[1]}`.trim()],
   [/^Requests · (\d+)$/, m => `Solicitudes · ${m[1]}`],
   [/^My shifts · (\d+)$/, m => `Mis turnos · ${m[1]}`],

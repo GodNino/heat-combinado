@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SETTINGS, allWarnings, colorFor, copiedWeek, newCopies, dayBlocks, dayKey, dayTotals, defaultShift, hoursByPerson, initials, movedShift, positionAfterDrop, readSettings, shiftLabel, shiftTimes, shiftWarnings, weekStart, type Shift } from "../lib/schedule.ts";
+import { DEFAULT_SETTINGS, allWarnings, colorFor, copiedWeek, newCopies, dayBlocks, dayKey, dayTotals, defaultShift, hoursByPerson, initials, movedShift, positionAfterDrop, readSettings, stepClock, kindOf, shiftLabel, shiftTimes, shiftWarnings, weekStart, type Shift } from "../lib/schedule.ts";
 
 const shift = (id: string, user: string, from: Date, to: Date): Shift => ({
   id, restaurant_id: "r", user_id: user, position: "Server", note: "", published: false, starts_at: from.toISOString(), ends_at: to.toISOString(),
@@ -88,4 +88,26 @@ test("a dragged or copied shift takes the position of the person it lands on", (
   assert.equal(positionAfterDrop("Manager", false, "", false), "Manager", "nobody set a position for them: it keeps its own");
   assert.equal(positionAfterDrop("Manager", false, "Sushi Chef", false), "Manager", "a position this manager may not schedule: it keeps its own");
   assert.equal(positionAfterDrop("Manager", false, "  Server ", true), "Server", "stray spaces are ignored");
+});
+
+test("a shift's tag is carried along, and the times of each tag are read safely", () => {
+  const tagged = {...shift("a", "u1", new Date(2026, 9, 1, 17), new Date(2026, 9, 1, 23)), shift_kind: "closer" as const};
+  const plain = shift("b", "u1", new Date(2026, 9, 2, 17), new Date(2026, 9, 2, 23));
+  const [one, two] = copiedWeek([tagged, plain]);
+  assert.equal((one as {shift_kind?: string}).shift_kind, "closer", "a copied week keeps the tag");
+  assert.equal("shift_kind" in two, false, "an untagged shift sends no tag, so saving works before database update 053");
+  assert.equal(kindOf("mid"), "mid");
+  assert.equal(kindOf("brunch"), null);
+  const read = readSettings({shift_kind_hours: {opener: {start: "11:00", end: "17:00"}, mid: {start: "1pm", end: "9"}, closer: null, lunch: {start: "11:00", end: "15:00"}}});
+  assert.deepEqual(read.shift_kind_hours, {opener: {start: "11:00", end: "17:00"}}, "only well-formed times of the three tags are kept");
+  assert.deepEqual(readSettings({}).shift_kind_hours, {});
+});
+
+test("the time stepper moves 15 minutes and wraps around midnight", () => {
+  assert.equal(stepClock("17:00", 15), "17:15");
+  assert.equal(stepClock("17:00", -15), "16:45");
+  assert.equal(stepClock("23:45", 15), "00:00");
+  assert.equal(stepClock("00:00", -15), "23:45");
+  assert.equal(stepClock("17:00", 60), "18:00");
+  assert.equal(stepClock("23:30", 60), "00:30");
 });

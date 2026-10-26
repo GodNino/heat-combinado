@@ -37,7 +37,7 @@ export function MyShiftCard({restaurantId, userId: given, onOpen}: {restaurantId
   }, [restaurantId, userId]);
 
   // The service this person is on: the one where they have a row or jobs, tonight's first.
-  const order = defaultService() === "Dinner" ? ["Dinner", "Lunch"] : ["Lunch", "Dinner"];
+  const order = defaultService() === "Dinner" ? ["Dinner", "Lunch", "Brunch"] : [defaultService(), ...["Brunch", "Lunch", "Dinner"].filter(s => s !== defaultService())];
   const service = order.find(s => plans.some(p => p.service === s && p.rows.some(r => r.server_id === userId || r.sa.some(h => h.id === userId)))
     || mine.some(m => shifts.find(x => x.id === m.shift_id)?.label === s));
   if (!userId || !service) return null;
