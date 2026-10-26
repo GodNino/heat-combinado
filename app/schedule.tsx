@@ -7,7 +7,7 @@ import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, ChevronLeft, C
 import { supabase } from "@/lib/supabase";
 import {
   PALETTE, POSITIONS, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, newCopies, dayBlocks, dayKey,
-  dayTotals, defaultShift, formatHours, hoursByPerson, initials, isLive, movedShift, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, weekDays, weekStart,
+  dayTotals, defaultShift, formatHours, hoursByPerson, initials, isLive, movedShift, positionAfterDrop, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, weekDays, weekStart,
   changeWindowOpen, canSchedule, isKitchen, KITCHEN_POSITIONS, type ScheduleAccess, type ScheduleSettings, type Shift, type ShiftChange, type ShiftPreset, type TimeOff, type Unavailability, type Warning,
 } from "@/lib/schedule";
 import { scheduleSheet } from "@/lib/sheets";
@@ -264,13 +264,16 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     const [y, m, d] = key.split("-").map(Number);
     const times = movedShift(shift, new Date(y, m - 1, d));
     if (!copy && userId === shift.user_id && times.starts_at === shift.starts_at) return;
+    // The hours travel, not the job: landing on someone else, the shift becomes the position they were hired for in Team.
+    const own = ownPosition(userId);
+    const position = positionAfterDrop(shift.position, userId === shift.user_id, own, !!own && mayEdit(own));
     const name = people.find(p => p.user_id === userId)?.name ?? "Team member";
-    setShifts(list => copy ? [...(list ?? []), {...shift, id: `copy-${Date.now()}`, user_id: userId, ...times, published: false}]
-      : (list ?? []).map(s => s.id === shift.id ? {...s, user_id: userId, ...times, published: false} : s));
+    setShifts(list => copy ? [...(list ?? []), {...shift, id: `copy-${Date.now()}`, user_id: userId, position, ...times, published: false}]
+      : (list ?? []).map(s => s.id === shift.id ? {...s, user_id: userId, position, ...times, published: false} : s));
     void act(async () => {
       const result = copy
-        ? await supabase!.from("schedule_shifts").insert({restaurant_id: restaurantId, user_id: userId, position: shift.position, note: shift.note, ...times})
-        : await supabase!.from("schedule_shifts").update({user_id: userId, ...times}).eq("id", shift.id);
+        ? await supabase!.from("schedule_shifts").insert({restaurant_id: restaurantId, user_id: userId, position, note: shift.note, ...times})
+        : await supabase!.from("schedule_shifts").update({user_id: userId, position, ...times}).eq("id", shift.id);
       if (result.error) { await load(); throw new Error(result.error.message.includes("row-level security") ? "That person isn't on this team's schedule." : result.error.message); }
       setMessage(`${copy ? "Copied" : "Moved"} to ${name}, ${dayHeading(new Date(y, m - 1, d))}.`);
       await load();

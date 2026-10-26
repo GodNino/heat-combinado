@@ -106,6 +106,14 @@ export function movedShift(shift: Pick<Shift, "starts_at" | "ends_at">, day: Dat
   return {starts_at: start.toISOString(), ends_at: new Date(start.getTime() + Date.parse(shift.ends_at) - from.getTime()).toISOString()};
 }
 
+// The position a dragged or copied shift ends up with: the hours travel, not the job. Landing on someone
+// else, it becomes the position they were hired for (set in Team). Staying on the same person keeps it, and
+// so does a person with no position, or one this manager is not allowed to schedule.
+export function positionAfterDrop(shiftPosition: string, sameUser: boolean, ownPosition: string, mayScheduleOwn: boolean) {
+  const own = ownPosition.trim();
+  return !sameUser && own && mayScheduleOwn ? own : shiftPosition;
+}
+
 // What already fills someone's day before a shift goes in: their weekly unavailability and time off.
 export type DayBlock = {kind: "unavailable" | "time_off" | "time_off_pending"; label: string};
 export function dayBlocks(userId: string, day: Date, unavailable: Unavailability[], timeOff: TimeOff[]): DayBlock[] {
