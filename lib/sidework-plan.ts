@@ -25,7 +25,7 @@ export const serviceOf = (startsAt: string) => new Date(startsAt).getHours() < 1
 export const ALL_SERVICES = ["Brunch", "Lunch", "Dinner"] as const;
 // Off until database update 054 has been run (Supabase SQL editor): until then a Brunch plan can't be saved, so the
 // Brunch chip isn't offered. Switch to true once 054 is in.
-export const BRUNCH_READY = false;
+export const BRUNCH_READY = true;
 export const SERVICES = BRUNCH_READY ? ALL_SERVICES : ALL_SERVICES.filter(s => s !== "Brunch");
 export const halfOf = (service: string) => service === "Dinner" ? "Dinner" : "Lunch";
 // Where the screen starts: Dinner from 4pm, otherwise Brunch on a Saturday or Sunday and Lunch on the other days.
