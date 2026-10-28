@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Check, ChevronDown, Copy, Minus, Plus, Settings, SlidersHorizontal, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
-  KIND_LABEL, KIND_LETTER, ON_CALL_READY, countedHours, onCallText, type OnCallStatus, PALETTE, POSITIONS, SHIFT_KINDS, SHIFT_TYPES_READY, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, newCopies, dayBlocks, dayKey,
+  KIND_LABEL, KIND_LETTER, positionColor, positionRank, ON_CALL_READY, countedHours, onCallText, type OnCallStatus, PALETTE, POSITIONS, SHIFT_KINDS, SHIFT_TYPES_READY, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, newCopies, dayBlocks, dayKey,
   dayTotals, defaultShift, formatHours, hoursByPerson, initials, isLive, movedShift, positionAfterDrop, kindOf, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, stepClock, weekDays, weekStart,
   changeWindowOpen, canSchedule, isKitchen, KITCHEN_POSITIONS, type ScheduleAccess, type ScheduleSettings, type Shift, type ShiftChange, type ShiftKind, type ShiftPreset, type TimeOff, type Unavailability, type Warning,
 } from "@/lib/schedule";
@@ -55,7 +55,7 @@ const when = (starts: string, ends: string) => `${dayHeading(new Date(starts))} 
 const changeError = (message: string) => /shift_change|function .* does not exist|PGRST202/.test(message) ? "Shift changes need database update 045." : message;
 
 // The class that paints a shift in its position's colour, or nothing when it has none.
-const paint = (position: string, settings: ScheduleSettings) => { const color = colorFor(position, settings.position_colors); return color ? `pos pos-${color}` : ""; };
+const paint = (position: string, settings: ScheduleSettings) => { const color = positionColor(position, settings.position_colors); return color ? `pos pos-${color}` : ""; };
 const presetLabel = (preset: ShiftPreset) => { const today = new Date(); return `${shortTime(atTime(today, preset.start))}–${shortTime(atTime(today, preset.end))}`; };
 
 export type ScheduleTab = Tab;
@@ -158,7 +158,8 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   const [otherPosition, setOtherPosition] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [viewBy, setViewBy] = useState<ViewBy>("name");
+  // People sit grouped by position (Server, Server assistant, Bartender…), each row in its colour.
+  const [viewBy, setViewBy] = useState<ViewBy>("position");
   const [query, setQuery] = useState("");
   const [showConflicts, setShowConflicts] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -225,7 +226,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     const list = (canManage ? people : people.filter(p => hours.has(p.user_id))).filter(p => !search || p.name.toLowerCase().includes(search) || p.role.toLowerCase().includes(search));
     const byName = (a: Person, b: Person) => a.name.localeCompare(b.name);
     return [...list].sort(viewBy === "hours" ? (a, b) => (hours.get(b.user_id) ?? 0) - (hours.get(a.user_id) ?? 0) || byName(a, b)
-      : viewBy === "position" ? (a, b) => a.role.localeCompare(b.role) || byName(a, b) : byName);
+      : viewBy === "position" ? (a, b) => positionRank(a.role) - positionRank(b.role) || a.role.localeCompare(b.role) || byName(a, b) : byName);
   }, [canManage, people, hours, query, viewBy]);
 
   // A shift is for the position the person was hired for. Covering another one is a step of its own,
@@ -410,7 +411,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     const list = (canManage ? people : people.filter(p => hours.has(p.user_id)));
     const byName = (a: Person, b: Person) => a.name.localeCompare(b.name);
     const ordered = [...list].sort(viewBy === "hours" ? (a, b) => (hours.get(b.user_id) ?? 0) - (hours.get(a.user_id) ?? 0) || byName(a, b)
-      : viewBy === "position" ? (a, b) => a.role.localeCompare(b.role) || byName(a, b) : byName);
+      : viewBy === "position" ? (a, b) => positionRank(a.role) - positionRank(b.role) || a.role.localeCompare(b.role) || byName(a, b) : byName);
     const week = shifts ?? [];
     return scheduleSheet({
       week: weekHeading(start), start: dayKey(start),
@@ -492,7 +493,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
           </tr></thead>
           <tbody>{rows.length ? rows.map(person => {
             const mine = hours.get(person.user_id) ?? 0;
-            return <tr key={person.user_id}>
+            return <tr key={person.user_id} className={`sched-row ${paint(person.role, settings)}`}>
               <th scope="row">
                 <span className="sched-person">
                   <span className="sched-avatar" aria-hidden="true">{initials(person.name)}</span>

@@ -243,6 +243,20 @@ export function colorFor(position: string, colors: Record<string, string>) {
   return key ? colors[key] : undefined;
 }
 
+// The colour a position shows in: the one chosen in the settings, or else its usual one, so every
+// position has a colour from the first day without anyone opening the gear.
+export function positionColor(position: string, colors: Record<string, string>) {
+  return colorFor(position, colors) ?? colorFor(position, SUGGESTED_COLORS);
+}
+// Where a position sits in the list: front of house in its usual order (Server, Server assistant,
+// Bartender…), then the kitchen; anything else after, by name; nobody with no position last.
+export function positionRank(position: string) {
+  const clean = position.trim().toLowerCase();
+  if (!clean) return Number.MAX_SAFE_INTEGER;
+  const i = POSITIONS.findIndex(p => p.toLowerCase() === clean);
+  return i >= 0 ? i : POSITIONS.length;
+}
+
 // Hours this person works on the calendar day this shift starts, this shift included.
 export function dayHoursFor(shift: Shift, shifts: Shift[]) {
   const day = dayKey(new Date(shift.starts_at));
