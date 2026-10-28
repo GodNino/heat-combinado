@@ -3106,3 +3106,6 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .setup-job small { display:block; color:var(--c-muted); font-size:12px; }
 :root:root:root:root:root:root:root .setup-add { display:inline-flex; align-items:center; justify-content:center; gap:6px; width:fit-content; padding:8px 14px; border-radius:999px; border:1.5px dashed var(--c-line-5); font-size:13px; font-weight:600; }
 :root:root:root:root:root:root:root .setup-add:hover { border-color:var(--c-text); }
+:root:root:root:root:root:root:root .running-list { display:flex; flex-wrap:wrap; gap:6px; margin:0; padding:0; list-style:none; }
+:root:root:root:root:root:root:root .running-list li { display:inline-flex; align-items:center; gap:6px; padding:4px 12px 4px 4px; border-radius:999px; border:1px solid var(--c-line-5); background:var(--c-surface-2); font-size:13px; font-weight:600; }
+:root:root:root:root:root:root:root .running-list li b { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:var(--lime); color:#1b1c1a; font-size:11px; }

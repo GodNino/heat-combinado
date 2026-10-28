@@ -6,14 +6,14 @@
 // Jobs are the saved list: a name and a few small steps. Today (checklist-today.tsx) gives a job
 // to a person for Lunch or Dinner; History (checklist-history.tsx) keeps the last 7 days.
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, ChevronRight, Plus } from "lucide-react";
+import { ArrowLeft, ChevronRight, Plus, Pencil } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Notice, Field, ScreenHeader } from "./ui";
 import { StepsEditor } from "./checklist-steps";
 import { Today } from "./checklist-today";
 import { MyShift } from "./checklist-mine";
 import { History } from "./checklist-history";
-import { SideworkLists, type SideworkList } from "./floor-plan";
+import { SideworkLists, mainList, type SideworkList } from "./floor-plan";
 import { MyShiftCard } from "./my-shift-card";
 import { Tonight } from "./sidework-tonight";
 import type { Phase, Role, Who } from "@/lib/sidework-plan";
@@ -186,17 +186,19 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
           <button type="button" className="setup-add" onClick={() => openForm(undefined, {phase: section.phase, role: section.role})}><Plus size={14} />{`Add to ${section.title}`}</button>
         </section>;
       })}
-      <section className="setup-section" aria-labelledby="setup-running">
-        <div className="setup-section-head">
-          <div><h3 id="setup-running">Running side work</h3><p className="muted text-xs">What servers keep an eye on during service. Tonight picks the list that matches how many servers work.</p></div>
-          <span className="setup-count">{lists.length}</span>
-        </div>
-        {lists.length ? <div className="space-y-2">{lists.map(list => <button key={list.id} type="button" className="setup-job" onClick={() => setEditingList(list)}>
-          <span className="min-w-0 flex-1"><b>{list.name}</b><small>{list.tasks.join(" · ")}</small></span>
-          <ChevronRight size={16} className="muted shrink-0" aria-hidden="true" />
-        </button>)}</div> : <p className="muted text-xs">Nothing here yet.</p>}
-        <button type="button" className="setup-add" onClick={() => setEditingList("new")}><Plus size={14} />Add a running side work list</button>
-      </section>
+      {(() => {
+        // One running side work list, most important first; tonight uses the top N for N servers.
+        const main = mainList(lists);
+        return <section className="setup-section" aria-labelledby="setup-running">
+          <div className="setup-section-head">
+            <div><h3 id="setup-running">Running side work</h3><p className="muted text-xs">What servers keep an eye on during service. Most important first: with 5 servers tonight uses the first 5, and it rotates who gets which every day.</p></div>
+            <span className="setup-count">{main?.tasks.length ?? 0}</span>
+          </div>
+          {main ? <ol className="running-list">{main.tasks.map((task, i) => <li key={i}><b>{i + 1}</b>{task}</li>)}</ol> : <p className="muted text-xs">Nothing here yet.</p>}
+          {lists.length > 1 && <p className="muted text-xs">{`HEAT uses your longest list (${main!.name}). The other ${lists.length - 1 === 1 ? "list is" : "lists are"} kept but not used.`}</p>}
+          <button type="button" className="setup-add" onClick={() => setEditingList(main ?? "new")}>{main ? <><Pencil size={14} />Edit the list</> : <><Plus size={14} />Write the list</>}</button>
+        </section>;
+      })()}
       {(() => {
         const byHand = sorted.filter(row => !row.phase || !row.role);
         return <section className="setup-section quiet" aria-labelledby="setup-hand">

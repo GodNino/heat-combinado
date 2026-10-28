@@ -12,8 +12,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Pencil, RefreshCw, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Notice } from "./ui";
-import { FloorPlan, defaultService, helpers, localDate, startingRows, suggestedList, type FloorRow, type Plan, type SideworkList, type Working } from "./floor-plan";
-import { SERVICES, closers, dayNumber, peopleIn, planJobs, roleOf, type PastJob, type Phase, type Role, type RuledJob } from "@/lib/sidework-plan";
+import { FloorPlan, defaultService, helpers, localDate, runningHistory, startingRows, suggestedList, type FloorRow, type Plan, type SideworkList, type Working } from "./floor-plan";
+import { SERVICES, closers, dayNumber, peopleIn, planJobs, roleOf, type PastJob, type PastTask, type Phase, type Role, type RuledJob } from "@/lib/sidework-plan";
 import { DayPill } from "./day-pill";
 
 type Sent = {id: string; title: string; user_id: string | null; phase: Phase; done_at: string | null; job_id: string | null; steps_done: number[]};
@@ -31,6 +31,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   const [working, setWorking] = useState<Working[]>([]);
   const [jobs, setJobs] = useState<RuledJob[]>([]);
   const [past, setPast] = useState<PastJob[]>([]);
+  // Who kept an eye on what during service in the week before, so the running side work rotates too.
+  const [runningPast, setRunningPast] = useState<PastTask[]>([]);
   const [lists, setLists] = useState<SideworkList[]>([]);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [shiftId, setShiftId] = useState<string | null>(null);
@@ -72,6 +74,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
         history = ((done.data ?? []) as {shift_id: string; job_id: string; user_id: string}[]).map(a => ({job_id: a.job_id, user_id: a.user_id, day: dayOf.get(a.shift_id)!}));
       }
       setPast(history);
+      setRunningPast(await runningHistory(restaurantId, day));
       const team = (people.data ?? []) as Working[];
       const ruled = (savedJobs.data ?? []) as RuledJob[];
       setWorking(team); setJobs(ruled); setLists((savedLists.data ?? []) as SideworkList[]); setPlan(floor.data as Plan | null);
@@ -100,7 +103,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   const servers = people.filter(p => roleOf(p.shift_position) === "server").length;
   const sas = people.filter(p => roleOf(p.shift_position) === "sa").length;
   // The floor: what was saved, or what the schedule suggests.
-  const rows: FloorRow[] = useMemo(() => plan?.rows ?? startingRows(working, service, day, suggestedList(working, service, lists)), [plan, working, service, day, lists]);
+  const rows: FloorRow[] = useMemo(() => plan?.rows ?? startingRows(working, service, day, suggestedList(working, service, lists), runningPast), [plan, working, service, day, lists, runningPast]);
   const isSent = sent.length > 0;
   const lines: Line[] = isSent ? sent.map(s => ({key: s.id, title: s.title, user_id: s.user_id, phase: s.phase, done: !!s.done_at, jobId: s.job_id})) : draft;
   const during: Line[] = rows.filter(r => r.task).map((r, i) => ({key: `during-${i}`, title: r.task, user_id: r.server_id, phase: "opening", who: r.server_name || (r.section ? "Pick-up" : "")}));
@@ -129,7 +132,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
     try {
       const me = (await supabase.auth.getUser()).data.user?.id;
       if (!plan || rebuild) {
-        const floor = await supabase.from("floor_plans").upsert({restaurant_id: restaurantId, service_date: day, service, list_id: plan?.list_id ?? suggestedList(working, service, lists)?.id ?? null, rows: rebuild ? startingRows(working, service, day, lists.find(l => l.id === plan?.list_id) ?? suggestedList(working, service, lists)) : rows, updated_at: new Date().toISOString(), updated_by: me}, {onConflict: "restaurant_id,service_date,service"});
+        const floor = await supabase.from("floor_plans").upsert({restaurant_id: restaurantId, service_date: day, service, list_id: plan?.list_id ?? suggestedList(working, service, lists)?.id ?? null, rows: rebuild ? startingRows(working, service, day, suggestedList(working, service, lists), runningPast) : rows, updated_at: new Date().toISOString(), updated_by: me}, {onConflict: "restaurant_id,service_date,service"});
         if (floor.error) throw floor.error;
       }
       let id = shiftId;

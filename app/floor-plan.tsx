@@ -11,7 +11,7 @@ import { Field, Notice } from "./ui";
 import { StepsEditor } from "./checklist-steps";
 import { DayPill } from "./day-pill";
 import { PillSelect } from "./pill-select";
-import { SERVICES, defaultServiceAt, halfOf, spreadHelpers } from "@/lib/sidework-plan";
+import { SERVICES, defaultServiceAt, halfOf, spreadHelpers, planRunning, dayNumber, type PastTask } from "@/lib/sidework-plan";
 
 export type Helper = {id: string; name: string};
 export type FloorRow = {server_id: string | null; server_name: string; sa: Helper[]; section: string; task: string};
@@ -28,17 +28,24 @@ const isHelper = (position: string) => /assistant|^\s*s\.?\s*a\.?\s*$|runner|bus
 export const helpers = (sa: Helper[]) => sa.map(h => h.name || "Team member").join(" / ");
 
 // A new plan: the servers in order, their section numbers, the list's jobs down the rows, and the S.A.s spread across them.
-export function startingRows(working: Working[], service: string, day: string, list: SideworkList | undefined): FloorRow[] {
+export function startingRows(working: Working[], service: string, day: string, list: SideworkList | undefined, history: PastTask[] = []): FloorRow[] {
   const onService = working.filter(p => serviceOf(p.starts_at) === halfOf(service));
-  return spreadHelpers(blankRows(onService.filter(p => isServer(p.shift_position)), list), onService.filter(p => isHelper(p.shift_position)), day);
+  const servers = onService.filter(p => isServer(p.shift_position));
+  const tasks = planRunning(list?.tasks ?? [], servers, day, history);
+  return spreadHelpers(servers.map((s, i) => ({server_id: s.user_id, server_name: s.name || "Team member", sa: [], section: String(i + 1), task: tasks.get(s.user_id) ?? ""})), onService.filter(p => isHelper(p.shift_position)), day);
 }
-export function suggestedList(working: Working[], service: string, lists: SideworkList[]) {
-  const servers = working.filter(p => serviceOf(p.starts_at) === halfOf(service) && isServer(p.shift_position)).length;
-  return lists.find(l => l.tasks.length === servers) ?? lists[0];
+// There is one running side work list: the longest one saved (older restaurants may have one per
+// number of servers; the longest covers the busiest night, and a quieter night uses its top).
+export function mainList(lists: SideworkList[]) {
+  return [...lists].sort((a, b) => b.tasks.length - a.tasks.length || a.name.localeCompare(b.name))[0];
 }
-
-function blankRows(servers: Working[], list: SideworkList | undefined): FloorRow[] {
-  return servers.map((s, i) => ({server_id: s.user_id, server_name: s.name || "Team member", sa: [], section: String(i + 1), task: list?.tasks[i] ?? ""}));
+export const suggestedList = (_working: Working[], _service: string, lists: SideworkList[]) => mainList(lists);
+// Who kept an eye on what in the week before, read from the floor plans already saved.
+export async function runningHistory(restaurantId: string, day: string): Promise<PastTask[]> {
+  if (!supabase) return [];
+  const from = new Date((dayNumber(day) - 7) * 864e5).toISOString().slice(0, 10);
+  const {data} = await supabase.from("floor_plans").select("service_date, rows").eq("restaurant_id", restaurantId).gte("service_date", from).lt("service_date", day);
+  return ((data ?? []) as {service_date: string; rows: FloorRow[]}[]).flatMap(p => p.rows.filter(r => r.server_id && r.task).map(r => ({task: r.task, user_id: r.server_id!, day: p.service_date})));
 }
 
 // ── The manager's screen ──
@@ -57,6 +64,7 @@ export function FloorPlan({restaurantId, initialDay, initialService, onBack}: {r
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [editingLists, setEditingLists] = useState(false);
+  const [history, setHistory] = useState<PastTask[]>([]);
 
   const explain = (e: unknown) => {
     const text = e instanceof Error ? e.message : String((e as {message?: string})?.message ?? e);
@@ -87,7 +95,9 @@ export function FloorPlan({restaurantId, initialDay, initialService, onBack}: {r
       } else {
         // A new plan starts from the servers on tonight's schedule and the list that fits how many there are.
         const fits = suggestedList(team, service, savedLists);
-        setRows(startingRows(team, service, day, fits));
+        const before = await runningHistory(restaurantId, day);
+        setHistory(before);
+        setRows(startingRows(team, service, day, fits, before));
         setListId(fits?.id ?? "");
       }
       setDirty(false);
@@ -111,7 +121,7 @@ export function FloorPlan({restaurantId, initialDay, initialService, onBack}: {r
   };
   // Everyone moves one job down the list (the last one comes back to the top), for a fair week.
   const rotate = () => { if (rows.length > 1) change(rows.map((row, i) => ({...row, task: rows[(i - 1 + rows.length) % rows.length].task}))); };
-  const restart = () => change(startingRows(working, service, day, list));
+  const restart = () => change(startingRows(working, service, day, list, history));
 
   async function save() {
     if (!supabase || busy) return;
@@ -213,7 +223,7 @@ export function SideworkLists({restaurantId, lists, onBack, initial}: {restauran
   async function save(event: FormEvent) {
     event.preventDefault();
     const clean = tasks.map(t => t.trim()).filter(Boolean);
-    if (!name.trim()) { setError("Give the list a name, like “Saturday · 7 servers”."); return; }
+    if (!name.trim()) { setError("Give the list a name, like “Running side work”."); return; }
     if (!clean.length) { setError("Add at least one job."); return; }
     setBusy(true); setError("");
     const values = {name: name.trim(), tasks: clean, updated_at: new Date().toISOString()};
@@ -237,7 +247,7 @@ export function SideworkLists({restaurantId, lists, onBack, initial}: {restauran
     <button type="button" className="btn secondary" onClick={open && lists.length && !initial ? () => setOpen(null) : onBack}><ArrowLeft size={16} />{initial ? "Setup" : open && lists.length ? "Lists" : "Floor plan"}</button>
     <Notice text={error} error />
     {!open ? <div className="mt-4 space-y-2">
-      <p className="muted mb-3 text-sm">One list for each kind of night. The first server gets the first job, the second the second, and so on down.</p>
+      <p className="muted mb-3 text-sm">One list, most important first. Tonight gives the first one to each server on: with 5 servers, the top 5. Repeat a task to give it to two servers on a busy night.</p>
       {lists.map(l => <button key={l.id} type="button" className="panel flex w-full items-center gap-3 text-left" style={{padding: "10px 16px"}} onClick={() => start(l)}>
         <span className="min-w-0 flex-1"><span className="block font-semibold">{l.name}</span><span className="muted block text-xs">{l.tasks.join(" · ")}</span></span>
         <ChevronRight size={18} className="muted shrink-0" aria-hidden="true" />
@@ -245,8 +255,8 @@ export function SideworkLists({restaurantId, lists, onBack, initial}: {restauran
       <button type="button" className="btn mt-2" onClick={() => start("new")}><Plus size={16} />New list</button>
     </div> : <form className="mt-5 space-y-5" onSubmit={save}>
       <fieldset disabled={busy} className="space-y-5">
-        <Field label="Name"><input id="sidework-list-name" maxLength={60} value={name} onChange={e => setName(e.target.value)} placeholder="Saturday · 7 servers" /></Field>
-        <StepsEditor steps={tasks} onChange={setTasks} idPrefix="sidework-task" label="Jobs, in order" addLabel="Add a job" placeholder="Coffee station" />
+        <Field label="Name"><input id="sidework-list-name" maxLength={60} value={name} onChange={e => setName(e.target.value)} placeholder="Running side work" /></Field>
+        <StepsEditor steps={tasks} onChange={setTasks} idPrefix="sidework-task" label="Most important first" addLabel="Add a task" placeholder="Coffee station" />
         <div className="flex flex-wrap gap-2">
           <button className="btn" type="submit">{busy ? "Saving…" : "Save list"}</button>
           {open !== "new" && <button type="button" className="btn secondary card-admin-danger" onClick={() => void remove()}>Delete list</button>}

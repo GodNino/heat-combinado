@@ -102,6 +102,38 @@ export function planJobs(jobs: RuledJob[], people: OnShift[], day: string, histo
   return planned;
 }
 
+// Running side work: one list, most important first, repeats allowed (Side station twice on a busy
+// night). With N servers tonight uses the first N tasks, starting again from the top when there are
+// more servers than tasks.
+export type PastTask = {task: string; user_id: string; day: string};
+export function runningTasks(tasks: string[], count: number) {
+  const clean = tasks.map(t => t.trim()).filter(Boolean);
+  return clean.length ? Array.from({length: count}, (_, i) => clean[i % clean.length]) : [];
+}
+// Who keeps an eye on what tonight: one task each, matched like the opening and closing jobs, so
+// nobody keeps yesterday's task when someone else can take it. With no history the tasks simply
+// move one server along each day. Returns the task for each server, by user id.
+export function planRunning(tasks: string[], servers: {user_id: string}[], day: string, history: PastTask[] = []) {
+  const plan = new Map<string, string>();
+  const list = runningTasks(tasks, servers.length);
+  if (!list.length || !servers.length) return plan;
+  const shift = dayNumber(day);
+  const lastDid = new Map<string, number>();
+  for (const h of history) {
+    const when = dayNumber(h.day);
+    const key = `${h.task.trim().toLowerCase()}|${h.user_id}`;
+    if (when < shift && when > (lastDid.get(key) ?? -Infinity)) lastDid.set(key, when);
+  }
+  const n = servers.length;
+  const cost = list.map((task, t) => servers.map((s, i) => {
+    const ago = shift - (lastDid.get(`${task.toLowerCase()}|${s.user_id}`) ?? -Infinity);
+    const place = ((i - (t + shift)) % n + n) % n;
+    return Math.max(0, 8 - ago) + 1e-4 * place;
+  }));
+  matchJobs(cost).forEach((c, t) => plan.set(servers[c].user_id, list[t]));
+  return plan;
+}
+
 // The cheapest way to give each job (row) its own person (column), with no fewer people than
 // jobs: the Hungarian method. Returns the person for each job.
 function matchJobs(cost: number[][]) {

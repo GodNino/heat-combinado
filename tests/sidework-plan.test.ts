@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ALL_SERVICES, closers, defaultServiceAt, halfOf, peopleIn, planJobs, spreadHelpers, weekdayOf, type OnShift, type RuledJob } from "../lib/sidework-plan.ts";
+import { ALL_SERVICES, closers, defaultServiceAt, halfOf, peopleIn, planJobs, planRunning, runningTasks, spreadHelpers, weekdayOf, type OnShift, type RuledJob } from "../lib/sidework-plan.ts";
 import { dayChoices, dayWords } from "../lib/day-words.ts";
 
 const at = (hour: number, minute = 0) => new Date(2026, 9, 24, hour, minute).toISOString();
@@ -109,4 +109,17 @@ test("more jobs than people: everybody gets one before anybody gets two", () => 
   const count = (id: string) => plan.filter(p => p.user_id === id).length;
   assert.deepEqual([count("a"), count("b")].sort(), [2, 3]);
   assert.deepEqual(plan.slice(0, 2).map(p => p.user_id), ["b", "b"], "Ana had j1 and j2 yesterday, so Beto takes both");
+});
+
+test("running side work: the top N of one list, round again when short, rotating with history", () => {
+  assert.deepEqual(runningTasks(["Trays", "Coffee", "Side"], 5), ["Trays", "Coffee", "Side", "Trays", "Coffee"]);
+  assert.deepEqual(runningTasks(["Trays", " ", "Coffee"], 1), ["Trays"]);
+  const servers = [{user_id: "a"}, {user_id: "b"}, {user_id: "c"}];
+  const tasks = ["Trays", "Coffee", "Side", "Wine"];
+  const monday = planRunning(tasks, servers, "2026-10-26");
+  assert.deepEqual([...monday.values()].sort(), ["Coffee", "Side", "Trays"], "three servers, the top three tasks");
+  const history = [...monday].map(([user_id, task]) => ({task, user_id, day: "2026-10-26"}));
+  const tuesday = planRunning(tasks, servers, "2026-10-27", history);
+  for (const [user, task] of tuesday) assert.notEqual(task, monday.get(user), `${user} kept ${task}`);
+  assert.equal(planRunning([], servers, "2026-10-27").size, 0);
 });
