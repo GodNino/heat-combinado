@@ -3085,3 +3085,11 @@ span.dash-name { text-decoration:none; }
   :root:root:root:root:root:root:root .set-kind > b { grid-column:1 / -1; }
   :root:root:root:root:root:root:root .set-kind .set-kind-add { grid-column:1 / -1; }
 }
+
+/* ===== On-call shifts: a small tag on the shift, and what it asks of the person. To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .sched-oncall { display:inline-block; margin-top:2px; padding:1px 8px; border-radius:999px; border:1px dashed var(--c-text); font-size:11px; font-weight:700; }
+:root:root:root:root:root:root:root .sched-oncall.block { display:block; width:fit-content; max-width:100%; margin-top:6px; border-radius:10px; padding:3px 10px; font-weight:600; white-space:normal; }
+:root:root:root:root:root:root:root .sched-oncall.needed { border-style:solid; background:var(--lime); border-color:var(--lime); color:#1b1c1a; }
+:root:root:root:root:root:root:root .sched-oncall.released { opacity:.7; text-decoration:line-through; }
+:root:root:root:root:root:root:root .sched-oncall.block.released { text-decoration:none; }
+:root:root:root:root:root:root:root .my-week-shift.on-call { border-style:dashed; }

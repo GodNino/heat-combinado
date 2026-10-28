@@ -111,3 +111,13 @@ test("the time stepper moves 15 minutes and wraps around midnight", () => {
   assert.equal(stepClock("17:00", 60), "18:00");
   assert.equal(stepClock("23:30", 60), "00:30");
 });
+
+test("an on-call shift counts toward hours only once the person is called in", () => {
+  const base = {id: "s", restaurant_id: "r", user_id: "u", position: "Server", starts_at: "2026-10-01T21:00:00.000Z", ends_at: "2026-10-02T03:00:00.000Z", note: "", published: true} as Shift;
+  const waiting = {...base, id: "w", on_call: true};
+  assert.equal(hoursByPerson([base, waiting]).get("u"), 6, "waiting for an answer: not counted");
+  assert.equal(hoursByPerson([base, {...waiting, on_call_status: "released"}]).get("u"), 6, "not needed: not counted");
+  assert.equal(hoursByPerson([base, {...waiting, on_call_status: "needed"}]).get("u"), 12, "called in: counted");
+  assert.equal(copiedWeek([{...waiting, on_call_status: "needed"}])[0].on_call, true, "copies as on call");
+  assert.ok(!("on_call_status" in copiedWeek([{...waiting, on_call_status: "needed"}])[0]), "with no answer yet");
+});

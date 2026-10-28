@@ -13,7 +13,12 @@ export type Shift = {
   published: boolean;
   /** Opener, mid or closer (053); empty when the shift has no tag. */
   shift_kind?: ShiftKind | null;
+  /** On call (055): they check in to find out whether they're needed. */
+  on_call?: boolean;
+  /** The manager's answer to an on-call shift: come in, or not needed. Empty until answered. */
+  on_call_status?: OnCallStatus | null;
 };
+export type OnCallStatus = "needed" | "released";
 export type Unavailability = {id: string; user_id: string; weekday: number; starts: string | null; ends: string | null; note: string};
 export type TimeOff = {id: string; user_id: string; starts_on: string; ends_on: string; note: string; status: "pending" | "approved" | "denied"; created_at?: string};
 
@@ -23,6 +28,12 @@ export const SHIFT_KINDS = ["opener", "mid", "closer"] as const;
 // Off until database update 053 has been run (Supabase SQL editor). While it is off, the pop-up and the settings
 // don't offer the tags, so nobody meets a "needs database update" message. Switch to true once 053 is in.
 export const SHIFT_TYPES_READY = false;
+// On-call shifts (055). Off until that database update has been run, like the tags above.
+export const ON_CALL_READY = true;
+// An on-call shift only counts toward hours once the manager has called the person in.
+export const countsHours = (shift: Pick<Shift, "on_call" | "on_call_status">) => !shift.on_call || shift.on_call_status === "needed";
+export const ON_CALL_TEXT: Record<"waiting" | OnCallStatus, string> = {waiting: "On call", needed: "On call · Called in", released: "On call · Not needed"};
+export const onCallText = (shift: Pick<Shift, "on_call" | "on_call_status">) => shift.on_call ? ON_CALL_TEXT[shift.on_call_status ?? "waiting"] : "";
 export type ShiftKind = typeof SHIFT_KINDS[number];
 export const KIND_LABEL: Record<ShiftKind, string> = {opener: "Opener", mid: "Mid", closer: "Closer"};
 export const KIND_LETTER: Record<ShiftKind, string> = {opener: "O", mid: "M", closer: "C"};
@@ -80,9 +91,10 @@ export function shortTime(date: Date) {
 export const shiftLabel = (shift: Pick<Shift, "starts_at" | "ends_at">) => `${shortTime(new Date(shift.starts_at))}–${shortTime(new Date(shift.ends_at))}`;
 
 export const shiftHours = (shift: Pick<Shift, "starts_at" | "ends_at">) => (Date.parse(shift.ends_at) - Date.parse(shift.starts_at)) / 3_600_000;
+export const countedHours = (shift: Shift) => countsHours(shift) ? shiftHours(shift) : 0;
 export function hoursByPerson(shifts: Shift[]) {
   const hours = new Map<string, number>();
-  for (const shift of shifts) hours.set(shift.user_id, (hours.get(shift.user_id) ?? 0) + shiftHours(shift));
+  for (const shift of shifts) hours.set(shift.user_id, (hours.get(shift.user_id) ?? 0) + countedHours(shift));
   return hours;
 }
 export const formatHours = (hours: number) => `${Math.round(hours * 10) / 10}h`;
@@ -146,7 +158,7 @@ export function dayBlocks(userId: string, day: Date, unavailable: Unavailability
 // The footer of each day: hours scheduled and how many people work.
 export function dayTotals(shifts: Shift[], day: Date) {
   const mine = shifts.filter(s => dayKey(new Date(s.starts_at)) === dayKey(day));
-  return {hours: mine.reduce((sum, s) => sum + shiftHours(s), 0), people: new Set(mine.map(s => s.user_id)).size};
+  return {hours: mine.reduce((sum, s) => sum + countedHours(s), 0), people: new Set(mine.filter(countsHours).map(s => s.user_id)).size};
 }
 
 export const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]!.toUpperCase()).join("") || "?";
@@ -157,6 +169,8 @@ export function copiedWeek(shifts: Shift[], weeks = 1) {
   return shifts.map(s => ({
     restaurant_id: s.restaurant_id, user_id: s.user_id, position: s.position, note: s.note,
     ...(s.shift_kind ? {shift_kind: s.shift_kind} : {}),
+    // An on-call shift copies as on call, waiting for a fresh answer.
+    ...(s.on_call ? {on_call: true} : {}),
     starts_at: addDays(new Date(s.starts_at), 7 * weeks).toISOString(), ends_at: addDays(new Date(s.ends_at), 7 * weeks).toISOString(),
   }));
 }
