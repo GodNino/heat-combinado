@@ -3093,3 +3093,16 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .sched-oncall.released { opacity:.7; text-decoration:line-through; }
 :root:root:root:root:root:root:root .sched-oncall.block.released { text-decoration:none; }
 :root:root:root:root:root:root:root .my-week-shift.on-call { border-style:dashed; }
+
+/* ===== Side work · Setup in sections (server/S.A. opening and closing, running side work, given by hand). To undo, revert the commit that added this block. ===== */
+:root:root:root:root:root:root:root .setup-section { display:grid; gap:10px; margin-top:16px; padding:16px; border-radius:18px; border:1.5px solid var(--c-line-5); background:var(--c-surface); }
+:root:root:root:root:root:root:root .setup-section.quiet { border-style:dashed; background:transparent; }
+:root:root:root:root:root:root:root .setup-section-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+:root:root:root:root:root:root:root .setup-section-head h3 { font-size:16px; font-weight:600; }
+:root:root:root:root:root:root:root .setup-count { flex:none; min-width:28px; padding:2px 8px; border-radius:999px; background:var(--c-surface-3); text-align:center; font-size:12px; font-weight:700; }
+:root:root:root:root:root:root:root .setup-job { display:flex; align-items:center; gap:10px; width:100%; padding:10px 14px; border-radius:12px; border:1px solid var(--c-line); background:var(--c-surface-2); text-align:left; }
+:root:root:root:root:root:root:root .setup-job:hover { border-color:var(--c-text); }
+:root:root:root:root:root:root:root .setup-job b { display:block; font-weight:600; font-size:14px; }
+:root:root:root:root:root:root:root .setup-job small { display:block; color:var(--c-muted); font-size:12px; }
+:root:root:root:root:root:root:root .setup-add { display:inline-flex; align-items:center; justify-content:center; gap:6px; width:fit-content; padding:8px 14px; border-radius:999px; border:1.5px dashed var(--c-line-5); font-size:13px; font-weight:600; }
+:root:root:root:root:root:root:root .setup-add:hover { border-color:var(--c-text); }

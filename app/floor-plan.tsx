@@ -201,14 +201,14 @@ export function FloorPlan({restaurantId, initialDay, initialService, onBack}: {r
 }
 
 // ── Saved running side work lists ──
-export function SideworkLists({restaurantId, lists, onBack}: {restaurantId: string; lists: SideworkList[]; onBack: () => void}) {
-  const [open, setOpen] = useState<SideworkList | "new" | null>(lists.length ? null : "new");
+export function SideworkLists({restaurantId, lists, onBack, initial}: {restaurantId: string; lists: SideworkList[]; onBack: () => void; initial?: SideworkList | "new"}) {
+  const [open, setOpen] = useState<SideworkList | "new" | null>(initial ?? (lists.length ? null : "new"));
   const [name, setName] = useState("");
   const [tasks, setTasks] = useState<string[]>([""]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const start = (row: SideworkList | "new") => { setOpen(row); setError(""); setName(row === "new" ? "" : row.name); setTasks(row === "new" ? [""] : row.tasks.length ? [...row.tasks] : [""]); };
-  useEffect(() => { if (open === "new") start("new"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) start(open); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -234,7 +234,7 @@ export function SideworkLists({restaurantId, lists, onBack}: {restaurantId: stri
   }
 
   return <div className="mt-4">
-    <button type="button" className="btn secondary" onClick={open && lists.length ? () => setOpen(null) : onBack}><ArrowLeft size={16} />{open && lists.length ? "Lists" : "Floor plan"}</button>
+    <button type="button" className="btn secondary" onClick={open && lists.length && !initial ? () => setOpen(null) : onBack}><ArrowLeft size={16} />{initial ? "Setup" : open && lists.length ? "Lists" : "Floor plan"}</button>
     <Notice text={error} error />
     {!open ? <div className="mt-4 space-y-2">
       <p className="muted mb-3 text-sm">One list for each kind of night. The first server gets the first job, the second the second, and so on down.</p>
