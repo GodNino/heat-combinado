@@ -27,7 +27,7 @@ export const OVERTIME_HOURS = 40;
 export const SHIFT_KINDS = ["opener", "mid", "closer"] as const;
 // Off until database update 053 has been run (Supabase SQL editor). While it is off, the pop-up and the settings
 // don't offer the tags, so nobody meets a "needs database update" message. Switch to true once 053 is in.
-export const SHIFT_TYPES_READY = false;
+export const SHIFT_TYPES_READY = true;
 // On-call shifts (055). Off until that database update has been run, like the tags above.
 export const ON_CALL_READY = true;
 // An on-call shift only counts toward hours once the manager has called the person in.
