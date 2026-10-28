@@ -92,8 +92,10 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
       closeForm();
     }, "Saved “" + name + "”.");
   }
+  // Removing a job archives it: it leaves the list and stops being handed out, but past shifts keep
+  // pointing at it, so the rotation still knows who did it. Its name is free to use again.
   const remove = (row: Job) => run(async () => {
-    const result = await supabase!.from("checklist_jobs").delete().eq("id", row.id).eq("restaurant_id", restaurantId);
+    const result = await supabase!.from("checklist_jobs").update({archived: true, updated_at: new Date().toISOString()}).eq("id", row.id).eq("restaurant_id", restaurantId);
     if (result.error) throw result.error;
     closeForm();
   }, "“" + row.name + "” was deleted.");
@@ -127,7 +129,7 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
           </fieldset>
           <button className="btn w-full" type="submit">{busy ? "Saving…" : "Save job"}</button>
           {row && (confirmDelete
-            ? <div className="flex flex-wrap gap-3"><button className="btn secondary card-admin-danger" type="button" onClick={() => void remove(row)}>Delete for good</button><button className="btn secondary" type="button" onClick={() => setConfirmDelete(false)}>Keep</button></div>
+            ? <div className="flex flex-wrap gap-3"><button className="btn secondary card-admin-danger" type="button" onClick={() => void remove(row)}>Yes, delete</button><button className="btn secondary" type="button" onClick={() => setConfirmDelete(false)}>Keep</button></div>
             : <button className="btn secondary w-full card-admin-danger" type="button" onClick={() => setConfirmDelete(true)}>Delete job</button>)}
         </fieldset>
       </form>
