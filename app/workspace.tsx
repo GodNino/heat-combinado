@@ -1438,7 +1438,9 @@ function TeamWorkspace({restaurantId, restaurantName, items, itemsLoading, busy,
       if (!supabase) throw new Error("Please reconnect to your workspace.");
       const result = await supabase.rpc("team_learning_roster", {rid: restaurantId});
       if (result.error) throw new Error(result.error.message);
-      if (request === sequence.current) setMembers(result.data as TeamMember[]);
+      // Someone with no name and no email (a demo, or an owner who hasn't set a name) comes back as
+      // their account id; show "Team member" instead of a string of letters and numbers.
+      if (request === sequence.current) setMembers((result.data as TeamMember[]).map(m => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m.name.trim()) ? {...m, name: "Team member"} : m));
       const rights = await supabase.rpc("team_access", {rid: restaurantId});
       if (rights.error) throw new Error(rights.error.message);
       const open = await supabase.rpc("team_without_position", {rid: restaurantId});

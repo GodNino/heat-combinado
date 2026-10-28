@@ -669,7 +669,9 @@ function buildAllergySheet(input: AllergyInput, header: SheetHeader, first: Dens
     {key: 'avoid', label: 'DO NOT SERVE', note: 'The selected allergen is recorded in the item.', palette: {fill: RED, ink: WHITE, tint: SOFT_RED}, items: []},
     {key: 'cross-contact', label: 'CROSS-CONTAMINATION', note: 'Confirm preparation with the kitchen before offering.', palette: {fill: AMBER, ink: BLACK, tint: SOFT_AMBER}, items: []},
     {key: 'unknown', label: 'ASK THE KITCHEN', note: 'Incomplete records. Do not offer until confirmed.', palette: {fill: MID, ink: WHITE, tint: PALE}, items: []},
-    {key: 'no-match', label: 'NO ALLERGEN FOUND', note: '', palette: {fill: LIME, ink: BLACK, tint: PALE}, items: []},
+    // Nothing recorded is not the same as safe: the band says only what HEAT knows, in a neutral grey
+    // rather than the go-ahead lime, matching "No listed match" in the app.
+    {key: 'no-match', label: 'NO RECORDED MATCH', note: '', palette: {fill: PALE, ink: BLACK, tint: PALE}, items: []},
   ];
   for (const item of [...input.items].sort((a, b) => a.name.localeCompare(b.name))) {
     const status = assessAllergies(item, asked).status;
