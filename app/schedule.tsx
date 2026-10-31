@@ -515,7 +515,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
                     return <button key={shift.id} type="button" disabled={!mayEdit(shift.position)}
                       onPointerDown={e => grab(e, shift)} onContextMenu={e => { if (canManage) e.preventDefault(); }}
                       onClick={() => { if (!dragged.current && !shift.id.startsWith("copy-")) openShift(shift); }}
-                      className={`sched-shift ${paint(shift.position, settings)} ${shift.published ? "" : "draft"} ${warnings.length ? "warn" : ""} ${drag?.shift.id === shift.id && !drag.copy ? "lifting" : ""}`}
+                      className={`sched-shift ${paint(shift.position, settings)} ${shift.published ? "" : "draft"} ${shift.on_call ? `oncall-${shift.on_call_status ?? "waiting"}` : ""} ${warnings.length ? "warn" : ""} ${drag?.shift.id === shift.id && !drag.copy ? "lifting" : ""}`}
                       title={warnings.map(w => WARNING_TEXT[w]).join(" · ") || undefined}>
                       {card(shift, warnings)}
                     </button>;
