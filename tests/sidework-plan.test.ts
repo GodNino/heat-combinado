@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ALL_SERVICES, closers, defaultServiceAt, halfOf, peopleIn, planJobs, planRunning, runningTasks, spreadHelpers, weekdayOf, type OnShift, type RuledJob } from "../lib/sidework-plan.ts";
-import { dayChoices, dayWords } from "../lib/day-words.ts";
+import { dayChoices, dayRange, dayWords } from "../lib/day-words.ts";
 
 const at = (hour: number, minute = 0) => new Date(2026, 9, 24, hour, minute).toISOString();
 const person = (id: string, name: string, position: string, start: string): OnShift => ({user_id: id, name, shift_position: position, starts_at: start});
@@ -122,4 +122,8 @@ test("running side work: the top N of one list, round again when short, rotating
   const tuesday = planRunning(tasks, servers, "2026-10-27", history);
   for (const [user, task] of tuesday) assert.notEqual(task, monday.get(user), `${user} kept ${task}`);
   assert.equal(planRunning([], servers, "2026-10-27").size, 0);
+});
+
+test("dayRange counts days in a row, across a month end", () => {
+  assert.deepEqual(dayRange("2026-10-30", 4), ["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02"]);
 });

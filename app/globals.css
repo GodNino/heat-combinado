@@ -3061,6 +3061,18 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .floor-head, :root:root:root:root:root:root:root .floor-row { gap:14px; padding:14px; }
 :root:root:root:root:root:root:root .floor-row input { height:30px; min-height:30px; padding:0 14px; border:1px solid var(--c-line-5); border-radius:999px; background:var(--c-surface); color:var(--c-text); font-size:12px; font-weight:600; }
 :root:root:root:root:root:root:root .floor-row .floor-section { text-align:center; padding:0; }
+
+/* Ask for time off: First day and Last day are small pills with a menu (like the Side work day), and the reason is a 30px pill
+   box, instead of the big browser date boxes. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .timeoff-fields { display:grid; gap:14px; margin-bottom:14px; }
+@media (min-width:640px) { :root:root:root:root:root:root:root .timeoff-fields { grid-template-columns:repeat(3, minmax(0, 1fr)); } }
+:root:root:root:root:root:root:root .timeoff-fields .field { margin:0; }
+:root:root:root:root:root:root:root .timeoff-fields .field > label { margin:0 0 6px; }
+:root:root:root:root:root:root:root .timeoff-fields .day-pill { border:1.5px solid var(--c-text); font-weight:600; }
+/* the app's own `.field input` rule is stronger than the usual 7, so these two use 11 */
+:root:root:root:root:root:root:root:root:root:root:root .timeoff-fields .field input { height:30px; min-height:30px; padding:0 14px; border:1px solid var(--c-line-5); border-radius:999px; background:var(--c-surface); color:var(--c-text); font-size:12px; font-weight:600; }
+:root:root:root:root:root:root:root:root:root:root:root .timeoff-fields .field .sched-pill select { min-height:0; height:100%; }
+@media (max-width:480px) { :root:root:root:root:root:root:root:root:root:root:root .timeoff-fields .field input { font-size:16px; } }
 :root:root:root:root:root:root:root .floor-row .sched-pill, :root:root:root:root:root:root:root .floor-list-row .sched-pill { width:100%; }
 :root:root:root:root:root:root:root .floor-row .floor-sa .sched-pill { width:auto; min-width:96px; }
 :root:root:root:root:root:root:root .floor-sa { gap:6px; }

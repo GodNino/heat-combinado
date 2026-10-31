@@ -5,6 +5,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
 import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Check, ChevronDown, Copy, Minus, Plus, Settings, SlidersHorizontal, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { DayPill } from "@/app/day-pill";
+import { dayRange } from "@/lib/day-words";
 import {
   KIND_LABEL, KIND_LETTER, positionColor, positionRank, ON_CALL_READY, countedHours, onCallText, type OnCallStatus, PALETTE, POSITIONS, SHIFT_KINDS, SHIFT_TYPES_READY, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, newCopies, dayBlocks, dayKey,
   dayTotals, defaultShift, formatHours, hoursByPerson, initials, isLive, movedShift, positionAfterDrop, kindOf, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, stepClock, weekDays, weekStart,
@@ -1219,6 +1221,9 @@ function TimeOffRequests({restaurantId, userId, setMessage, manager = false}: {r
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const today = dayKey(new Date());
+  // The days are pills with a menu (like Side work), not browser date boxes. Last day is blank for a single day.
+  const [from, setFrom] = useState(today);
+  const [to, setTo] = useState("");
   const load = useCallback(async () => {
     const {data, error} = await supabase!.from("time_off_requests").select("*").eq("restaurant_id", restaurantId).eq("user_id", userId).gte("ends_on", today).order("starts_on");
     if (error) setError(error.message); else setRequests(data as TimeOff[]);
@@ -1228,7 +1233,7 @@ function TimeOffRequests({restaurantId, userId, setMessage, manager = false}: {r
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    const starts = String(data.get("from")), ends = String(data.get("to") || data.get("from"));
+    const starts = from, ends = to || from;
     if (ends < starts) return setError("The last day must be on or after the first.");
     setBusy(true); setError("");
     const {data: saved, error} = await supabase!.from("time_off_requests").insert({restaurant_id: restaurantId, starts_on: starts, ends_on: ends, note: String(data.get("note") ?? "").trim()}).select("id").single();
@@ -1236,7 +1241,7 @@ function TimeOffRequests({restaurantId, userId, setMessage, manager = false}: {r
     if (error) return setError(error.message.includes("check constraint") ? "Time off can be up to 60 days at a time." : error.message);
     notify("time_off_requested", saved.id as string);
     setMessage(manager ? "Request sent. Another manager or the owner will approve it here." : "Request sent. Your manager will approve it here.");
-    form.reset(); await load();
+    form.reset(); setFrom(today); setTo(""); await load();
   }
   async function withdraw(id: string) {
     const {error} = await supabase!.from("time_off_requests").delete().eq("id", id);
@@ -1245,9 +1250,9 @@ function TimeOffRequests({restaurantId, userId, setMessage, manager = false}: {r
   return <div className="max-w-2xl">
     <form className="panel dash-panel" onSubmit={ask}>
       <SectionInfo heading="Ask for time off">{manager ? "Another manager or the owner approves it, and the schedule shows it while the week is built." : "Your manager approves it, and the schedule shows it while they build the week."}</SectionInfo>
-      <div className="report-row mt-3">
-        <Field label="First day"><input id="off-from" name="from" type="date" required min={today} /></Field>
-        <Field label="Last day (optional)"><input id="off-to" name="to" type="date" min={today} /></Field>
+      <div className="timeoff-fields mt-3">
+        <div className="field"><label>First day</label><DayPill label="First day" value={from} choices={dayRange(today, 181)} onChange={day => { setFrom(day); if (to && to <= day) setTo(""); }} /></div>
+        <div className="field"><label>Last day (optional)</label><DayPill label="Last day" value={to} blank="Same day" choices={dayRange(dayRange(from, 2)[1], 60)} onChange={setTo} /></div>
         <Field label="Reason (optional)"><input id="off-note" name="note" maxLength={300} placeholder="e.g. Family wedding" /></Field>
       </div>
       {error && <p role="alert" className="notice bad mb-3">{error}</p>}
