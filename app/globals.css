@@ -2016,6 +2016,12 @@ button.team-tile span{display:block;margin-top:4px;color:var(--c-muted);font-siz
 /* Library category chips: the selected one is black with white letters instead of lime (light on dark in dark mode). To undo, revert the commit that added this block. */
 :root:root:root:root:root:root:root .workspace-main .category-tabs button[aria-pressed="true"]{background:var(--c-text);color:var(--c-bg);border-color:var(--c-text)}
 
+/* Language and Appearance in the left menu use the same chips as the main screen: 30px tall, 12px text, and the selected one
+   black with white letters (light on dark in dark mode) instead of lime. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .theme-choice .category-tabs { display:flex; flex-wrap:wrap; gap:7px; overflow:visible; padding-bottom:0; }
+:root:root:root:root:root:root:root .theme-choice .category-tabs button { flex:none; min-width:0; min-height:30px; height:30px; padding:0 12px; font-size:12px; line-height:1.2; }
+:root:root:root:root:root:root:root .theme-choice .category-tabs button[aria-pressed="true"] { background:var(--c-text); color:var(--c-bg); border-color:var(--c-text); }
+
 
 /* "Review a missed item" on Home looks like the Review button in "Study these again": outlined pill with the amber (!). To undo, revert the commit that added this block. */
 :root:root:root:root:root:root:root .study-reminder .review-missed{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--c-text);border:1.5px solid currentColor;border-radius:999px;padding:7px 14px 7px 10px;min-height:0;font-size:15px;font-weight:600;box-shadow:none}
