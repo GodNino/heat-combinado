@@ -1978,6 +1978,13 @@ button.team-tile span{display:block;margin-top:4px;color:var(--c-muted);font-siz
 :root:root:root:root:root:root:root .board-pill:not(.out):not(.low):not(:disabled){background:var(--c-pass);border:1.5px solid var(--c-pass);color:var(--c-bg);font-weight:600}
 :root:root:root:root:root:root:root .board-pill.out:not(:disabled){background:var(--c-fail);border:1.5px solid var(--c-fail);color:var(--c-bg);font-weight:600}
 :root:root:root:root:root:root:root .board-pill.low:not(:disabled){background:#f0a04b;border:1.5px solid #f0a04b;color:var(--ink);font-weight:600}
+
+/* Pre-shift, Who gets it > Working today: the people are plain text grouped by position, not green pills (green means "available"
+   on the board). To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .who-group { display:grid; grid-template-columns:120px minmax(0,1fr); gap:14px; padding:10px 0; border-top:1px solid var(--c-line-5); font-size:14px; line-height:1.5; }
+:root:root:root:root:root:root:root .who-group > span:first-child { font-weight:700; }
+:root:root:root:root:root:root:root .who-group > span:first-child .muted { font-weight:400; }
+@media (max-width:520px) { :root:root:root:root:root:root:root .who-group { grid-template-columns:minmax(0,1fr); gap:2px; } }
 /* Allergy results use the same compact rows as the Content library: photo, name, category and price, allergen codes, and the verdict as a small round mark on the right. What was found stays under the codes. To undo, revert the commit that added this block. */
 :root:root:root:root:root:root:root .menu-list>.allergy-row>span:first-of-type{grid-column:2}
 :root:root:root:root:root:root:root .menu-list>.allergy-row:has(.shift-flag)>span:first-of-type{grid-column:2 / span 2}
