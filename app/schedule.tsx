@@ -5,6 +5,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
 import { AlertTriangle, ArrowLeftRight, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Check, ChevronDown, Copy, Minus, Plus, Settings, SlidersHorizontal, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { DayPill } from "@/app/day-pill";
+import { dayRange } from "@/lib/day-words";
 import {
   KIND_LABEL, KIND_LETTER, positionColor, positionRank, ON_CALL_READY, countedHours, onCallText, type OnCallStatus, PALETTE, POSITIONS, SHIFT_KINDS, SHIFT_TYPES_READY, SUGGESTED_COLORS, WARNING_TEXT, WEEKDAYS, addDays, allWarnings, atTime, clock, colorFor, copiedWeek, newCopies, dayBlocks, dayKey,
   dayTotals, defaultShift, formatHours, hoursByPerson, initials, isLive, movedShift, positionAfterDrop, kindOf, readSettings, shiftHours, shiftLabel, shiftTimes, shortTime, stepClock, weekDays, weekStart,
@@ -96,6 +98,8 @@ export function Schedule({restaurantId, restaurantName, userId, canManage, setMe
 // onCall/answer and their "was" twins: only what changed is sent, so saving works before database update 055.
 type Draft = {id?: string; user_id: string; position: string; day: string; start: string; end: string; kind: ShiftKind | null; was: ShiftKind | null; covering?: boolean; onCall: boolean; wasOnCall: boolean; answer: OnCallStatus | null; wasAnswer: OnCallStatus | null};
 type ViewBy = "name" | "hours" | "position";
+// BOH is the kitchen positions in the schedule settings; everyone else is FOH.
+type Side = "all" | "boh" | "foh";
 // A shift being dragged: where it was grabbed, where the pointer is now, and the cell under it.
 type Drag = {shift: Shift; x: number; y: number; dx: number; dy: number; width: number; target: string | null; copy: boolean};
 type Press = {shift: Shift; x: number; y: number; dx: number; dy: number; width: number; touch: boolean; timer?: number};
@@ -161,6 +165,8 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   // People sit grouped by position (Server, Server assistant, Bartender…), each row in its colour.
   const [viewBy, setViewBy] = useState<ViewBy>("position");
   const [query, setQuery] = useState("");
+  // A chef who builds only the kitchen opens on BOH, floor managers on FOH; anyone else on Everyone.
+  const [side, setSide] = useState<Side>(canManage && access.kitchen !== access.foh ? (access.kitchen ? "boh" : "foh") : "all");
   const [showConflicts, setShowConflicts] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
   // Copy week: what the week before holds and what the week after already has, fetched when it opens.
@@ -220,14 +226,26 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   const legend = useMemo(() => [...new Map((shifts ?? []).map(s => [s.position.trim().toLowerCase(), s.position.trim()])).values()]
     .map(name => [name, colorFor(name, settings.position_colors)] as const).filter((row): row is readonly [string, string] => !!row[1])
     .sort((a, b) => a[0].localeCompare(b[0])), [shifts, settings.position_colors]);
+  // BOH / FOH: the people on each side, by their own position (not the position of one shift they cover).
+  const inSide = useCallback((p: Person) => side === "all" || isKitchen(p.role, settings) === (side === "boh"), [side, settings]);
+  const sideCount = useMemo(() => {
+    const base = canManage ? people : people.filter(p => hours.has(p.user_id));
+    const boh = base.filter(p => isKitchen(p.role, settings)).length;
+    return {boh, foh: base.length - boh};
+  }, [canManage, people, hours, settings]);
+  const sideShifts = useMemo(() => {
+    if (side === "all") return shifts ?? [];
+    const ids = new Set(people.filter(inSide).map(p => p.user_id));
+    return (shifts ?? []).filter(s => ids.has(s.user_id));
+  }, [side, shifts, people, inSide]);
   // Employees see only who works this week; managers see the whole team, ready to fill in.
   const rows = useMemo(() => {
     const search = query.trim().toLowerCase();
-    const list = (canManage ? people : people.filter(p => hours.has(p.user_id))).filter(p => !search || p.name.toLowerCase().includes(search) || p.role.toLowerCase().includes(search));
+    const list = (canManage ? people : people.filter(p => hours.has(p.user_id))).filter(inSide).filter(p => !search || p.name.toLowerCase().includes(search) || p.role.toLowerCase().includes(search));
     const byName = (a: Person, b: Person) => a.name.localeCompare(b.name);
     return [...list].sort(viewBy === "hours" ? (a, b) => (hours.get(b.user_id) ?? 0) - (hours.get(a.user_id) ?? 0) || byName(a, b)
       : viewBy === "position" ? (a, b) => positionRank(a.role) - positionRank(b.role) || a.role.localeCompare(b.role) || byName(a, b) : byName);
-  }, [canManage, people, hours, query, viewBy]);
+  }, [canManage, people, hours, query, viewBy, inSide]);
 
   // A shift is for the position the person was hired for. Covering another one is a step of its own,
   // taken on purpose; it's also where we land when their own position isn't this manager's to schedule.
@@ -408,13 +426,13 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   </>;
   // The week on paper: everyone the screen would list (whatever is typed in the search), in the same order.
   const printWeek = async () => {
-    const list = (canManage ? people : people.filter(p => hours.has(p.user_id)));
+    const list = (canManage ? people : people.filter(p => hours.has(p.user_id))).filter(inSide);
     const byName = (a: Person, b: Person) => a.name.localeCompare(b.name);
     const ordered = [...list].sort(viewBy === "hours" ? (a, b) => (hours.get(b.user_id) ?? 0) - (hours.get(a.user_id) ?? 0) || byName(a, b)
       : viewBy === "position" ? (a, b) => positionRank(a.role) - positionRank(b.role) || a.role.localeCompare(b.role) || byName(a, b) : byName);
-    const week = shifts ?? [];
+    const week = sideShifts;
     return scheduleSheet({
-      week: weekHeading(start), start: dayKey(start),
+      week: side === "all" ? weekHeading(start) : `${weekHeading(start)} · ${side === "boh" ? "BOH" : "FOH"}`, start: dayKey(start),
       days: days.map(day => day.toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"}).replace(",", "")),
       rows: ordered.map(person => {
         const mine = hours.get(person.user_id) ?? 0;
@@ -433,8 +451,8 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     }, {restaurant: restaurantName});
   };
   const conflicts = warningsOf.size;
-  const total = (shifts ?? []).reduce((sum, s) => sum + countedHours(s), 0);
-  const working = new Set((shifts ?? []).map(s => s.user_id)).size;
+  const total = sideShifts.reduce((sum, s) => sum + countedHours(s), 0);
+  const working = new Set(sideShifts.map(s => s.user_id)).size;
   const today = dayKey(new Date());
 
   return <div>
@@ -469,6 +487,12 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     {!shifts ? <p className="muted" role="status">Loading the schedule…</p>
       : !people.length || (!canManage && !rows.length && !query) ? <p className="panel p-5 muted">{canManage ? "Nobody on the team yet. Invite your team from Team." : "Nothing published for this week yet."}</p>
       : <>
+        {sideCount.boh > 0 && sideCount.foh > 0 && <div className="sched-show">
+          <span className="eyebrow muted">Show</span>
+          <div className="category-tabs" role="group" aria-label="Show">
+            {([["all", "Everyone"], ["boh", `BOH · ${sideCount.boh}`], ["foh", `FOH · ${sideCount.foh}`]] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={side === key} onClick={() => setSide(key)}>{label}</button>)}
+          </div>
+        </div>}
         <div className="sched-find">
           <span className="sched-search"><input type="search" aria-label="Search the team" placeholder="Search the team" value={query} onChange={e => setQuery(e.target.value)} /></span>
           <span className="sched-viewby" ref={viewRef}>
@@ -499,7 +523,8 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
                   <span className="sched-avatar" aria-hidden="true">{initials(person.name)}</span>
                   <span className="sched-who">
                     <span className="sched-name">{person.name}</span>
-                    <span className="sched-role">{person.role.trim() || "No role"}<span className="sched-hours">{" · "}{formatHours(mine)}</span></span>
+                    <span className="sched-role">{person.role.trim() || "No role"}</span>
+                    <span className="sched-hours">{formatHours(mine)}</span>
                     {mine > settings.overtime_weekly && <span className="sched-over">Overtime</span>}
                   </span>
                 </span>
@@ -530,7 +555,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
               <span className="sched-foot-label"><span>Hours</span><b>{formatHours(total)}</b></span>
               <span className="sched-foot-label"><span>People</span><b>{working}</b></span>
             </th>
-            {days.map(day => { const t = dayTotals(shifts ?? [], day); return <td key={day.toISOString()}>
+            {days.map(day => { const t = dayTotals(sideShifts, day); return <td key={day.toISOString()}>
               <span className="sched-foot"><Users size={13} aria-hidden="true" />{t.people}</span>
               <span className="sched-foot">{formatHours(t.hours)}</span>
             </td>; })}
@@ -1196,6 +1221,9 @@ function TimeOffRequests({restaurantId, userId, setMessage, manager = false}: {r
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const today = dayKey(new Date());
+  // The days are pills with a menu (like Side work), not browser date boxes. Last day is blank for a single day.
+  const [from, setFrom] = useState(today);
+  const [to, setTo] = useState("");
   const load = useCallback(async () => {
     const {data, error} = await supabase!.from("time_off_requests").select("*").eq("restaurant_id", restaurantId).eq("user_id", userId).gte("ends_on", today).order("starts_on");
     if (error) setError(error.message); else setRequests(data as TimeOff[]);
@@ -1205,7 +1233,7 @@ function TimeOffRequests({restaurantId, userId, setMessage, manager = false}: {r
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    const starts = String(data.get("from")), ends = String(data.get("to") || data.get("from"));
+    const starts = from, ends = to || from;
     if (ends < starts) return setError("The last day must be on or after the first.");
     setBusy(true); setError("");
     const {data: saved, error} = await supabase!.from("time_off_requests").insert({restaurant_id: restaurantId, starts_on: starts, ends_on: ends, note: String(data.get("note") ?? "").trim()}).select("id").single();
@@ -1213,7 +1241,7 @@ function TimeOffRequests({restaurantId, userId, setMessage, manager = false}: {r
     if (error) return setError(error.message.includes("check constraint") ? "Time off can be up to 60 days at a time." : error.message);
     notify("time_off_requested", saved.id as string);
     setMessage(manager ? "Request sent. Another manager or the owner will approve it here." : "Request sent. Your manager will approve it here.");
-    form.reset(); await load();
+    form.reset(); setFrom(today); setTo(""); await load();
   }
   async function withdraw(id: string) {
     const {error} = await supabase!.from("time_off_requests").delete().eq("id", id);
@@ -1222,9 +1250,9 @@ function TimeOffRequests({restaurantId, userId, setMessage, manager = false}: {r
   return <div className="max-w-2xl">
     <form className="panel dash-panel" onSubmit={ask}>
       <SectionInfo heading="Ask for time off">{manager ? "Another manager or the owner approves it, and the schedule shows it while the week is built." : "Your manager approves it, and the schedule shows it while they build the week."}</SectionInfo>
-      <div className="report-row mt-3">
-        <Field label="First day"><input id="off-from" name="from" type="date" required min={today} /></Field>
-        <Field label="Last day (optional)"><input id="off-to" name="to" type="date" min={today} /></Field>
+      <div className="timeoff-fields mt-3">
+        <div className="field"><label>First day</label><DayPill label="First day" value={from} choices={dayRange(today, 181)} onChange={day => { setFrom(day); if (to && to <= day) setTo(""); }} /></div>
+        <div className="field"><label>Last day (optional)</label><DayPill label="Last day" value={to} blank="Same day" choices={dayRange(dayRange(from, 2)[1], 60)} onChange={setTo} /></div>
         <Field label="Reason (optional)"><input id="off-note" name="note" maxLength={300} placeholder="e.g. Family wedding" /></Field>
       </div>
       {error && <p role="alert" className="notice bad mb-3">{error}</p>}

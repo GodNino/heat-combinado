@@ -585,7 +585,7 @@ const PHRASES: Record<string, string> = {
   "You're available every day.": "Puedes trabajar todos los días.", "From": "Desde", "To": "Hasta",
   "The end time must be after the start.": "La hora final tiene que ser después de la inicial.",
   "Ask for time off": "Pedir días libres", "Another manager or the owner approves it, and the schedule shows it while the week is built.": "Otro manager o el dueño lo aprueba, y el horario lo muestra al armar la semana.", "Request sent. Another manager or the owner will approve it here.": "Solicitud enviada. Otro manager o el dueño la aprueba aquí.", "Your requests": "Tus solicitudes", "Your manager approves it, and the schedule shows it while they build the week.": "Tu manager lo aprueba, y el horario lo muestra al armar la semana.",
-  "First day": "Primer día", "Last day (optional)": "Último día (opcional)", "Reason (optional)": "Motivo (opcional)", "e.g. Family wedding": "ej. Boda familiar",
+  "First day": "Primer día", "Last day (optional)": "Último día (opcional)", "Same day": "El mismo día", "Reason (optional)": "Motivo (opcional)", "e.g. Family wedding": "ej. Boda familiar",
   "Send request": "Enviar solicitud", "Waiting for approval": "Esperando aprobación", "Approved": "Aprobado", "Not approved": "No aprobado", "Withdraw": "Retirar",
   "The last day must be on or after the first.": "El último día tiene que ser igual o después del primero.",
   "Time off can be up to 60 days at a time.": "Puedes pedir hasta 60 días seguidos.", "Request sent. Your manager will approve it here.": "Solicitud enviada. Tu manager la aprueba aquí.",

@@ -1978,6 +1978,13 @@ button.team-tile span{display:block;margin-top:4px;color:var(--c-muted);font-siz
 :root:root:root:root:root:root:root .board-pill:not(.out):not(.low):not(:disabled){background:var(--c-pass);border:1.5px solid var(--c-pass);color:var(--c-bg);font-weight:600}
 :root:root:root:root:root:root:root .board-pill.out:not(:disabled){background:var(--c-fail);border:1.5px solid var(--c-fail);color:var(--c-bg);font-weight:600}
 :root:root:root:root:root:root:root .board-pill.low:not(:disabled){background:#f0a04b;border:1.5px solid #f0a04b;color:var(--ink);font-weight:600}
+
+/* Pre-shift, Who gets it > Working today: the people are plain text grouped by position, not green pills (green means "available"
+   on the board). To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .who-group { display:grid; grid-template-columns:120px minmax(0,1fr); gap:14px; padding:10px 0; border-top:1px solid var(--c-line-5); font-size:14px; line-height:1.5; }
+:root:root:root:root:root:root:root .who-group > span:first-child { font-weight:700; }
+:root:root:root:root:root:root:root .who-group > span:first-child .muted { font-weight:400; }
+@media (max-width:520px) { :root:root:root:root:root:root:root .who-group { grid-template-columns:minmax(0,1fr); gap:2px; } }
 /* Allergy results use the same compact rows as the Content library: photo, name, category and price, allergen codes, and the verdict as a small round mark on the right. What was found stays under the codes. To undo, revert the commit that added this block. */
 :root:root:root:root:root:root:root .menu-list>.allergy-row>span:first-of-type{grid-column:2}
 :root:root:root:root:root:root:root .menu-list>.allergy-row:has(.shift-flag)>span:first-of-type{grid-column:2 / span 2}
@@ -2724,6 +2731,10 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root:root .sched-scroll { position:relative; z-index:0; }
 :root:root:root:root:root:root:root:root .sched-find { position:relative; z-index:5; }
 
+/* Schedule: Show Everyone / BOH / FOH above the search. BOH is the kitchen positions in the schedule settings. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .sched-show { display:flex; align-items:center; gap:10px; margin:0 0 10px; }
+:root:root:root:root:root:root:root .sched-show .category-tabs { padding:0; overflow:visible; -webkit-mask-image:none; mask-image:none; flex-wrap:wrap; }
+
 /* Landing page, EN / ES buttons the same size as the Sign in button.
    To undo, revert the commit that added this block. */
 :root:root:root:root:root:root:root .site-lang .lang-switch { display:flex; gap:8px; padding:0; overflow:visible; }
@@ -3050,6 +3061,18 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .floor-head, :root:root:root:root:root:root:root .floor-row { gap:14px; padding:14px; }
 :root:root:root:root:root:root:root .floor-row input { height:30px; min-height:30px; padding:0 14px; border:1px solid var(--c-line-5); border-radius:999px; background:var(--c-surface); color:var(--c-text); font-size:12px; font-weight:600; }
 :root:root:root:root:root:root:root .floor-row .floor-section { text-align:center; padding:0; }
+
+/* Ask for time off: First day and Last day are small pills with a menu (like the Side work day), and the reason is a 30px pill
+   box, instead of the big browser date boxes. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .timeoff-fields { display:grid; gap:14px; margin-bottom:14px; }
+@media (min-width:640px) { :root:root:root:root:root:root:root .timeoff-fields { grid-template-columns:repeat(3, minmax(0, 1fr)); } }
+:root:root:root:root:root:root:root .timeoff-fields .field { margin:0; }
+:root:root:root:root:root:root:root .timeoff-fields .field > label { margin:0 0 6px; }
+:root:root:root:root:root:root:root .timeoff-fields .day-pill { border:1.5px solid var(--c-text); font-weight:600; }
+/* the app's own `.field input` rule is stronger than the usual 7, so these two use 11 */
+:root:root:root:root:root:root:root:root:root:root:root .timeoff-fields .field input { height:30px; min-height:30px; padding:0 14px; border:1px solid var(--c-line-5); border-radius:999px; background:var(--c-surface); color:var(--c-text); font-size:12px; font-weight:600; }
+:root:root:root:root:root:root:root:root:root:root:root .timeoff-fields .field .sched-pill select { min-height:0; height:100%; }
+@media (max-width:480px) { :root:root:root:root:root:root:root:root:root:root:root .timeoff-fields .field input { font-size:16px; } }
 :root:root:root:root:root:root:root .floor-row .sched-pill, :root:root:root:root:root:root:root .floor-list-row .sched-pill { width:100%; }
 :root:root:root:root:root:root:root .floor-row .floor-sa .sched-pill { width:auto; min-width:96px; }
 :root:root:root:root:root:root:root .floor-sa { gap:6px; }
@@ -3072,6 +3095,7 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .sched-name { display:block; font-weight:600; line-height:1.25; overflow-wrap:anywhere; }
 :root:root:root:root:root:root:root .sched-role { overflow:visible; white-space:normal; line-height:1.3; }
 :root:root:root:root:root:root:root .sched-role .sched-hours { display:inline; margin:0; font-family:inherit; font-size:inherit; font-weight:400; color:var(--c-muted); }
+:root:root:root:root:root:root:root .sched-who > .sched-hours { display:block; margin:0; font-family:inherit; font-size:12px; font-weight:400; line-height:1.3; color:var(--c-muted); }
 :root:root:root:root:root:root:root .sched-over { display:block; font-size:12px; font-weight:600; line-height:1.3; color:var(--c-danger); }
 :root:root:root:root:root:root:root .sched-grid tbody tr.sched-row > th, :root:root:root:root:root:root:root .sched-grid tbody tr.sched-row > td { height:92px; }
 

@@ -73,7 +73,7 @@ import { LastShiftNote, ShiftReports } from "./shift-report";
 import { LanguageSwitch, currentLang, setLang } from "./language";
 import { NotificationSwitch, notify } from "./notifications";
 import { MyWeek, NextShift, Schedule, ShiftChangesWaiting, TodayRoster, type ScheduleTab } from "./schedule";
-import { FOH_POSITIONS, KITCHEN_POSITIONS, POSITIONS } from "@/lib/schedule";
+import { FOH_POSITIONS, KITCHEN_POSITIONS, POSITIONS, positionRank } from "@/lib/schedule";
 import { ManagerAttention, type AttentionTarget } from "./home-cards";
 
 // Every screen the workspace can show. Named once: it used to be spelled out in two places.
@@ -1061,16 +1061,19 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, startEd
   const [recipientIds, setRecipientIds] = useState<string[]>([]);
   // Who has a published shift today: one tap sends the board to just them.
   const [workingIds, setWorkingIds] = useState<string[]>([]);
+  // Each person's position, so today's people can be listed by position. If it cannot be read, they are listed together.
+  const [roles, setRoles] = useState<Map<string, string>>(new Map());
   const sequence = useRef(0);
   const loadBoard = useCallback(async (prefill = false) => {
     const request = ++sequence.current;
     setLoading(true);setError("");setMessage("");
     try {
       if (!supabase) throw new Error("Please connect to your workspace and try again.");
-      const [result, team, working] = await Promise.all([
+      const [result, team, working, positions] = await Promise.all([
         supabase.rpc("get_preshift_board", {rid: restaurant.id}),
         supabase.rpc("shift_team_options", {rid: restaurant.id}),
         supabase.rpc("preshift_working_today", {rid: restaurant.id}),
+        supabase.rpc("schedule_team", {rid: restaurant.id}),
       ]);
       if (result.error) throw new Error(result.error.message);
       if (team.error) throw new Error(team.error.message);
@@ -1083,6 +1086,7 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, startEd
       const onToday = (working.data as {user_id: string}[]).map(person => person.user_id);
       setTeamOptions(team.data as {user_id: string; name: string}[]);
       setWorkingIds(onToday);
+      setRoles(new Map(((positions.error ? [] : positions.data ?? []) as {user_id: string; role: string}[]).map(person => [person.user_id, (person.role ?? "").trim()])));
       setRecipientIds(prefill ? selected : []);
       // A board sent to exactly today's people reopens on "Working today".
       const sameAsToday = selected.length > 0 && selected.length === onToday.length && selected.every(id => onToday.includes(id));
@@ -1158,6 +1162,14 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, startEd
   const itemOptions = CONTENT_TYPES.map(type => <optgroup key={type} label={labelFor(type).heading}>{inMenuOrder(items.filter(item => contentTypeOf(item) === type), namesFor(type)).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</optgroup>);
   // "Delete" asks once more. It is shown under the posted card, and under the Delete and Cancel row while editing.
   const deleteConfirm = confirmClear ? <div className="mt-5 border-t border-line pt-4"><p>Delete today’s board? It comes off every phone. The note, the focus and the 86 board go with it. You can write a new one straight after.</p><div className="mt-3 flex flex-wrap gap-3"><button type="button" className="btn secondary card-admin-danger" disabled={busy} onClick={() => void clearBoard()}>{busy ? "Deleting\u2026" : "Yes, delete"}</button><button type="button" className="btn secondary" disabled={busy} onClick={() => setConfirmClear(false)}>Keep it</button></div></div> : null;
+  // Today's people by position (Server, Bartender, Kitchen…), each group's names in order. Listed together when positions are unknown.
+  const workingGroups: [string, string[]][] = (() => {
+    const named = workingIds.map(id => ({role: roles.size ? roles.get(id) || "No role" : "", name: teamOptions.find(person => person.user_id === id)?.name || "Team member"}));
+    const byRole = new Map<string, string[]>();
+    for (const {role, name} of named) byRole.set(role, [...(byRole.get(role) ?? []), name]);
+    return [...byRole.entries()].map(([role, names]): [string, string[]] => [role, names.sort((a, b) => a.localeCompare(b))])
+      .sort((a, b) => positionRank(a[0] === "No role" ? "" : a[0]) - positionRank(b[0] === "No role" ? "" : b[0]) || a[0].localeCompare(b[0]));
+  })();
   return <section className="preshift mx-auto max-w-3xl">
     <p className="eyebrow muted">Manager workspace · {restaurant.name}</p>
     <h1 className="mt-3 text-2xl font-semibold">Pre-shift</h1>
@@ -1217,7 +1229,10 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, startEd
         </div>
         {audience === "everyone" ? <p className="muted mt-3">Every employee will see today's board.</p> : audience === "working" ? (workingIds.length ? <>
           <p className="muted mt-3">Only the people with a published shift today will see it.</p>
-          <div className="board-pills mt-3">{workingIds.map(id => <span key={id} className="board-pill">{teamOptions.find(person => person.user_id === id)?.name || "Team member"}</span>)}</div>
+          <div className="who-groups mt-3">{workingGroups.map(([role, names]) => <div key={role} className="who-group">
+            {role ? <span><b>{role}</b><span className="muted">{` · ${names.length}`}</span></span> : <span className="muted">{`${names.length} people`}</span>}
+            <span>{names.join(" · ")}</span>
+          </div>)}</div>
         </> : <p className="muted mt-3">No one has a published shift today. Publish today's schedule first, or send it to everyone.</p>) : <>
           <div className="my-3 flex gap-2">
             <button type="button" className="btn secondary" onClick={() => {setRecipientIds(teamOptions.map(person => person.user_id));setMessage("");}}>Select all</button>

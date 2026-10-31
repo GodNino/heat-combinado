@@ -17,3 +17,12 @@ export function dayChoices(chosen: string, now = new Date()) {
   const days = Array.from({length: 16}, (_, i) => key(new Date(now.getFullYear(), now.getMonth(), now.getDate() + i - 1)));
   return chosen && !days.includes(chosen) ? [...days, chosen].sort() : days;
 }
+
+/** `count` days in a row starting at `from` (a "2026-10-31" day). */
+export function dayRange(from: string, count: number) {
+  const start = parse(from);
+  return Array.from({length: count}, (_, i) => key(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)));
+}
+
+/** "November 2026", for the headings in a long list of days. */
+export const monthWords = (day: string) => parse(day).toLocaleDateString("en-US", {month: "long", year: "numeric"});
