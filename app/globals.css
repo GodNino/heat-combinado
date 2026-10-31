@@ -2016,6 +2016,12 @@ button.team-tile span{display:block;margin-top:4px;color:var(--c-muted);font-siz
 /* Library category chips: the selected one is black with white letters instead of lime (light on dark in dark mode). To undo, revert the commit that added this block. */
 :root:root:root:root:root:root:root .workspace-main .category-tabs button[aria-pressed="true"]{background:var(--c-text);color:var(--c-bg);border-color:var(--c-text)}
 
+/* Language and Appearance in the left menu use the same chips as the main screen: 30px tall, 12px text, and the selected one
+   black with white letters (light on dark in dark mode) instead of lime. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .theme-choice .category-tabs { display:flex; flex-wrap:wrap; gap:7px; overflow:visible; padding-bottom:0; }
+:root:root:root:root:root:root:root .theme-choice .category-tabs button { flex:none; min-width:0; min-height:30px; height:30px; padding:0 12px; font-size:12px; line-height:1.2; }
+:root:root:root:root:root:root:root .theme-choice .category-tabs button[aria-pressed="true"] { background:var(--c-text); color:var(--c-bg); border-color:var(--c-text); }
+
 
 /* "Review a missed item" on Home looks like the Review button in "Study these again": outlined pill with the amber (!). To undo, revert the commit that added this block. */
 :root:root:root:root:root:root:root .study-reminder .review-missed{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--c-text);border:1.5px solid currentColor;border-radius:999px;padding:7px 14px 7px 10px;min-height:0;font-size:15px;font-weight:600;box-shadow:none}
@@ -3102,6 +3108,13 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .sched-oncall.needed { border-style:solid; background:var(--lime); border-color:var(--lime); color:#1b1c1a; }
 :root:root:root:root:root:root:root .sched-oncall.released { opacity:.7; text-decoration:line-through; }
 :root:root:root:root:root:root:root .sched-oncall.block.released { text-decoration:none; }
+
+/* On-call shifts stand out on the Schedule: while the person is waiting to hear if they are needed, the card is striped with
+   a dashed edge and a solid black "On call" tag; once called in it is a normal card with the lime tag; if not needed it fades.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .sched-shift.pos.oncall-waiting { background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--pos) 26%, var(--c-surface)) 0 7px, var(--c-surface) 7px 14px); border-style:dashed; border-left-style:solid; }
+:root:root:root:root:root:root:root .sched-shift.pos.oncall-released { opacity:.55; }
+:root:root:root:root:root:root:root .sched-oncall.waiting { border-style:solid; border-color:var(--c-text); background:var(--c-text); color:var(--c-surface); }
 :root:root:root:root:root:root:root .my-week-shift.on-call { border-style:dashed; }
 
 /* ===== Side work · Setup in sections (server/S.A. opening and closing, running side work, given by hand). To undo, revert the commit that added this block. ===== */
