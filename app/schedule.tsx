@@ -498,11 +498,9 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
                 <span className="sched-person">
                   <span className="sched-avatar" aria-hidden="true">{initials(person.name)}</span>
                   <span className="sched-who">
-                    <span className="sched-who-line">
-                      <span className="block truncate font-semibold">{person.name}</span>
-                      <span className={`sched-hours ${mine > settings.overtime_weekly ? "over" : ""}`}>{formatHours(mine)}{mine > settings.overtime_weekly ? " · Overtime" : ""}</span>
-                    </span>
-                    <span className="sched-role">{person.role.trim() || "No role"}</span>
+                    <span className="sched-name">{person.name}</span>
+                    <span className="sched-role">{person.role.trim() || "No role"}<span className="sched-hours">{" · "}{formatHours(mine)}</span></span>
+                    {mine > settings.overtime_weekly && <span className="sched-over">Overtime</span>}
                   </span>
                 </span>
               </th>
