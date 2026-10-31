@@ -584,7 +584,7 @@ const PHRASES: Record<string, string> = {
   "Every week, the same. Your manager sees it while building the schedule. For a one-off day, ask for time off instead.": "Igual todas las semanas. Tu manager lo ve al armar el horario. Para un día suelto, mejor pide un día libre.",
   "You're available every day.": "Puedes trabajar todos los días.", "From": "Desde", "To": "Hasta",
   "The end time must be after the start.": "La hora final tiene que ser después de la inicial.",
-  "Ask for time off": "Pedir días libres", "Your manager approves it, and the schedule shows it while they build the week.": "Tu manager lo aprueba, y el horario lo muestra al armar la semana.",
+  "Ask for time off": "Pedir días libres", "Another manager or the owner approves it, and the schedule shows it while the week is built.": "Otro manager o el dueño lo aprueba, y el horario lo muestra al armar la semana.", "Request sent. Another manager or the owner will approve it here.": "Solicitud enviada. Otro manager o el dueño la aprueba aquí.", "Your requests": "Tus solicitudes", "Your manager approves it, and the schedule shows it while they build the week.": "Tu manager lo aprueba, y el horario lo muestra al armar la semana.",
   "First day": "Primer día", "Last day (optional)": "Último día (opcional)", "Reason (optional)": "Motivo (opcional)", "e.g. Family wedding": "ej. Boda familiar",
   "Send request": "Enviar solicitud", "Waiting for approval": "Esperando aprobación", "Approved": "Aprobado", "Not approved": "No aprobado", "Withdraw": "Retirar",
   "The last day must be on or after the first.": "El último día tiene que ser igual o después del primero.",

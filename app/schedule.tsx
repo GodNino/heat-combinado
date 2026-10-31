@@ -69,9 +69,9 @@ export function Schedule({restaurantId, restaurantName, userId, canManage, setMe
   const [pending, setPending] = useState(0);
   useEffect(() => {
     if (!canManage) return;
-    void supabase!.from("time_off_requests").select("id", {count: "exact", head: true}).eq("restaurant_id", restaurantId).eq("status", "pending")
+    void supabase!.from("time_off_requests").select("id", {count: "exact", head: true}).eq("restaurant_id", restaurantId).eq("status", "pending").neq("user_id", userId)
       .then(({count}) => setPending(count ?? 0));
-  }, [canManage, restaurantId, tab]);
+  }, [canManage, restaurantId, tab, userId]);
   const tabs: [Tab, string][] = canManage
     ? [["week", "Build the week"], ["requests", awaitingManager ? `Requests · ${awaitingManager}` : "Requests"], ["timeoff", pending ? `Time off · ${pending}` : "Time off"], ["mine", askedOfMe ? `My shifts · ${askedOfMe}` : "My shifts"], ["availability", "My availability"]]
     : [["mine", askedOfMe ? `My shifts · ${askedOfMe}` : "My shifts"], ...(settings?.team_sees_all === false ? [] : [["week", "Team schedule"] as [Tab, string]]), ["availability", "My availability"], ["timeoff", "Time off"]];
@@ -86,7 +86,7 @@ export function Schedule({restaurantId, restaurantName, userId, canManage, setMe
     {tab === "requests" && canManage && <ChangeRequests changes={changes} reload={reloadChanges} setMessage={setMessage} />}
     {tab === "mine" && <MyShifts restaurantId={restaurantId} userId={userId} settings={settings} changes={changes} reloadChanges={reloadChanges} setMessage={setMessage} />}
     {tab === "availability" && <Availability restaurantId={restaurantId} userId={userId} />}
-    {tab === "timeoff" && (canManage ? <TimeOffDecisions restaurantId={restaurantId} setMessage={setMessage} access={access} settings={settings} /> : <TimeOffRequests restaurantId={restaurantId} userId={userId} setMessage={setMessage} />)}
+    {tab === "timeoff" && (canManage ? <><div className="mb-8"><TimeOffRequests restaurantId={restaurantId} userId={userId} setMessage={setMessage} manager /></div><TimeOffDecisions restaurantId={restaurantId} userId={userId} setMessage={setMessage} access={access} settings={settings} /></> : <TimeOffRequests restaurantId={restaurantId} userId={userId} setMessage={setMessage} />)}
     </>}
   </section>;
 }
@@ -1190,7 +1190,8 @@ function Availability({restaurantId, userId}: {restaurantId: string; userId: str
 // ── Time off ─────────────────────────────────────────────────────────────────────────────────
 const STATUS_TEXT = {pending: "Waiting for approval", approved: "Approved", denied: "Not approved"} as const;
 
-function TimeOffRequests({restaurantId, userId, setMessage}: {restaurantId: string; userId: string; setMessage: (text: string) => void}) {
+// manager: a manager asking for their own time off. The wording says who approves it, and the button is plain because Approve on the same screen is the lime one.
+function TimeOffRequests({restaurantId, userId, setMessage, manager = false}: {restaurantId: string; userId: string; setMessage: (text: string) => void; manager?: boolean}) {
   const [requests, setRequests] = useState<TimeOff[] | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1211,7 +1212,7 @@ function TimeOffRequests({restaurantId, userId, setMessage}: {restaurantId: stri
     setBusy(false);
     if (error) return setError(error.message.includes("check constraint") ? "Time off can be up to 60 days at a time." : error.message);
     notify("time_off_requested", saved.id as string);
-    setMessage("Request sent. Your manager will approve it here.");
+    setMessage(manager ? "Request sent. Another manager or the owner will approve it here." : "Request sent. Your manager will approve it here.");
     form.reset(); await load();
   }
   async function withdraw(id: string) {
@@ -1220,16 +1221,17 @@ function TimeOffRequests({restaurantId, userId, setMessage}: {restaurantId: stri
   }
   return <div className="max-w-2xl">
     <form className="panel dash-panel" onSubmit={ask}>
-      <SectionInfo heading="Ask for time off">Your manager approves it, and the schedule shows it while they build the week.</SectionInfo>
+      <SectionInfo heading="Ask for time off">{manager ? "Another manager or the owner approves it, and the schedule shows it while the week is built." : "Your manager approves it, and the schedule shows it while they build the week."}</SectionInfo>
       <div className="report-row mt-3">
         <Field label="First day"><input id="off-from" name="from" type="date" required min={today} /></Field>
         <Field label="Last day (optional)"><input id="off-to" name="to" type="date" min={today} /></Field>
         <Field label="Reason (optional)"><input id="off-note" name="note" maxLength={300} placeholder="e.g. Family wedding" /></Field>
       </div>
       {error && <p role="alert" className="notice bad mb-3">{error}</p>}
-      <button className="btn" disabled={busy}>{busy ? "Sending…" : "Send request"}</button>
+      <button className={manager ? "btn secondary" : "btn"} disabled={busy}>{busy ? "Sending…" : "Send request"}</button>
     </form>
-    {requests && requests.length > 0 && <ul className="mt-4 space-y-2">{requests.map(r => <li key={r.id} className="panel sched-mine">
+    {manager && requests && requests.length > 0 && <p className="eyebrow muted mb-2 mt-6">Your requests</p>}
+    {requests && requests.length > 0 && <ul className={manager ? "space-y-2" : "mt-4 space-y-2"}>{requests.map(r => <li key={r.id} className="panel sched-mine">
       <span className="min-w-0 flex-1">
         <b className="block">{r.starts_on === r.ends_on ? dateLabel(r.starts_on) : `${dateLabel(r.starts_on)} – ${dateLabel(r.ends_on)}`}</b>
         <small className="muted">{STATUS_TEXT[r.status]}{r.note ? ` · ${r.note}` : ""}</small>
@@ -1239,7 +1241,7 @@ function TimeOffRequests({restaurantId, userId, setMessage}: {restaurantId: stri
   </div>;
 }
 
-function TimeOffDecisions({restaurantId, setMessage, access, settings}: {restaurantId: string; setMessage: (text: string) => void; access: ScheduleAccess; settings: ScheduleSettings}) {
+function TimeOffDecisions({restaurantId, userId, setMessage, access, settings}: {restaurantId: string; userId: string; setMessage: (text: string) => void; access: ScheduleAccess; settings: ScheduleSettings}) {
   const [requests, setRequests] = useState<TimeOff[] | null>(null);
   const [names, setNames] = useState<Map<string, string>>(new Map());
   const [roles, setRoles] = useState<Map<string, string>>(new Map());
@@ -1265,7 +1267,8 @@ function TimeOffDecisions({restaurantId, setMessage, access, settings}: {restaur
     await load();
   }
   if (!requests) return <p className="muted" role="status">Loading…</p>;
-  const mine = requests.filter(r => canSchedule(roles.get(r.user_id) ?? "Server", access, settings));
+  // Your own request is under "Your requests" above, not here: you do not approve yourself.
+  const mine = requests.filter(r => r.user_id !== userId && canSchedule(roles.get(r.user_id) ?? "Server", access, settings));
   const waiting = mine.filter(r => r.status === "pending"), approved = mine.filter(r => r.status === "approved");
   const row = (r: TimeOff, actions: boolean) => <li key={r.id} className="panel sched-mine">
     <span className="min-w-0 flex-1">
