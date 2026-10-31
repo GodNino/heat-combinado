@@ -96,6 +96,8 @@ export function Schedule({restaurantId, restaurantName, userId, canManage, setMe
 // onCall/answer and their "was" twins: only what changed is sent, so saving works before database update 055.
 type Draft = {id?: string; user_id: string; position: string; day: string; start: string; end: string; kind: ShiftKind | null; was: ShiftKind | null; covering?: boolean; onCall: boolean; wasOnCall: boolean; answer: OnCallStatus | null; wasAnswer: OnCallStatus | null};
 type ViewBy = "name" | "hours" | "position";
+// BOH is the kitchen positions in the schedule settings; everyone else is FOH.
+type Side = "all" | "boh" | "foh";
 // A shift being dragged: where it was grabbed, where the pointer is now, and the cell under it.
 type Drag = {shift: Shift; x: number; y: number; dx: number; dy: number; width: number; target: string | null; copy: boolean};
 type Press = {shift: Shift; x: number; y: number; dx: number; dy: number; width: number; touch: boolean; timer?: number};
@@ -161,6 +163,8 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   // People sit grouped by position (Server, Server assistant, Bartender…), each row in its colour.
   const [viewBy, setViewBy] = useState<ViewBy>("position");
   const [query, setQuery] = useState("");
+  // A chef who builds only the kitchen opens on BOH, floor managers on FOH; anyone else on Everyone.
+  const [side, setSide] = useState<Side>(canManage && access.kitchen !== access.foh ? (access.kitchen ? "boh" : "foh") : "all");
   const [showConflicts, setShowConflicts] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
   // Copy week: what the week before holds and what the week after already has, fetched when it opens.
@@ -220,14 +224,26 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   const legend = useMemo(() => [...new Map((shifts ?? []).map(s => [s.position.trim().toLowerCase(), s.position.trim()])).values()]
     .map(name => [name, colorFor(name, settings.position_colors)] as const).filter((row): row is readonly [string, string] => !!row[1])
     .sort((a, b) => a[0].localeCompare(b[0])), [shifts, settings.position_colors]);
+  // BOH / FOH: the people on each side, by their own position (not the position of one shift they cover).
+  const inSide = useCallback((p: Person) => side === "all" || isKitchen(p.role, settings) === (side === "boh"), [side, settings]);
+  const sideCount = useMemo(() => {
+    const base = canManage ? people : people.filter(p => hours.has(p.user_id));
+    const boh = base.filter(p => isKitchen(p.role, settings)).length;
+    return {boh, foh: base.length - boh};
+  }, [canManage, people, hours, settings]);
+  const sideShifts = useMemo(() => {
+    if (side === "all") return shifts ?? [];
+    const ids = new Set(people.filter(inSide).map(p => p.user_id));
+    return (shifts ?? []).filter(s => ids.has(s.user_id));
+  }, [side, shifts, people, inSide]);
   // Employees see only who works this week; managers see the whole team, ready to fill in.
   const rows = useMemo(() => {
     const search = query.trim().toLowerCase();
-    const list = (canManage ? people : people.filter(p => hours.has(p.user_id))).filter(p => !search || p.name.toLowerCase().includes(search) || p.role.toLowerCase().includes(search));
+    const list = (canManage ? people : people.filter(p => hours.has(p.user_id))).filter(inSide).filter(p => !search || p.name.toLowerCase().includes(search) || p.role.toLowerCase().includes(search));
     const byName = (a: Person, b: Person) => a.name.localeCompare(b.name);
     return [...list].sort(viewBy === "hours" ? (a, b) => (hours.get(b.user_id) ?? 0) - (hours.get(a.user_id) ?? 0) || byName(a, b)
       : viewBy === "position" ? (a, b) => positionRank(a.role) - positionRank(b.role) || a.role.localeCompare(b.role) || byName(a, b) : byName);
-  }, [canManage, people, hours, query, viewBy]);
+  }, [canManage, people, hours, query, viewBy, inSide]);
 
   // A shift is for the position the person was hired for. Covering another one is a step of its own,
   // taken on purpose; it's also where we land when their own position isn't this manager's to schedule.
@@ -408,13 +424,13 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
   </>;
   // The week on paper: everyone the screen would list (whatever is typed in the search), in the same order.
   const printWeek = async () => {
-    const list = (canManage ? people : people.filter(p => hours.has(p.user_id)));
+    const list = (canManage ? people : people.filter(p => hours.has(p.user_id))).filter(inSide);
     const byName = (a: Person, b: Person) => a.name.localeCompare(b.name);
     const ordered = [...list].sort(viewBy === "hours" ? (a, b) => (hours.get(b.user_id) ?? 0) - (hours.get(a.user_id) ?? 0) || byName(a, b)
       : viewBy === "position" ? (a, b) => positionRank(a.role) - positionRank(b.role) || a.role.localeCompare(b.role) || byName(a, b) : byName);
-    const week = shifts ?? [];
+    const week = sideShifts;
     return scheduleSheet({
-      week: weekHeading(start), start: dayKey(start),
+      week: side === "all" ? weekHeading(start) : `${weekHeading(start)} · ${side === "boh" ? "BOH" : "FOH"}`, start: dayKey(start),
       days: days.map(day => day.toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"}).replace(",", "")),
       rows: ordered.map(person => {
         const mine = hours.get(person.user_id) ?? 0;
@@ -433,8 +449,8 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     }, {restaurant: restaurantName});
   };
   const conflicts = warningsOf.size;
-  const total = (shifts ?? []).reduce((sum, s) => sum + countedHours(s), 0);
-  const working = new Set((shifts ?? []).map(s => s.user_id)).size;
+  const total = sideShifts.reduce((sum, s) => sum + countedHours(s), 0);
+  const working = new Set(sideShifts.map(s => s.user_id)).size;
   const today = dayKey(new Date());
 
   return <div>
@@ -469,6 +485,12 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
     {!shifts ? <p className="muted" role="status">Loading the schedule…</p>
       : !people.length || (!canManage && !rows.length && !query) ? <p className="panel p-5 muted">{canManage ? "Nobody on the team yet. Invite your team from Team." : "Nothing published for this week yet."}</p>
       : <>
+        {sideCount.boh > 0 && sideCount.foh > 0 && <div className="sched-show">
+          <span className="eyebrow muted">Show</span>
+          <div className="category-tabs" role="group" aria-label="Show">
+            {([["all", "Everyone"], ["boh", `BOH · ${sideCount.boh}`], ["foh", `FOH · ${sideCount.foh}`]] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={side === key} onClick={() => setSide(key)}>{label}</button>)}
+          </div>
+        </div>}
         <div className="sched-find">
           <span className="sched-search"><input type="search" aria-label="Search the team" placeholder="Search the team" value={query} onChange={e => setQuery(e.target.value)} /></span>
           <span className="sched-viewby" ref={viewRef}>
@@ -530,7 +552,7 @@ function WeekView({restaurantId, restaurantName, canManage, setMessage, settings
               <span className="sched-foot-label"><span>Hours</span><b>{formatHours(total)}</b></span>
               <span className="sched-foot-label"><span>People</span><b>{working}</b></span>
             </th>
-            {days.map(day => { const t = dayTotals(shifts ?? [], day); return <td key={day.toISOString()}>
+            {days.map(day => { const t = dayTotals(sideShifts, day); return <td key={day.toISOString()}>
               <span className="sched-foot"><Users size={13} aria-hidden="true" />{t.people}</span>
               <span className="sched-foot">{formatHours(t.hours)}</span>
             </td>; })}

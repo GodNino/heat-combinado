@@ -2724,6 +2724,10 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root:root .sched-scroll { position:relative; z-index:0; }
 :root:root:root:root:root:root:root:root .sched-find { position:relative; z-index:5; }
 
+/* Schedule: Show Everyone / BOH / FOH above the search. BOH is the kitchen positions in the schedule settings. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .sched-show { display:flex; align-items:center; gap:10px; margin:0 0 10px; }
+:root:root:root:root:root:root:root .sched-show .category-tabs { padding:0; overflow:visible; -webkit-mask-image:none; mask-image:none; flex-wrap:wrap; }
+
 /* Landing page, EN / ES buttons the same size as the Sign in button.
    To undo, revert the commit that added this block. */
 :root:root:root:root:root:root:root .site-lang .lang-switch { display:flex; gap:8px; padding:0; overflow:visible; }
