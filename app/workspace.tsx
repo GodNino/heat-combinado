@@ -22,6 +22,7 @@ import {
   LayoutDashboard,
   CircleHelp,
   FileText,
+  GraduationCap,
   CalendarDays,
   ArrowLeft,
   ArrowRight,
@@ -58,24 +59,27 @@ import { termsFor, mergeTerms, type Term, type CustomTerm } from "@/lib/glossary
 import { CONTENT_TYPES, categoryOf, contentTypeOf, filterContent, type ContentType } from "@/lib/categories";
 import { TaxonomyContext, useTaxonomy, namesIn, wordsIn, type SectionWords, type MenuCategoryRow, type Taxonomy } from "./taxonomy";
 import { Notice, Field, InfoRow, ScreenHeader, SectionInfo } from "./ui";
+import { AssignDishes } from "./assign-dishes";
+import { TodayFigures, TodayStatus } from "./today";
 import { photoLinks, shrinkPhoto, forgetPhotoLinks } from "./photos";
 import { WordsManager } from "./words";
 import { Standards } from "./standards";
 import { Story } from "./story";
 import { Checklists } from "./checklists";
-import { MyJobCard } from "./checklist-card";
+import { Tutor, TutorProgress } from "./tutor";
+import { MyShiftCard } from "./my-shift-card";
 import { Locations, setUpLibraries, type Organization } from "./locations";
 import { BrandDashboard, ManagerDashboard, MyActivity } from "./dashboards";
 import { Tour, tourSeen, tourSteps } from "./tour";
 import { LastShiftNote, ShiftReports } from "./shift-report";
 import { LanguageSwitch, currentLang, setLang } from "./language";
 import { NotificationSwitch, notify } from "./notifications";
-import { MyWeek, NextShift, Schedule, ShiftChangesWaiting, WhoWorksToday, type ScheduleTab } from "./schedule";
-import { FOH_POSITIONS, KITCHEN_POSITIONS, POSITIONS } from "@/lib/schedule";
+import { MyWeek, NextShift, Schedule, ShiftChangesWaiting, TodayRoster, type ScheduleTab } from "./schedule";
+import { FOH_POSITIONS, KITCHEN_POSITIONS, POSITIONS, positionRank } from "@/lib/schedule";
 import { ManagerAttention, type AttentionTarget } from "./home-cards";
 
 // Every screen the workspace can show. Named once: it used to be spelled out in two places.
-type View = "tostudy" | "home" | "library" | "allergy" | "review" | "progress" | "team" | "preshift" | "words" | "standards" | "story" | "library-settings" | "checklists" | "locations" | "dashboard" | "reports" | "schedule";
+type View = "tostudy" | "home" | "library" | "allergy" | "review" | "progress" | "team" | "preshift" | "words" | "standards" | "story" | "library-settings" | "checklists" | "locations" | "dashboard" | "reports" | "schedule" | "tutor";
 import { supabase } from "@/lib/supabase";
 import {
   expandCrossContamination,
@@ -996,45 +1000,16 @@ function AddDish({
 
 // A pre-shift with ten focus items is no focus at all; the database refuses more than this too.
 const FOCUS_LIMIT = 10;
-// The manager home used to link to the pre-shift tab without saying whether anything was
-// on it. At four in the afternoon that is the one thing you actually want to know.
-// The two shortcuts at the top of the manager Home. A dot says whether each one still needs you:
-// Pre-shift is lit once a board is posted; Checklists is lit once every job given out today is done.
-function HomeShortcuts({restaurantId, canAssign, onPreshift, onChecklists, onAssign, onLibrary}: {restaurantId: string; canAssign: boolean; onPreshift: () => void; onChecklists: () => void; onAssign: () => void; onLibrary: () => void}) {
-  const [posted, setPosted] = useState<boolean | null>(null);
-  const [jobsDone, setJobsDone] = useState<boolean | null>(null);
-  useEffect(() => {
-    const db = supabase;
-    if (!db) return;
-    let alive = true;
-    void db.rpc("get_preshift_board", {rid: restaurantId}).then(({data}) => {
-      if (!alive) return;
-      const board = (data as ShiftBoardResponse | null)?.board ?? null;
-      setPosted(!!board && board.restaurant_id === restaurantId && (!!board.note.trim() || !!board.entries.length || !!board.focus_item_ids?.length || !!board.focus_item_id));
-    });
-    void (async () => {
-      try {
-        const d = new Date();
-        const today = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-        const shifts = await db.from("checklist_shifts").select("id").eq("restaurant_id", restaurantId).eq("shift_date", today);
-        if (shifts.error || !shifts.data?.length) {if (alive) setJobsDone(false);return;}
-        const jobs = await db.from("checklist_assignments").select("done_at").in("shift_id", shifts.data.map(row => row.id as string));
-        if (alive) setJobsDone(!jobs.error && !!jobs.data?.length && jobs.data.every(row => !!row.done_at));
-      } catch {if (alive) setJobsDone(false);}
-    })();
-    return () => {alive = false;};
-  }, [restaurantId]);
-  const dot = (state: boolean | null, yes: string, no: string) => state === null ? null : <><span className={`home-dot${state ? " on" : ""}`} aria-hidden="true" /><span className="sr-only">{state ? yes : no}</span></>;
-  return <div className="home-chips mt-5 mb-4">
-    <button className="btn secondary home-chip" onClick={onPreshift}>Pre-shift{dot(posted, " (posted)", " (not posted yet)")}</button>
-    <button className="btn secondary home-chip" onClick={onChecklists}>Checklists{dot(jobsDone, " (all done)", " (jobs still open)")}</button>
-    {canAssign && <button className="btn secondary home-chip" onClick={onAssign}>Assign study</button>}
-    <button className="btn secondary home-chip" onClick={onLibrary}>Open library</button>
+function TodayActions({canAssign, onAssign, onLibrary}: {canAssign: boolean; onAssign: () => void; onLibrary: () => void}) {
+  return <div className="today-chips">
+    {canAssign && <button type="button" className="btn secondary" onClick={onAssign}>Assign study</button>}
+    <button type="button" className="btn secondary" onClick={onLibrary}>Open library</button>
   </div>;
 }
-function PreShiftHomeCard({restaurantId, items, onOpen, canDownload, restaurantName}: {restaurantId: string; items: MenuItem[]; onOpen: () => void; canDownload: boolean; restaurantName: string}) {
+// The posted pre-shift on Today: the note and what to push or watch, with the button to print it.
+// Nothing posted, no card. The row above it (green dot, pencil) is the way in to edit.
+function PostedPreShiftCard({restaurantId, items, restaurantName}: {restaurantId: string; items: MenuItem[]; restaurantName: string}) {
   const [board, setBoard] = useState<ShiftBoardResponse["board"]>(null);
-  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     if (!supabase) return;
     let alive = true;
@@ -1042,34 +1017,30 @@ function PreShiftHomeCard({restaurantId, items, onOpen, canDownload, restaurantN
       if (!alive) return;
       const next = (data as ShiftBoardResponse | null)?.board ?? null;
       setBoard(next && next.restaurant_id === restaurantId ? next : null);
-      setLoaded(true);
     });
     return () => {alive = false;};
   }, [restaurantId]);
   const focusIds = board?.focus_item_ids?.length ? board.focus_item_ids : board?.focus_item_id ? [board.focus_item_id] : [];
   // An emptied board is a row with nothing in it, not a missing row.
-  const live = !!board && (!!board.note.trim() || !!board.entries.length || !!focusIds.length);
-  const postedBy = board?.posted_by_name?.trim();
-  const edited = !!board?.created_at && !!board?.updated_at && new Date(board.updated_at).getTime() - new Date(board.created_at).getTime() > 60000;
-  // Nothing posted: no card at all. The Pre-shift shortcut at the top of Home is the way in.
-  if (!loaded || !live) return null;
-  return <section className="panel mt-2 p-4">
-    <div className="posted-head"><h2 className="text-sm font-semibold">Today’s pre-shift</h2>
-      {!loaded ? null : live
-        ? (canDownload ? <DownloadSheet label="Download today’s board" build={async () => preshiftSheet({serviceDate: board!.service_date, note: board!.note, postedBy, updated: board!.updated_at, focus: focusIds.map(id => items.find(item => item.id === id)?.name).filter((name): name is string => !!name), groups: Object.entries(SHIFT_STATUS_LABELS).map(([status, label]) => ({label, entries: board!.entries.filter(entry => entry.status === status).map(entry => ({name: items.find(item => item.id === entry.menu_item_id)?.name ?? "Menu item unavailable", status, detail: entry.detail}))}))}, {restaurant: restaurantName})} /> : null)
-        : <span className="menu-badge cc shrink-0">Not posted yet</span>}</div>
-    {loaded && live ? <p className="muted mt-1 text-xs">{postedBy ? `Posted by ${postedBy}` : "Posted"}{board?.updated_at ? <> · {edited ? <span className="font-semibold text-heat">updated {shiftAge(board.updated_at)}</span> : shiftAge(board.updated_at)}</> : null}</p> : null}
-    
-    {!loaded ? <p className="muted mt-3 text-xs">Checking today’s board…</p> : live ? <>
-      {!!board!.note.trim() && <p className="muted guide-blurb mt-3 text-xs">{board!.note}</p>}
-      {(!!focusIds.length || !!board!.entries.length) && <div className="board-pills mt-3">
-        {focusIds.map(id => <span key={id} className="board-pill">{items.find(item => item.id === id)?.name ?? "Menu item unavailable"} · Focus</span>)}
-        {board!.entries.map(entry => <span key={entry.menu_item_id} className={`board-pill${entry.status === "86" ? " out" : entry.status === "low" ? " low" : ""}`}>{items.find(item => item.id === entry.menu_item_id)?.name ?? "Menu item unavailable"} · {SHIFT_STATUS_LABELS[entry.status]}</span>)}
-      </div>}</> : <p className="muted mt-3 text-xs">Your team sees nothing until you post it.</p>}
-    <div className="preshift-home-foot"><button className="btn secondary home-edit-btn" onClick={onOpen}>{live ? <Pencil size={14} aria-hidden="true" /> : <Plus size={14} aria-hidden="true" />}{live ? "Edit" : "Write"}</button></div>
+  if (!board || !(board.note.trim() || board.entries.length || focusIds.length)) return null;
+  const nameOf = (id: string) => items.find(item => item.id === id)?.name ?? "Menu item unavailable";
+  return <section className="panel today-card">
+    <div className="posted-head">
+      <h2 className="text-sm font-semibold">Today’s pre-shift</h2>
+      <DownloadSheet label="Print today’s pre-shift" build={async () => preshiftSheet({serviceDate: board.service_date, note: board.note, postedBy: board.posted_by_name?.trim(), updated: board.updated_at, focus: focusIds.map(id => items.find(item => item.id === id)?.name).filter((name): name is string => !!name), groups: Object.entries(SHIFT_STATUS_LABELS).map(([status, label]) => ({label, entries: board.entries.filter(entry => entry.status === status).map(entry => ({name: nameOf(entry.menu_item_id), status, detail: entry.detail}))}))}, {restaurant: restaurantName})} />
+    </div>
+    {!!board.note.trim() && <p className="muted guide-blurb mt-3 text-xs">{board.note}</p>}
+    {(!!focusIds.length || !!board.entries.length) && <div className="board-pills mt-3">
+      {focusIds.map(id => <span key={id} className="board-pill">{nameOf(id)} · Focus</span>)}
+      {board.entries.map(entry => <span key={entry.menu_item_id} className={`board-pill${entry.status === "86" ? " out" : entry.status === "low" ? " low" : ""}`}>{nameOf(entry.menu_item_id)} · {SHIFT_STATUS_LABELS[entry.status]}</span>)}
+    </div>}
   </section>;
 }
-function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPosted}: {restaurant: Restaurant; items: MenuItem[]; itemsLoading: boolean; refreshItems: () => Promise<void>; onPosted: () => void}) {
+function PreShiftManager({restaurant, items, itemsLoading, refreshItems, startEditing, onPosted}: {restaurant: Restaurant; items: MenuItem[]; itemsLoading: boolean; refreshItems: () => Promise<void>; startEditing: boolean; onPosted: () => void}) {
+  // Opened from the pencil on Today: start with the posted board already in the form, as the Edit button does.
+  const [openInEdit] = useState(startEditing);
+  // True while the form is filled with the posted board: the "On the board today" card above would only repeat it.
+  const [editing, setEditing] = useState(false);
   const {namesFor, labelFor} = useTaxonomy();
   const [serviceDate, setServiceDate] = useState("");
   // What is actually on the board right now, as opposed to what is being typed.
@@ -1092,16 +1063,19 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
   const [recipientIds, setRecipientIds] = useState<string[]>([]);
   // Who has a published shift today: one tap sends the board to just them.
   const [workingIds, setWorkingIds] = useState<string[]>([]);
+  // Each person's position, so today's people can be listed by position. If it cannot be read, they are listed together.
+  const [roles, setRoles] = useState<Map<string, string>>(new Map());
   const sequence = useRef(0);
   const loadBoard = useCallback(async (prefill = false) => {
     const request = ++sequence.current;
     setLoading(true);setError("");setMessage("");
     try {
       if (!supabase) throw new Error("Please connect to your workspace and try again.");
-      const [result, team, working] = await Promise.all([
+      const [result, team, working, positions] = await Promise.all([
         supabase.rpc("get_preshift_board", {rid: restaurant.id}),
         supabase.rpc("shift_team_options", {rid: restaurant.id}),
         supabase.rpc("preshift_working_today", {rid: restaurant.id}),
+        supabase.rpc("schedule_team", {rid: restaurant.id}),
       ]);
       if (result.error) throw new Error(result.error.message);
       if (team.error) throw new Error(team.error.message);
@@ -1114,6 +1088,7 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
       const onToday = (working.data as {user_id: string}[]).map(person => person.user_id);
       setTeamOptions(team.data as {user_id: string; name: string}[]);
       setWorkingIds(onToday);
+      setRoles(new Map(((positions.error ? [] : positions.data ?? []) as {user_id: string; role: string}[]).map(person => [person.user_id, (person.role ?? "").trim()])));
       setRecipientIds(prefill ? selected : []);
       // A board sent to exactly today's people reopens on "Working today".
       const sameAsToday = selected.length > 0 && selected.length === onToday.length && selected.every(id => onToday.includes(id));
@@ -1125,15 +1100,15 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
       setFocusIds(!prefill ? [] : data.board?.focus_item_ids?.length ? data.board.focus_item_ids : data.board?.focus_item_id ? [data.board.focus_item_id] : []);
       setEntries(prefill ? data.board?.entries ?? [] : []);
       setPosted(data.board ?? null);
+      setEditing(prefill && !!data.board);
       setItemId("");setDetail("");
-      if (prefill) setMessage("Editing today’s board. Change what you need, then post it again.");
     } catch (e) {
       if (request === sequence.current) {setServiceDate("");setError(e instanceof Error ? e.message : "Could not load the pre-shift board.");}
     } finally {
       if (request === sequence.current) setLoading(false);
     }
   }, [restaurant.id]);
-  useEffect(() => {void loadBoard();return () => {sequence.current++;};}, [loadBoard]);
+  useEffect(() => {void loadBoard(openInEdit);return () => {sequence.current++;};}, [loadBoard, openInEdit]);
   function addEntry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!items.some(item => item.id === itemId) || busy) return;
@@ -1187,13 +1162,28 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
     } finally {setBusy(false);}
   }
   const itemOptions = CONTENT_TYPES.map(type => <optgroup key={type} label={labelFor(type).heading}>{inMenuOrder(items.filter(item => contentTypeOf(item) === type), namesFor(type)).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</optgroup>);
+  // "Delete" asks once more. It is shown under the posted card, and under the Delete and Cancel row while editing.
+  const deleteConfirm = confirmClear ? <div className="mt-5 border-t border-line pt-4"><p>Delete today’s board? It comes off every phone. The note, the focus and the 86 board go with it. You can write a new one straight after.</p><div className="mt-3 flex flex-wrap gap-3"><button type="button" className="btn secondary card-admin-danger" disabled={busy} onClick={() => void clearBoard()}>{busy ? "Deleting\u2026" : "Yes, delete"}</button><button type="button" className="btn secondary" disabled={busy} onClick={() => setConfirmClear(false)}>Keep it</button></div></div> : null;
+  // Today's people by position (Server, Bartender, Kitchen…), each group's names in order. Listed together when positions are unknown.
+  const workingGroups: [string, string[]][] = (() => {
+    const named = workingIds.map(id => ({role: roles.size ? roles.get(id) || "No role" : "", name: teamOptions.find(person => person.user_id === id)?.name || "Team member"}));
+    const byRole = new Map<string, string[]>();
+    for (const {role, name} of named) byRole.set(role, [...(byRole.get(role) ?? []), name]);
+    return [...byRole.entries()].map(([role, names]): [string, string[]] => [role, names.sort((a, b) => a.localeCompare(b))])
+      .sort((a, b) => positionRank(a[0] === "No role" ? "" : a[0]) - positionRank(b[0] === "No role" ? "" : b[0]) || a[0].localeCompare(b[0]));
+  })();
   return <section className="preshift mx-auto max-w-3xl">
     <p className="eyebrow muted">Manager workspace · {restaurant.name}</p>
     <h1 className="mt-3 text-2xl font-semibold">Pre-shift</h1>
     {serviceDate && <p className="muted mt-2 mb-5"><time dateTime={serviceDate}>{new Date(`${serviceDate}T12:00:00Z`).toLocaleDateString(undefined, {dateStyle: "full", timeZone: "UTC"})}</time></p>}
     <Notice text={error} error /><Notice text={message} />
     {loading ? <p role="status" className="muted py-8">Loading today’s board…</p> : !serviceDate ? <button className="btn secondary" onClick={() => void loadBoard()}>Try again</button> : <>
-      {posted && (posted.note.trim() || postedFocusIds.length || posted.entries.length) ? <section className="panel mb-6 p-5" aria-label="Board posted today">
+      {posted && (posted.note.trim() || postedFocusIds.length || posted.entries.length) ? (editing ? <section className="panel mb-6 p-5" aria-label="Editing today’s board">
+        <div className="posted-head"><h2 className="text-xl font-semibold">Editing today’s board</h2></div>
+        <p className="muted mt-2 text-sm">Change what you need, then post it again.</p>
+        {!confirmClear && <div className="posted-actions"><button type="button" className="btn secondary card-admin-danger" disabled={busy} onClick={() => setConfirmClear(true)}>Delete</button><button type="button" className="btn secondary" disabled={busy} onClick={() => void loadBoard()}>Cancel</button></div>}
+        {deleteConfirm}
+      </section> : <section className="panel mb-6 p-5" aria-label="Board posted today">
         <div className="posted-head"><h2 className="text-xl font-semibold">On the board today</h2></div>
         {posted.note.trim() && <p className="mt-3 whitespace-pre-wrap">{posted.note}</p>}
         {(!!postedFocusIds.length || !!posted.entries.length) && <div className="board-pills mt-3">
@@ -1201,8 +1191,8 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
           {posted.entries.map(entry => <span key={entry.menu_item_id} className={`board-pill${entry.status === "86" ? " out" : entry.status === "low" ? " low" : ""}`}>{items.find(item => item.id === entry.menu_item_id)?.name ?? "Menu item unavailable"} · {SHIFT_STATUS_LABELS[entry.status]}{entry.detail ? ` · ${entry.detail}` : ""}</span>)}
         </div>}
         {!confirmClear && <div className="posted-actions"><button type="button" className="btn secondary card-admin-danger" disabled={busy} onClick={() => setConfirmClear(true)}>Delete</button><button type="button" className="btn secondary posted-edit" disabled={busy} onClick={() => void loadBoard(true)}><Pencil size={14} aria-hidden="true" />Edit</button></div>}
-        {confirmClear && <div className="mt-5 border-t border-line pt-4"><p>Delete today’s board? It comes off every phone. The note, the focus and the 86 board go with it. You can write a new one straight after.</p><div className="mt-3 flex flex-wrap gap-3"><button type="button" className="btn secondary card-admin-danger" disabled={busy} onClick={() => void clearBoard()}>{busy ? "Deleting\u2026" : "Yes, delete"}</button><button type="button" className="btn secondary" disabled={busy} onClick={() => setConfirmClear(false)}>Keep it</button></div></div>}
-      </section> : null}
+        {deleteConfirm}
+      </section>) : null}
       <fieldset disabled={busy} className="panel mb-6 p-5">
         <InfoRow info="A short message every employee sees at the top of today’s board." className="mb-3"><h2 className="text-lg font-semibold">Note to the floor</h2></InfoRow>
         <textarea id="shift-note" aria-label="Note to the floor" maxLength={2000} value={note} onChange={e => {setNote(e.target.value);setMessage("");}} aria-describedby="shift-note-count" placeholder="Two VIPs at 8pm on table 12, both shellfish allergies…" />
@@ -1241,7 +1231,10 @@ function PreShiftManager({restaurant, items, itemsLoading, refreshItems, onPoste
         </div>
         {audience === "everyone" ? <p className="muted mt-3">Every employee will see today's board.</p> : audience === "working" ? (workingIds.length ? <>
           <p className="muted mt-3">Only the people with a published shift today will see it.</p>
-          <div className="board-pills mt-3">{workingIds.map(id => <span key={id} className="board-pill">{teamOptions.find(person => person.user_id === id)?.name || "Team member"}</span>)}</div>
+          <div className="who-groups mt-3">{workingGroups.map(([role, names]) => <div key={role} className="who-group">
+            {role ? <span><b>{role}</b><span className="muted">{` · ${names.length}`}</span></span> : <span className="muted">{`${names.length} people`}</span>}
+            <span>{names.join(" · ")}</span>
+          </div>)}</div>
         </> : <p className="muted mt-3">No one has a published shift today. Publish today's schedule first, or send it to everyone.</p>) : <>
           <div className="my-3 flex gap-2">
             <button type="button" className="btn secondary" onClick={() => {setRecipientIds(teamOptions.map(person => person.user_id));setMessage("");}}>Select all</button>
@@ -1438,113 +1431,6 @@ function AccessPanel({restaurantId, member, current, myAccess, meId, busy, actio
     })}>Save access</button>}
   </section>;
 }
-// Manager Home: a quick read of the team. Tap a tile and a bubble opens with the names (or, for accuracy, the dishes).
-// It reads the same functions the Team screen uses and writes nothing.
-function TeamSnapshot({restaurantId, onOpenMember, onOpenTeam}: {restaurantId: string; onOpenMember: (id: string) => void; onOpenTeam: () => void}) {
-  type Detail = {attempts: TeamAttempt[]; assignments: TeamAssignment[]};
-  const [members, setMembers] = useState<TeamMember[] | null>(null);
-  const [detail, setDetail] = useState<Record<string, Detail> | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [open, setOpen] = useState<"" | "study" | "accuracy" | "review">("");
-  useEffect(() => {
-    let live = true;
-    (async () => {
-      try {
-        if (!supabase) throw new Error("Please reconnect to your workspace.");
-        const roster = await supabase.rpc("team_learning_roster", {rid: restaurantId});
-        if (roster.error) throw new Error(roster.error.message);
-        const people = (roster.data ?? []) as TeamMember[];
-        if (!live) return;
-        setMembers(people);
-        const found: Record<string, Detail> = {};
-        // A few people at a time, so a big team does not open dozens of requests at once.
-        for (let start = 0; start < people.length; start += 6) {
-          await Promise.all(people.slice(start, start + 6).map(async person => {
-            const [scores, assigned] = await Promise.all([
-              supabase!.rpc("team_member_print_progress", {rid: restaurantId, learner_id: person.user_id}),
-              supabase!.rpc("team_member_assignments", {rid: restaurantId, learner_id: person.user_id}),
-            ]);
-            if (!scores.error && !assigned.error) found[person.user_id] = {attempts: (scores.data ?? []) as TeamAttempt[], assignments: (assigned.data ?? []) as TeamAssignment[]};
-          }));
-          if (!live) return;
-        }
-        setDetail(found);
-      } catch {
-        if (live) setFailed(true);
-      }
-    })();
-    return () => {live = false;};
-  }, [restaurantId]);
-  // If the team cannot be read, Home simply carries on without these tiles.
-  if (failed || (members && !members.length)) return null;
-  const people = members ?? [];
-  // Same rule as the Assigned list on a person: passed at target, and not before the item was assigned.
-  const finished = (assignment: TeamAssignment, attempts: TeamAttempt[]) => {
-    const score = attempts.find(row => row.menu_item_id === assignment.menu_item_id);
-    if (!score || !score.total) return false;
-    if (learningStatus(score) !== "At target") return false;
-    return new Date(score.created_at).getTime() >= new Date(assignment.created_at).getTime();
-  };
-  const answered = people.reduce((sum, row) => sum + Number(row.total_sum || 0), 0);
-  const correct = people.reduce((sum, row) => sum + Number(row.correct_sum || 0), 0);
-  const accuracy = answered ? Math.round(correct / answered * 100) : null;
-  const reviewCount = people.reduce((sum, row) => sum + Number(row.needs_review || 0), 0);
-  const study = detail ? people.map(row => {
-    const mine = detail[row.user_id];
-    const total = mine ? mine.assignments.length : 0;
-    const done = mine ? mine.assignments.filter(assignment => finished(assignment, mine.attempts)).length : 0;
-    return {member: row, total, done};
-  }).filter(row => row.total > 0).sort((a, b) => (a.done === a.total ? 1 : 0) - (b.done === b.total ? 1 : 0) || (b.total - b.done) - (a.total - a.done)) : null;
-  const studyDone = study ? study.filter(row => row.done === row.total).length : 0;
-  const byDish = new Map<string, {id: string; name: string; correct: number; total: number; people: number}>();
-  if (detail) for (const mine of Object.values(detail)) for (const row of mine.attempts) {
-    if (!row.total) continue;
-    const entry = byDish.get(row.menu_item_id) ?? {id: row.menu_item_id, name: row.item_name, correct: 0, total: 0, people: 0};
-    entry.correct += row.correct; entry.total += row.total; entry.people += 1;
-    byDish.set(row.menu_item_id, entry);
-  }
-  const dishes = detail ? [...byDish.values()].map(row => ({...row, percent: Math.round(row.correct / row.total * 100)})).sort((a, b) => a.percent - b.percent || b.people - a.people) : null;
-  const reviewRows = people.filter(row => Number(row.needs_review) > 0).sort((a, b) => Number(b.needs_review) - Number(a.needs_review)).map(row => {
-    const mine = detail ? detail[row.user_id] : undefined;
-    const names = mine ? mine.attempts.filter(attempt => learningStatus(attempt) !== "At target").sort((a, b) => a.correct / a.total - b.correct / b.total).map(attempt => attempt.item_name) : [];
-    return {member: row, count: Number(row.needs_review), names};
-  });
-  const pick = (key: "study" | "accuracy" | "review") => setOpen(open === key ? "" : key);
-  const shown = 6;
-  return <section className="-mt-1 mb-4" aria-label="Your team">
-    <div className="mb-2"><SectionInfo heading="Your team">Finished assigned study counts people whose assigned items are all at target. Accuracy is correct answers out of answered questions in the latest results; unfinished quizzes are left out. Tap a tile to see who, or which dishes.</SectionInfo></div>
-    <div className="team-tiles">
-      <button type="button" className="team-tile" aria-pressed={open === "study"} onClick={() => pick("study")}><b>{study ? (study.length ? studyDone + "/" + study.length : "—") : "…"}</b><span>Finished assigned study</span></button>
-      <button type="button" className="team-tile" aria-pressed={open === "accuracy"} onClick={() => pick("accuracy")}><b>{members === null ? "…" : accuracy === null ? "—" : accuracy + "%"}</b><span>Quiz accuracy</span></button>
-      <button type="button" className="team-tile" aria-pressed={open === "review"} onClick={() => pick("review")}><b>{members === null ? "…" : reviewCount}</b><span>Items need review</span></button>
-    </div>
-    {open === "study" && <div className="team-bubble" role="status">
-      <h3>Assigned study</h3>
-      {!study ? <p className="team-empty">Loading…</p> : !study.length ? <p className="team-empty">Nothing is assigned right now.</p> : <>
-        <p className="team-sub">Not finished first</p>
-        <div className="team-list">{study.slice(0, shown).map(row => <button key={row.member.user_id} type="button" className="team-row" onClick={() => onOpenMember(row.member.user_id)}><span>{row.member.name}</span>{row.done === row.total ? <span className="team-quiet">✓ All done</span> : <span className="team-pill">{row.done} of {row.total} done</span>}</button>)}</div>
-      </>}
-      <button type="button" className="team-more" onClick={onOpenTeam}>See all in Team →</button>
-    </div>}
-    {open === "accuracy" && <div className="team-bubble" role="status">
-      <h3>Dishes to cover</h3>
-      {!dishes ? <p className="team-empty">Loading…</p> : !dishes.length ? <p className="team-empty">No quiz results yet.</p> : <>
-        <p className="team-sub">Lowest accuracy first · latest results, no names</p>
-        <div className="team-list">{dishes.slice(0, shown).map(row => <div key={row.id} className="team-row"><span>{row.name}<small>{row.people} {row.people === 1 ? "person" : "people"}</small></span><span className="team-pct">{row.percent}%</span></div>)}</div>
-      </>}
-      <button type="button" className="team-more" onClick={onOpenTeam}>See each person in Team →</button>
-    </div>}
-    {open === "review" && <div className="team-bubble" role="status">
-      <h3>Needs review</h3>
-      {!reviewRows.length ? <p className="team-empty">Nobody has items to review.</p> : <>
-        <p className="team-sub">Most items first</p>
-        <div className="team-list">{reviewRows.slice(0, shown).map(row => <button key={row.member.user_id} type="button" className="team-row" onClick={() => onOpenMember(row.member.user_id)}><span>{row.member.name}{!!row.names.length && <small>{row.names.slice(0, 2).join(", ")}{row.names.length > 2 ? ", +" + (row.names.length - 2) : ""}</small>}</span><span className="team-pill">{row.count} {row.count === 1 ? "item" : "items"}</span></button>)}</div>
-      </>}
-      <button type="button" className="team-more" onClick={onOpenTeam}>See all in Team →</button>
-    </div>}
-  </section>;
-}
-
 function TeamWorkspace({restaurantId, restaurantName, items, itemsLoading, busy, action, setMessage, onOpenItem, myAccess, meId, onViewing, openMemberId, onOpened}: {restaurantId: string; restaurantName: string; items: MenuItem[]; itemsLoading: boolean; busy: boolean; action: (work: () => Promise<void>) => Promise<void>; setMessage: (text: string) => void; onOpenItem: (item: MenuItem) => void; myAccess: string[]; meId: string; onViewing: (id: string | null) => void; openMemberId?: string | null; onOpened?: () => void}) {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [accessRows, setAccessRows] = useState<Record<string, string[]>>({});
@@ -1569,7 +1455,9 @@ function TeamWorkspace({restaurantId, restaurantName, items, itemsLoading, busy,
       if (!supabase) throw new Error("Please reconnect to your workspace.");
       const result = await supabase.rpc("team_learning_roster", {rid: restaurantId});
       if (result.error) throw new Error(result.error.message);
-      if (request === sequence.current) setMembers(result.data as TeamMember[]);
+      // Someone with no name and no email (a demo, or an owner who hasn't set a name) comes back as
+      // their account id; show "Team member" instead of a string of letters and numbers.
+      if (request === sequence.current) setMembers((result.data as TeamMember[]).map(m => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m.name.trim()) ? {...m, name: "Team member"} : m));
       const rights = await supabase.rpc("team_access", {rid: restaurantId});
       if (rights.error) throw new Error(rights.error.message);
       const open = await supabase.rpc("team_without_position", {rid: restaurantId});
@@ -1612,9 +1500,6 @@ function TeamMemberDetail({restaurantId, restaurantName, member, needsPosition =
   const [typing, setTyping] = useState(!needsPosition && !TEAM_ROLES.some(value => value.toLowerCase() === member.role.trim().toLowerCase()));
   const [attempts, setAttempts] = useState<TeamAttempt[]>([]);
   const [assignments, setAssignments] = useState<TeamAssignment[]>([]);
-  const [mids, setMids] = useState<string[]>([]);const [pickFilter, setPickFilter] = useState("");const [pickShow, setPickShow] = useState<"all" | "new" | "practice">("all");
-  const [note, setNote] = useState("");
-  const [due, setDue] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
@@ -1646,9 +1531,6 @@ function TeamMemberDetail({restaurantId, restaurantName, member, needsPosition =
     return () => {live = false;};
   }, [restaurantId, member.user_id]);
   const review = attempts.filter(row => learningStatus(row) !== "At target").sort((a,b) => a.correct / a.total - b.correct / b.total);
-  const unopened = items.filter(item => !attempts.some(row => row.menu_item_id === item.id));
-  // The picker can narrow to dishes this person has never quizzed on, or that still need practice.
-  const showItem = (item: MenuItem) => pickShow === "all" || (pickShow === "new" ? !attempts.some(row => row.menu_item_id === item.id) : review.some(row => row.menu_item_id === item.id));
   // What happened with each assigned item. The scores above already know; the Assigned list just never asked.
   const assignmentStatus = (assignment: TeamAssignment) => {
     const score = attempts.find(row => row.menu_item_id === assignment.menu_item_id);
@@ -1661,6 +1543,9 @@ function TeamMemberDetail({restaurantId, restaurantName, member, needsPosition =
   // Still to do first, finished at the bottom; due date order holds inside each group.
   const assignmentRows = assignments.map(assignment => ({assignment, status: assignmentStatus(assignment)})).sort((a, b) => Number(a.status.done) - Number(b.status.done));
   const assignmentsDone = assignmentRows.filter(row => row.status.done).length;
+  // Dishes already handed over and not finished: the list shows "Assigned" instead of a button.
+  const assignedIds = new Set(assignmentRows.filter(row => !row.status.done).map(row => row.assignment.menu_item_id));
+  const scores = new Map(attempts.filter(row => row.total > 0).map(row => [row.menu_item_id, `${row.needs_review ? "Quiz updated ·" : learningStatus(row) === "At target" ? "Passed" : "Needs practice"} ${row.correct}/${row.total}`] as const));
   return <section className="mt-7">
     <div className="mb-5 flex items-center justify-between gap-3"><button className="btn secondary" disabled={busy} onClick={onBack}><ArrowLeft size={16} />Team</button>{!loading && !error && <DownloadSheet variant="button" buttonLabel="Summary" label="Download employee training summary" build={async () => employeeSheet({name: member.name, role: member.role, owner: member.is_owner, access: ACCESS_AREAS.filter(area => access.includes(area.key)).map(area => area.label), items, results: attempts, assignments}, {restaurant: restaurantName})} />}</div>
     <div className="mb-5 flex items-start gap-3"><span className="employee-avatar" aria-hidden="true">{member.name.split(/\s+/).slice(0,2).map(part => part[0]).join("").toUpperCase()}</span><div className="min-w-0"><h2 className="text-xl font-semibold break-words">{member.name}</h2><p className="muted mt-1 text-sm">{needsPosition ? "No position yet" : member.role}{member.is_owner ? " · Owner" : ""}</p><p className="muted mt-1 text-sm">{member.last_attempt_at ? `Last quiz ${teamLastActive(member.last_attempt_at).toLowerCase()}` : "No quizzes yet"}</p>{email && <p className="muted mt-1 text-sm">Signs in with <span className="break-all font-semibold" style={{color: "var(--c-text)"}}>{email}</span></p>}</div></div>
@@ -1689,13 +1574,13 @@ function TeamMemberDetail({restaurantId, restaurantName, member, needsPosition =
         <button className="btn mt-4" type="submit" disabled={!role.trim()}>Save profile</button></fieldset></form></div>
     <div hidden={openPanel !== "access"}><AccessPanel restaurantId={restaurantId} member={member} current={access} myAccess={myAccess} meId={meId} busy={busy} action={action} setMessage={setMessage} onSaved={onReload} /></div>
     {loading ? <p role="status" className="muted py-8">Loading member details…</p> : error ? <div className="panel p-5"><p role="alert">{error}</p><button className="btn secondary mt-3" onClick={() => void loadDetail()}>Try again</button></div> : <>
-      <details className="panel team-fold" style={{margin: "12px 0"}}><summary>Assign study</summary><div className="team-fold-body"><form onSubmit={event => {event.preventDefault();void action(async () => {
+      <AssignDishes items={items} practiceIds={new Set(review.map(row => row.menu_item_id))} quizzedIds={new Set(attempts.filter(row => row.total > 0).map(row => row.menu_item_id))} scores={scores} assignedIds={assignedIds} busy={busy} group={list => CONTENT_TYPES.map(type => ({key: type, heading: labelFor(type).heading, items: inMenuOrder(list.filter(item => contentTypeOf(item) === type), namesFor(type))})).filter(section => section.items.length)} onAssign={(ids, note, due) => action(async () => {
         if (!supabase) throw new Error("Please reconnect to your workspace.");
-        const result = await supabase.rpc("assign_menu_items", {rid: restaurantId, learner_id: member.user_id, mids, note, due: due || null});
+        const result = await supabase.rpc("assign_menu_items", {rid: restaurantId, learner_id: member.user_id, mids: ids, note, due: due || null});
         if (result.error) throw new Error(result.error.message);
         notify("study_assigned", restaurantId, member.user_id);
-        setMids([]);setNote("");setDue("");await loadDetail();setMessage("Study items assigned.");
-      });}}><fieldset disabled={busy}><fieldset className="field"><legend className="mb-2 block text-sm font-semibold">Menu items</legend><div className="dish-picker-field"><Search size={18} aria-hidden="true" className="dish-picker-lens" /><input type="search" autoComplete="off" aria-label="Search menu items to assign" placeholder="Search dishes" value={pickFilter} style={{ paddingLeft: 44 }} onChange={e => setPickFilter(e.target.value)} onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} /></div><div className="word-chips mt-3" style={{marginBottom: 16}} role="group" aria-label="Show">{([["all", "All dishes"], ["new", `Not quizzed yet · ${unopened.length}`], ["practice", `Needs practice · ${review.length}`]] as const).map(([key, text]) => <button key={key} type="button" className="word-chip" aria-pressed={pickShow === key} onClick={() => setPickShow(key)}>{text}</button>)}</div>{mids.length > 0 && <div className="dish-chips">{mids.map(mid => {const dish = items.find(item => item.id === mid); return dish ? <button type="button" key={mid} className="dish-chip" aria-label={"Remove " + dish.name} onClick={() => setMids(mids.filter(id => id !== mid))}>{dish.name}<X size={13} aria-hidden="true" /></button> : null;})}</div>}{pickFilter.trim() && !items.some(item => dishKey(item.name).includes(dishKey(pickFilter))) && <p className="muted dish-picker-empty">No dish called “{pickFilter.trim()}”.</p>}{pickShow !== "all" && !(pickShow === "new" ? unopened.length : review.length) && <p className="muted dish-picker-empty">{pickShow === "new" ? "Every menu item has a completed quiz." : "Nothing needs practice."}</p>}<div className="assign-picker">{CONTENT_TYPES.map(type => {const group = inMenuOrder(items.filter(item => contentTypeOf(item) === type && (!pickFilter.trim() || dishKey(item.name).includes(dishKey(pickFilter))) && showItem(item)), namesFor(type));return group.length ? <div key={type}><p className="assign-picker-heading eyebrow muted">{labelFor(type).heading}</p>{group.map(item => <label key={item.id} className="assign-option"><input type="checkbox" checked={mids.includes(item.id)} onChange={event => setMids(event.target.checked ? [...mids, item.id] : mids.filter(id => id !== item.id))}/><span>{item.name}</span>{(() => {const row = attempts.find(r => r.menu_item_id === item.id); return row && row.total > 0 ? <span className="muted text-xs"> · {learningStatus(row) === "At target" ? "Passed" : "Needs practice"} {row.correct}/{row.total}</span> : null;})()}</label>)}</div> : null;})}</div></fieldset><p className="muted mt-2 mb-4 text-xs">{mids.length ? `${mids.length} selected` : "Tick the items you want this person to study."}</p><Field label="Note (optional)"><input id="team-study-note" maxLength={200} value={note} onChange={e => setNote(e.target.value)}/></Field><Field label="Due date (optional)"><input id="team-study-due" type="date" value={due} onChange={e => setDue(e.target.value)}/></Field><div className="mt-4 flex flex-wrap items-center gap-3"><button className="btn" type="submit" disabled={!mids.length}>Assign</button>{due && <button type="button" className="btn secondary" onClick={() => setDue("")}>Clear due date</button>}</div></fieldset></form></div></details>
+        await loadDetail();setMessage(ids.length === 1 ? "Study item assigned." : "Study items assigned.");
+      })} />
       {!!assignments.length && <details className="panel team-fold" style={{margin: "12px 0"}}><summary>Assigned · {assignments.length}{assignmentsDone ? ` · ${assignmentsDone} done` : ""}</summary><div className="team-fold-body"><ul className="space-y-3">{assignmentRows.map(({assignment, status}) => <li key={assignment.id} className="flex items-start justify-between gap-3 border-t border-line pt-3"><div className="min-w-0"><p className="font-semibold">{assignment.item_name}</p><p className="mt-2"><span className={`menu-badge ${status.tone}`}>{status.label}</span></p>{assignment.note && <p className="muted mt-1 whitespace-pre-wrap">{assignment.note}</p>}{assignment.due_on && <p className="muted mt-1 text-xs">Due {new Date(`${assignment.due_on}T12:00:00`).toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"})}</p>}</div><button className="btn secondary shrink-0" disabled={busy} aria-label={`Remove assignment for ${assignment.item_name}`} onClick={() => void action(async () => {
           if (!supabase) throw new Error("Please reconnect to your workspace.");
           const result = await supabase.rpc("remove_assignment", {assignment_id: assignment.id});
@@ -1726,6 +1611,9 @@ function Workspace({
   const [selected, setSelected] = useState("");
   const [items, setItems] = useState<MenuItem[]>([]);
   const [detailItem, setDetailItem] = useState<MenuItem | null>(null);
+  // The card the Tutor was opened from ("Practice with the tutor"), so it starts on that card and can
+  // go back to it. Opening the Tutor from the menu clears it.
+  const [tutorCard, setTutorCard] = useState<MenuItem | null>(null);
   const [quizEditing, setQuizEditing] = useState(false);
   const [quizItem, setQuizItem] = useState<MenuItem | null>(null);
   const [quizProgress, setQuizProgress] = useState<ProgressRow[]>([]);
@@ -1767,6 +1655,29 @@ function Workspace({
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [navOpen, setNavOpen] = useState(false);
+  // The side menu sticks to the top of the screen, so it's one screen tall. Until the header and the
+  // demo banner have scrolled away it starts lower down, so it gives up exactly that much height and
+  // its last links stay on screen instead of hanging below the bottom edge.
+  const sideNav = useRef<HTMLElement | null>(null);
+  const fitSideNav = useRef<() => void>(() => {});
+  // The menu only exists once the workspace has loaded, so it fits itself the moment it appears too.
+  const attachSideNav = useCallback((node: HTMLElement | null) => {sideNav.current = node; if (node) fitSideNav.current();}, []);
+  useEffect(() => {
+    let frame = 0;
+    const fit = fitSideNav.current = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const nav = sideNav.current;
+        if (!nav) return;
+        if (!window.matchMedia("(min-width: 768px)").matches) { nav.style.height = ""; return; }
+        nav.style.height = `${window.innerHeight - Math.max(0, nav.getBoundingClientRect().top)}px`;
+      });
+    };
+    fit();
+    window.addEventListener("scroll", fit, {passive: true});
+    window.addEventListener("resize", fit);
+    return () => {cancelAnimationFrame(frame); window.removeEventListener("scroll", fit); window.removeEventListener("resize", fit);};
+  }, []);
   const [libraryExpanded, setLibraryExpanded] = useState(false);
   const [hideTaken, setHideTaken] = useState(false);
   const [studyType, setStudyType] = useState<ContentType>("food");
@@ -1828,11 +1739,43 @@ function Workspace({
     if (next !== "allergy" || view !== "allergy") setAllergyPick(ALLERGY_START);
     setDetailItem(null);setView(next); setContentType(nextType); setCategory(nextCategory); setQuery(""); setCameFrom(null);
     setQuizItem(null); setAdding(false); setEditing(undefined); setCreating(false); setNavOpen(false); setViewingMember(null);
-    setError(""); setMessage(""); setScheduleTab(null);
+    setError(""); setMessage(""); setScheduleTab(null); setReportsTab(null); setPreshiftEdit(false); setTutorCard(null);
   }
   // Schedule straight on one of its tabs, from a chip on Home.
   const [scheduleTab, setScheduleTab] = useState<ScheduleTab | null>(null);
   function openSchedule(tab: ScheduleTab) { navigate("schedule"); setScheduleTab(tab); }
+  // Pre-shift straight in edit mode, from the pencil on Today: the posted board is already filled in.
+  const [preshiftEdit, setPreshiftEdit] = useState(false);
+  // Shift reports straight on Past reports, from the Service part of the dashboard.
+  const [reportsTab, setReportsTab] = useState<"past" | null>(null);
+  function openPastReports() { navigate("reports"); setReportsTab("past"); }
+  // The manager's Today, the first part of the Dashboard: what the day needs, in the order a manager asks.
+  // Buttons and their dots, anything waiting (nothing shows when nothing waits), the posted pre-shift,
+  // who is working, then the two doors out. Everything else that used to crowd Home waits underneath.
+  function renderToday() {
+    if (!restaurant) return null;
+    const rid = restaurant.id;
+    const canSchedule = can("team") || can("schedule_foh") || can("schedule_boh");
+    return <div className="today">
+      {(can("preshift") || can("team") || canSchedule) && <TodayFigures key={`figures-${rid}`} restaurantId={rid} canSchedule={canSchedule} />}
+      {(can("team") || can("preshift") || can("library") || canSchedule) && <ManagerAttention key={`attention-${rid}`} restaurantId={rid} canTeam={can("team")} canSchedule={canSchedule} canReports={can("preshift") || can("team")} onOpen={openAttention} />}
+      <TodayStatus key={`status-${rid}`} restaurantId={rid} canPreshift={can("preshift")} canReports={can("preshift") || can("team")} onPreshift={edit => {navigate("preshift"); setPreshiftEdit(edit);}} onSideWork={() => navigate("checklists")} onReport={openPastReports} />
+      {can("preshift") && <PostedPreShiftCard key={`posted-${rid}`} restaurantId={rid} items={items} restaurantName={restaurant.name} />}
+      {itemsLoading ? <p role="status" className="muted py-10">Loading your library…</p> : <>
+        <NextShift key={`shift-${rid}`} restaurantId={rid} userId={user.id} onOpen={() => navigate("schedule")} />
+        {(can("preshift") || can("team")) && <LastShiftNote key={`last-${rid}`} restaurantId={rid} onOpen={() => navigate("reports")} />}
+        {(can("preshift") || can("team") || canSchedule) && <TodayRoster key={`roster-${rid}`} restaurantId={rid} onOpen={() => openSchedule("week")} />}
+        <TodayActions canAssign={can("team")} onAssign={() => navigate("team")} onLibrary={() => navigate("library")} />
+        {can("team") && <RecentCompletions key={`recent-${rid}`} restaurantId={rid} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} />}
+        {!can("preshift") && <>
+          <h2 className="text-xl font-semibold">Explore your menu</h2>
+          <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">{counts.filter(c => c.count > 0).map(c => <button key={c.name} className="panel category-card flex items-center gap-2 p-3 text-left" onClick={() => navigate("library", c.name, contentType)}><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{c.name}</span><span className="muted mt-1 block text-xs">{c.count} {c.count === 1 ? wordsIn(taxonomy, contentType).item_one : wordsIn(taxonomy, contentType).item_many}</span></span><ArrowRight size={15} className="muted shrink-0" /></button>)}</div></>}
+        {!items.length && <p className="panel muted p-6">{can("library") ? "Add your first dish to start building the library." : "Your manager hasn’t added content yet."}</p>}
+        {can("library") && <div id="retake-requests"><RetakeRequests restaurantId={rid} /></div>}
+        {isManager && <AccountName user={user} />}
+      </>}
+    </div>;
+  }
   function openAttention(target: AttentionTarget) {
     if (target === "shift_changes" || target === "released") openSchedule("requests");
     else if (target === "time_off") openSchedule("timeoff");
@@ -2075,7 +2018,7 @@ function Workspace({
     <CardRowsContext.Provider value={cards.rows}>
     <div className="min-h-screen">
       <header className="app-header border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-9">
+        <div className="mx-auto flex max-w-[1920px] items-center justify-between gap-3 px-4 py-3 md:px-9">
           <div className="flex items-center gap-3">
             <button className="rounded-lg p-2 hover:bg-raised md:hidden" aria-label="Toggle navigation" aria-expanded={navOpen} aria-controls="workspace-navigation" onClick={event => {const header = event.currentTarget.closest("header"); if (header) document.documentElement.style.setProperty("--header-h", `${Math.round(header.getBoundingClientRect().bottom)}px`); setNavOpen(!navOpen);}}><Menu size={22} /></button>
             {restaurant && !isManager ? <div className="flex items-center gap-3"><button type="button" className="header-home" aria-label="Go to Home" onClick={() => navigate("home")}><HeatIcon /></button><div><p className="text-sm font-semibold">{learnerName}</p><p className="muted text-xs uppercase tracking-widest">{restaurant.name}</p></div></div> : <button type="button" className="header-home" aria-label="Go to Home" onClick={() => navigate("home")}><Brand /></button>}
@@ -2193,8 +2136,8 @@ function Workspace({
       </div> : isOwner && restaurant?.trial_ends_at && <div className="preview-bar" role="note">
         <span>{trialLabel(restaurant.trial_ends_at)}</span>
       </div>}
-      <div className="mx-auto grid max-w-7xl md:grid-cols-[225px_1fr]">
-        <aside id="workspace-navigation" className={`mobile-drawer ${navOpen ? "block" : "hidden"} border-b border-line bg-surface p-5 md:sticky md:top-0 md:block md:h-screen md:self-start md:overflow-y-auto md:border-r md:border-b-0 md:p-6`}>
+      <div className="mx-auto grid max-w-[1920px] md:grid-cols-[225px_1fr]">
+        <aside id="workspace-navigation" ref={attachSideNav} className={`mobile-drawer ${navOpen ? "block" : "hidden"} border-b border-line bg-surface p-5 md:sticky md:top-0 md:block md:h-screen md:self-start md:overflow-y-auto md:border-r md:border-b-0 md:p-6`}>
           <p className="eyebrow muted mb-3">Workspace</p>
           {restaurants.length > 0 && (
             <>
@@ -2231,8 +2174,8 @@ function Workspace({
             </>
           )}
           <nav aria-label="Main navigation" className="mt-6 space-y-2" data-tour="nav">
-            <button className={`nav-item ${view === "home" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "home" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("home")}><HomeIcon size={19} />Home</button>
-            {can("team") && <button className={`nav-item ${view === "dashboard" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "dashboard" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("dashboard")}><LayoutDashboard size={19} />Dashboard</button>}
+            {!isManager && <button className={`nav-item ${view === "home" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "home" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("home")}><HomeIcon size={19} />Home</button>}
+            {isManager && <button className={`nav-item ${(view === "dashboard" || view === "home") && !adding && !editing && !creating ? "active" : ""}`} aria-current={(view === "dashboard" || view === "home") && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("dashboard")}><LayoutDashboard size={19} />Dashboard</button>}
             <button data-tour="nav-schedule" className={`nav-item ${view === "schedule" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "schedule" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("schedule")}><CalendarDays size={19} />Schedule</button>
             {(can("preshift") || can("team")) && <button data-tour="nav-reports" className={`nav-item ${view === "reports" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "reports" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("reports")}><FileText size={19} />Shift report</button>}
             <button className={`nav-item ${view === "library" || adding || editing ? "active" : ""}`} aria-expanded={libraryExpanded} aria-controls="library-options" onClick={() => setLibraryExpanded(expanded => !expanded)}><BookOpen size={19} /><span className="flex-1">Content library</span><span aria-hidden="true">{libraryExpanded ? "⌃" : "⌄"}</span></button>
@@ -2243,12 +2186,12 @@ function Workspace({
             </div>
             <button className={`nav-item ${view === "allergy" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "allergy" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("allergy")}><ShieldAlert size={19} />Allergy</button>
             {can("preshift") && <button className={`nav-item ${view === "preshift" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "preshift" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("preshift")}><ClipboardList size={19} />Pre-shift</button>}
-            <button className={`nav-item ${view === "checklists" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "checklists" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("checklists")}><ListChecks size={19} />Checklists</button>
+            <button className={`nav-item ${view === "checklists" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "checklists" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("checklists")}><ListChecks size={19} />Side work</button>
             {can("team") && <button className={`nav-item ${view === "team" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "team" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("team")}><Users size={19} />Team</button>}
             <button className={`nav-item ${view === "words" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "words" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("words")}><Languages size={19} />Words</button>
             <button className={`nav-item ${view === "standards" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "standards" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("standards")}><ClipboardList size={19} />Standards</button>
           </nav>
-          {restaurant && <nav aria-label="Learning navigation" className="mt-2 space-y-2"><button className={`nav-item ${view==='progress'||view==='review'?'active':''}`} onClick={()=>navigate('progress')}><BarChart3 size={19}/>My progress</button><button className={`nav-item ${view === "story" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "story" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("story")}><Store size={19} />Our story</button></nav>}
+          {restaurant && <nav aria-label="Learning navigation" className="mt-2 space-y-2"><button className={`nav-item ${view==='progress'||view==='review'?'active':''}`} onClick={()=>navigate('progress')}><BarChart3 size={19}/>My progress</button><button className={`nav-item ${view === "tutor" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "tutor" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("tutor")}><GraduationCap size={19} />Tutor</button><button className={`nav-item ${view === "story" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "story" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("story")}><Store size={19} />Our story</button></nav>}
           {can("library") && <>
             <div className="mx-1.5 mt-4 h-px bg-line" />
             <nav aria-label="Restaurant settings" className="mt-3 space-y-2">
@@ -2444,7 +2387,7 @@ function Workspace({
               }}
             />
           ) : detailItem && restaurant ? (
-            <section className="mx-auto max-w-2xl item-detail" {...cardSwipe}><div className="mb-4 flex items-center justify-between gap-3"><button className="btn secondary" onClick={()=>{const back=cameFrom;setDetailItem(null);setCameFrom(null);if(back){setView(back.view);if(back.search)setSearchOpen(true);}else{setView("library");setContentType(contentTypeOf(detailItem));}window.scrollTo(0,0);if(back?.view==="allergy"){const y=allergyScroll.current;setTimeout(()=>window.scrollTo(0,y),80);}}}><ArrowLeft size={16} />{cameFrom ? cameFrom.label : "Menu"}</button></div><CardNavigation items={detailItems} current={detailItem} onOpen={openCard}/><DishCard item={detailItem} shift={shiftFlags[detailItem.id]} score={!progressLoading&&!progressError ? quizProgress.find(row => row.menu_item_id === detailItem.id) : undefined}/><CardNavigation items={detailItems} current={detailItem} onOpen={openCard}/><button className="btn quiz-cta mt-5" onClick={()=>{setQuizEditing(false);setQuizItem(detailItem);window.scrollTo(0,0);}}>QUIZ ME</button>{can("library")&&<div className="card-admin"><p className="eyebrow muted mb-3">Manager only</p><div className="card-admin-actions"><button className="btn secondary" onClick={()=>{setQuizEditing(true);setQuizItem(detailItem);window.scrollTo(0,0);}}>Edit quiz</button><button className="btn secondary" onClick={()=>{setEditing(detailItem);setDetailItem(null);window.scrollTo(0,0);}}>Edit {contentTypeOf(detailItem) === "wine" ? "wine" : contentTypeOf(detailItem) === "cocktails" ? "drink" : "dish"}</button><DownloadSheet variant="button" label="Download this card" build={async () => dishCard({item: detailItem, photo: await loadPhoto(detailItem.photo_url), cardFields: cards.rows}, {restaurant: restaurant?.name ?? "HEAT"})} /><DeleteMenuItem key={detailItem.id} item={detailItem} busy={busy} onDelete={() => action(async () => {
+            <section className="mx-auto max-w-2xl item-detail" {...cardSwipe}><div className="mb-4 flex items-center justify-between gap-3"><button className="btn secondary" onClick={()=>{const back=cameFrom;setDetailItem(null);setCameFrom(null);if(back){setView(back.view);if(back.search)setSearchOpen(true);}else{setView("library");setContentType(contentTypeOf(detailItem));}window.scrollTo(0,0);if(back?.view==="allergy"){const y=allergyScroll.current;setTimeout(()=>window.scrollTo(0,y),80);}}}><ArrowLeft size={16} />{cameFrom ? cameFrom.label : "Menu"}</button></div><CardNavigation items={detailItems} current={detailItem} onOpen={openCard}/><DishCard item={detailItem} shift={shiftFlags[detailItem.id]} score={!progressLoading&&!progressError ? quizProgress.find(row => row.menu_item_id === detailItem.id) : undefined}/><CardNavigation items={detailItems} current={detailItem} onOpen={openCard}/><button className="btn quiz-cta mt-5" onClick={()=>{setQuizEditing(false);setQuizItem(detailItem);window.scrollTo(0,0);}}>QUIZ ME</button><button className="btn secondary tutor-cta mt-3" onClick={()=>{setTutorCard(detailItem);setDetailItem(null);setView("tutor");window.scrollTo(0,0);}}><GraduationCap size={16} />Practice with the tutor</button>{can("library")&&<div className="card-admin"><p className="eyebrow muted mb-3">Manager only</p><div className="card-admin-actions"><button className="btn secondary" onClick={()=>{setQuizEditing(true);setQuizItem(detailItem);window.scrollTo(0,0);}}>Edit quiz</button><button className="btn secondary" onClick={()=>{setEditing(detailItem);setDetailItem(null);window.scrollTo(0,0);}}>Edit {contentTypeOf(detailItem) === "wine" ? "wine" : contentTypeOf(detailItem) === "cocktails" ? "drink" : "dish"}</button><DownloadSheet variant="button" label="Download this card" build={async () => dishCard({item: detailItem, photo: await loadPhoto(detailItem.photo_url), cardFields: cards.rows}, {restaurant: restaurant?.name ?? "HEAT"})} /><DeleteMenuItem key={detailItem.id} item={detailItem} busy={busy} onDelete={() => action(async () => {
               if (!supabase || !restaurant || !can("library")) throw new Error("Manager access required.");
               const item = detailItem;
               const result = await supabase.from("menu_items").delete().eq("id", item.id).eq("restaurant_id", restaurant.id).eq("updated_at", item.updated_at!).select("id");
@@ -2455,7 +2398,7 @@ function Workspace({
               setMessage(`${item.name} was deleted.`);
             })}/></div></div>}</section>
           ) : (
-            restaurant && (view === "preshift" ? (can("preshift") ? <PreShiftManager key={restaurant.id} restaurant={restaurant} items={items} itemsLoading={itemsLoading} refreshItems={loadItems} onPosted={() => navigate("home")} /> : null) : view === "library-settings" ? (can("library") ? <LibrarySettings key={restaurant.id} restaurantId={restaurant.id} taxonomy={taxonomy} items={items} onChanged={loadTaxonomy} onItemsChanged={loadItems} /> : null) : view === "dashboard" ? (can("team") ? <section className="mx-auto max-w-4xl">
+            restaurant && (view === "preshift" ? (can("preshift") ? <PreShiftManager key={restaurant.id} restaurant={restaurant} items={items} itemsLoading={itemsLoading} refreshItems={loadItems} startEditing={preshiftEdit} onPosted={() => navigate("home")} /> : null) : view === "library-settings" ? (can("library") ? <LibrarySettings key={restaurant.id} restaurantId={restaurant.id} taxonomy={taxonomy} items={items} onChanged={loadTaxonomy} onItemsChanged={loadItems} /> : null) : (view === "dashboard" || (view === "home" && isManager)) ? ((can("team") || isManager) ? <section className="mx-auto max-w-4xl">
               <p className="eyebrow muted">Dashboard</p>
               <h1 className="mt-3 mb-5 text-2xl font-semibold">{dashboardScope === "brand" && brand ? brand.name : restaurant.name}</h1>
               {/* The brand's owner can step back from one location to all of them. */}
@@ -2465,8 +2408,8 @@ function Workspace({
               </div>}
               {dashboardScope === "brand" && ownsBrand && brand
                 ? <BrandDashboard key={brand.id} organization={brand} currentId={restaurant.id} onOpen={id => {setSelected(id);setDashboardScope("location");window.scrollTo(0, 0);}} />
-                : <ManagerDashboard key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenSchedule={() => openSchedule("week")} onOpenReports={() => navigate("reports")} />}
-            </section> : null) : view === "schedule" ? <Schedule key={`${restaurant.id}-${scheduleTab ?? ""}`} initialTab={scheduleTab} restaurantId={restaurant.id} restaurantName={restaurant.name} userId={user.id} canManage={(can("team") || can("schedule_foh") || can("schedule_boh")) && !employeeView} access={{all: can("team"), foh: can("schedule_foh"), kitchen: can("schedule_boh")}} setMessage={setMessage} /> : view === "reports" ? (can("preshift") || can("team") ? <ShiftReports key={restaurant.id} restaurant={restaurant} restaurants={restaurants} brand={brand} ownsBrand={ownsBrand} canWrite={can("preshift")} canManageRecipients={can("team")} setMessage={setMessage} /> : null) : view === "locations" ? (can("library") ? <Locations key={restaurant.id} userId={user.id} restaurant={restaurant} restaurants={restaurants} organizations={organizations} items={items} canImport={can("library")} busy={busy} action={action} setMessage={setMessage} onChanged={loadRestaurants} onItemsChanged={loadItems} onOpen={id => {setDetailItem(null);setSelected(id);setCategory("All");setQuery("");setNavOpen(false);setEmployeeView(false);setInviteLink("");window.scrollTo(0, 0);}} /> : null) : view === "words" ? <WordsManager key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} custom={customTerms} onChanged={loadGlossary} canEdit={can("words")} /> : view === "story" ? <Story key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} canEdit={can("words")} /> : view === "standards" ? <Standards key={restaurant.id} restaurantId={restaurant.id} canEdit={can("standards")} restaurantName={restaurant.name} /> : view === "checklists" ? <Checklists key={restaurant.id} restaurantId={restaurant.id} canManage={can("preshift")} /> : view === "team" ? (can("team") ? <section className="mx-auto max-w-3xl"><p className="eyebrow muted">Manager workspace · {restaurant.name}</p>{!viewingMember && <h1 className="mt-3 text-2xl font-semibold">Team</h1>}{!viewingMember && <><section className="panel mt-5 mb-5 p-5"><InfoRow info={<>Create an invitation link and share it through WhatsApp, text, or email. Employees can create an account or sign in to join {restaurant.name}.<br /><br />Links expire after 7 days. Creating a replacement disables the previous link.</>}><h2 className="text-xl font-semibold">Invite an employee</h2></InfoRow>                    {can("team") && (
+                : can("team") ? <ManagerDashboard key={restaurant.id} today={renderToday()} restaurantId={restaurant.id} restaurantName={restaurant.name} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenSchedule={() => openSchedule("week")} onOpenReports={openPastReports} /> : renderToday()}
+            </section> : null) : view === "schedule" ? <Schedule key={`${restaurant.id}-${scheduleTab ?? ""}`} initialTab={scheduleTab} restaurantId={restaurant.id} restaurantName={restaurant.name} userId={user.id} canManage={(can("team") || can("schedule_foh") || can("schedule_boh")) && !employeeView} access={{all: can("team"), foh: can("schedule_foh"), kitchen: can("schedule_boh")}} setMessage={setMessage} /> : view === "reports" ? (can("preshift") || can("team") ? <ShiftReports key={`${restaurant.id}-${reportsTab ?? ""}`} initialTab={reportsTab ?? undefined} restaurant={restaurant} restaurants={restaurants} brand={brand} ownsBrand={ownsBrand} canWrite={can("preshift")} canManageRecipients={can("team")} setMessage={setMessage} /> : null) : view === "locations" ? (can("library") ? <Locations key={restaurant.id} userId={user.id} restaurant={restaurant} restaurants={restaurants} organizations={organizations} items={items} canImport={can("library")} busy={busy} action={action} setMessage={setMessage} onChanged={loadRestaurants} onItemsChanged={loadItems} onOpen={id => {setDetailItem(null);setSelected(id);setCategory("All");setQuery("");setNavOpen(false);setEmployeeView(false);setInviteLink("");window.scrollTo(0, 0);}} /> : null) : view === "words" ? <WordsManager key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} custom={customTerms} onChanged={loadGlossary} canEdit={can("words")} /> : view === "story" ? <Story key={restaurant.id} restaurantId={restaurant.id} restaurantName={restaurant.name} canEdit={can("words")} /> : view === "tutor" ? <Tutor key={`${restaurant.id}-${tutorCard?.id ?? ""}`} restaurantId={restaurant.id} restaurantName={restaurant.name} userId={user.id} card={tutorCard ? {name: tutorCard.name, onBack: () => openCard(tutorCard)} : undefined} items={items} /> : view === "standards" ? <Standards key={restaurant.id} restaurantId={restaurant.id} canEdit={can("standards")} restaurantName={restaurant.name} /> : view === "checklists" ? <Checklists key={restaurant.id} restaurantId={restaurant.id} canManage={can("preshift")} /> : view === "team" ? (can("team") ? <section className="mx-auto max-w-3xl"><p className="eyebrow muted">Manager workspace · {restaurant.name}</p>{!viewingMember && <h1 className="mt-3 text-2xl font-semibold">Team</h1>}{!viewingMember && <><section className="panel mt-5 mb-5 p-5"><InfoRow info={<>Create an invitation link and share it through WhatsApp, text, or email. Employees can create an account or sign in to join {restaurant.name}.<br /><br />Links expire after 7 days. Creating a replacement disables the previous link.</>}><h2 className="text-xl font-semibold">Invite an employee</h2></InfoRow>                    {can("team") && (
                       <button
                         disabled={busy}
                         className="btn mt-6"
@@ -2534,7 +2477,7 @@ function Workspace({
                       Copy link
                     </button>
                   </section>
-                )}</>}<TeamWorkspace key={`${restaurant.id}-${teamReset}`} restaurantId={restaurant.id} restaurantName={restaurant.name} items={items} itemsLoading={itemsLoading} busy={busy} myAccess={isOwner ? ACCESS_AREAS.map(area => area.key) : access} meId={user.id} onViewing={setViewingMember} openMemberId={teamOpenId} onOpened={() => setTeamOpenId(null)} action={action} setMessage={setMessage} onOpenItem={item => {navigate("library", "All", contentTypeOf(item));openCard(item);}} /></section> : <section><h1 className="text-2xl font-semibold">Team</h1><p className="muted mt-3">Employee invitations are managed by your restaurant manager.</p></section>) : view === "progress" || view === "review" ? <section><p className="eyebrow muted">Your learning</p><h1 className="mt-3 text-2xl font-semibold">My progress</h1>{!(itemsLoading||progressLoading)&&!progressError&&reviewItems.length>0&&<div className="mt-5"><SectionInfo heading={<>Needs review · {reviewItems.length}</>}>Quizzes below 80% or with updated questions. Your previous scores are saved. Study the details before your next attempt.</SectionInfo><div className="mt-3 space-y-2">{reviewItems.map(item=>{const score=quizProgress.find(p=>p.menu_item_id===item.id)!;return <button key={item.id} className="panel compact-menu-row w-full text-left" onClick={()=>{setView("review");setDetailItem(item);window.scrollTo(0,0);}}>{item.photo_url ? <img src={item.photo_url} alt="" loading="lazy" decoding="async" className="h-12 w-12 shrink-0 rounded-lg object-cover"/> : <BookOpen size={24} className="muted shrink-0"/>}<span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.name}</span><span className="muted mt-1 block text-xs uppercase tracking-wider">{categoryOf(item)}{` · ${learningStatus(score)}`}</span></span><span className="quiz-chip review menu-badge cc shrink-0">{score.correct}/{score.total}</span></button>})}</div></div>}<LearningProgress items={items} progress={quizProgress} loading={itemsLoading||progressLoading} error={progressError} onRetry={()=>void loadProgress()}/>{restaurant&&!progressLoading&&!progressError&&<MyActivity key={restaurant.id} restaurantId={restaurant.id} items={items} progress={quizProgress}/>}</section> : view === "tostudy" ? (() => {
+                )}</>}<TeamWorkspace key={`${restaurant.id}-${teamReset}`} restaurantId={restaurant.id} restaurantName={restaurant.name} items={items} itemsLoading={itemsLoading} busy={busy} myAccess={isOwner ? ACCESS_AREAS.map(area => area.key) : access} meId={user.id} onViewing={setViewingMember} openMemberId={teamOpenId} onOpened={() => setTeamOpenId(null)} action={action} setMessage={setMessage} onOpenItem={item => {navigate("library", "All", contentTypeOf(item));openCard(item);}} /></section> : <section><h1 className="text-2xl font-semibold">Team</h1><p className="muted mt-3">Employee invitations are managed by your restaurant manager.</p></section>) : view === "progress" || view === "review" ? <section><p className="eyebrow muted">Your learning</p><h1 className="mt-3 text-2xl font-semibold">My progress</h1>{!(itemsLoading||progressLoading)&&!progressError&&reviewItems.length>0&&<div className="mt-5"><SectionInfo heading={<>Needs review · {reviewItems.length}</>}>Quizzes below 80% or with updated questions. Your previous scores are saved. Study the details before your next attempt.</SectionInfo><div className="mt-3 space-y-2">{reviewItems.map(item=>{const score=quizProgress.find(p=>p.menu_item_id===item.id)!;return <button key={item.id} className="panel compact-menu-row w-full text-left" onClick={()=>{setView("review");setDetailItem(item);window.scrollTo(0,0);}}>{item.photo_url ? <img src={item.photo_url} alt="" loading="lazy" decoding="async" className="h-12 w-12 shrink-0 rounded-lg object-cover"/> : <BookOpen size={24} className="muted shrink-0"/>}<span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.name}</span><span className="muted mt-1 block text-xs uppercase tracking-wider">{categoryOf(item)}{` · ${learningStatus(score)}`}</span></span><span className="quiz-chip review menu-badge cc shrink-0">{score.correct}/{score.total}</span></button>})}</div></div>}<LearningProgress items={items} progress={quizProgress} loading={itemsLoading||progressLoading} error={progressError} onRetry={()=>void loadProgress()}/>{restaurant&&!progressLoading&&!progressError&&<MyActivity key={restaurant.id} restaurantId={restaurant.id} items={items} progress={quizProgress}/>}{restaurant&&<TutorProgress key={`tutor-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} items={items} onOpen={item=>{setCameFrom({view: "progress", label: "My progress"});openCard(item);}} onTutor={()=>navigate("tutor")}/>}</section> : view === "tostudy" ? (() => {
             const left = items.filter(item => !takenIds.has(item.id));
             const types = CONTENT_TYPES.filter(type => type !== "wine" || items.some(item => contentTypeOf(item) === "wine"));
             const typeNames: Record<ContentType, string> = { food: "Food", cocktails: "Cocktails", wine: "Wine & Sake" };
@@ -2559,30 +2502,7 @@ function Workspace({
             </section>;
           })() : view === "home" ? (
               <section>
-                {!isManager ? <EmployeeHome key={restaurant.id} waiting={<ShiftChangesWaiting key={`waiting-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => openSchedule("mine")} setMessage={setMessage} />} schedule={<MyWeek key={`week-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />} onProgress={() => navigate("progress")} onChecklists={() => navigate("checklists")} restaurantId={restaurant.id} canDownloadBoard={can("preshift")} restaurantName={restaurant.name} onFocusQuiz={item => {navigate("library", "All", contentTypeOf(item));setDetailItem(item);setQuizEditing(false);setQuizItem(item);}} onBoardItem={item => {navigate("library", "All", contentTypeOf(item));setCameFrom({view: "home", label: "Pre-shift board"});openCard(item);}} user={user} items={items} progress={quizProgress} loading={itemsLoading || progressLoading} error={progressError || error} onRetry={() => {void loadItems();void loadProgress();}} onStudy={(item, mode) => {if(item && mode === "list"){setStudyType(CONTENT_TYPES.find(type => items.some(other => contentTypeOf(other) === type && !takenIds.has(other.id))) ?? "food");navigate("tostudy");return;}navigate("library", item ? categoryOf(item) : "All", item ? contentTypeOf(item) : "food");setHideTaken(false);if(item)setQuery(item.name);}} /> : <>
-                <p className="eyebrow muted mb-3">Home · {isManager ? "Manager workspace" : "Ready for service"}</p>
-                <h1 className="text-2xl font-semibold md:text-2xl">{`Welcome to ${restaurant.name}`}</h1>
-                <p className="muted mt-3 max-w-xl">Feel ready for every service.</p>
-                {can("preshift") && restaurant ? <HomeShortcuts key={`shortcuts-${restaurant.id}`} restaurantId={restaurant.id} canAssign={can("team")} onPreshift={() => navigate("preshift")} onChecklists={() => navigate("checklists")} onAssign={() => navigate("team")} onLibrary={() => navigate("library")} /> : <div className="mt-5 mb-4 flex flex-wrap gap-3">
-                  {can("team") && <button className="btn secondary" style={{fontWeight: 700, border: "1.5px solid var(--c-text)"}} onClick={() => navigate("team")}>Assign study</button>}
-                  <button className={can("team") ? "btn secondary" : "btn"} style={can("team") ? {fontWeight: 700, border: "1.5px solid var(--c-text)"} : undefined} onClick={() => navigate("library")}>Open library</button>
-                </div>}
-                {(can("team") || can("preshift") || can("library") || can("schedule_foh") || can("schedule_boh")) && restaurant && <ManagerAttention key={`attention-${restaurant.id}`} restaurantId={restaurant.id} canTeam={can("team")} canSchedule={can("team") || can("schedule_foh") || can("schedule_boh")} canReports={can("preshift") || can("team")} onOpen={openAttention} />}
-                {itemsLoading ? <p role="status" className="muted py-10">Loading your library…</p> : <>
-                  {restaurant && <NextShift key={`shift-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} />}
-                  {(can("preshift") || can("team")) && restaurant && <LastShiftNote key={`last-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => navigate("reports")} />}
-                  {(can("preshift") || can("team") || can("schedule_foh") || can("schedule_boh")) && restaurant && <WhoWorksToday key={`today-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => openSchedule("week")} />}
-                  {can("team") && restaurant && <TeamSnapshot key={`team-${restaurant.id}`} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} onOpenTeam={() => navigate("team")} />}
-                  {can("team") && restaurant && <RecentCompletions key={`recent-${restaurant.id}`} restaurantId={restaurant.id} onOpenMember={id => {setTeamOpenId(id);navigate("team");}} />}
-                  {can("preshift") && restaurant && <MyJobCard key={`job-${restaurant.id}`} restaurantId={restaurant.id} onOpen={() => navigate("checklists")} manager />}
-                  {can("preshift") ? <PreShiftHomeCard key={`preshift-${restaurant.id}`} restaurantId={restaurant.id} items={items} onOpen={() => navigate("preshift")} canDownload restaurantName={restaurant.name} /> : <>
-                  <h2 className="mb-4 text-xl font-semibold">Explore your menu</h2>
-                  <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">{counts.filter(c => c.count > 0).map(c => <button key={c.name} className="panel category-card flex items-center gap-2 p-3 text-left" onClick={() => navigate("library", c.name, contentType)}><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{c.name}</span><span className="muted mt-1 block text-xs">{c.count} {c.count === 1 ? wordsIn(taxonomy, contentType).item_one : wordsIn(taxonomy, contentType).item_many}</span></span><ArrowRight size={15} className="muted shrink-0" /></button>)}</div></>}
-                  {!items.length && <p className="panel muted mt-4 p-6">{can("library") ? "Add your first dish to start building the library." : "Your manager hasn’t added content yet."}</p>}
-                  {can("library") && restaurant && <div id="retake-requests"><RetakeRequests restaurantId={restaurant.id} /></div>}
-                  {isManager && <AccountName user={user} />}
-                </>}
-                </>}
+                {!isManager ? <EmployeeHome key={restaurant.id} waiting={<ShiftChangesWaiting key={`waiting-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => openSchedule("mine")} setMessage={setMessage} />} schedule={<><MyWeek key={`week-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("schedule")} /><MyShiftCard key={`shift-${restaurant.id}`} restaurantId={restaurant.id} userId={user.id} onOpen={() => navigate("checklists")} /></>} onProgress={() => navigate("progress")} onChecklists={() => navigate("checklists")} restaurantId={restaurant.id} canDownloadBoard={can("preshift")} restaurantName={restaurant.name} onFocusQuiz={item => {navigate("library", "All", contentTypeOf(item));setDetailItem(item);setQuizEditing(false);setQuizItem(item);}} onBoardItem={item => {navigate("library", "All", contentTypeOf(item));setCameFrom({view: "home", label: "Pre-shift board"});openCard(item);}} user={user} items={items} progress={quizProgress} loading={itemsLoading || progressLoading} error={progressError || error} onRetry={() => {void loadItems();void loadProgress();}} onStudy={(item, mode) => {if(item && mode === "list"){setStudyType(CONTENT_TYPES.find(type => items.some(other => contentTypeOf(other) === type && !takenIds.has(other.id))) ?? "food");navigate("tostudy");return;}navigate("library", item ? categoryOf(item) : "All", item ? contentTypeOf(item) : "food");setHideTaken(false);if(item)setQuery(item.name);}} /> : null}
               </section>
             ) : view === "allergy" ? <AllergyView key={restaurant.id} items={items} loading={itemsLoading} refresh={loadItems} shift={shiftFlags} restaurantName={restaurant.name} memory={allergyPick} onMemory={setAllergyPick} onOpen={item => {allergyScroll.current = window.scrollY; setContentType(contentTypeOf(item)); setCameFrom({view: "allergy", label: "Allergy"}); openCard(item);}} /> : <>
                 {/* The switch below already says which library you are in, in coral.

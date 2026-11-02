@@ -195,7 +195,7 @@ export function Today({restaurantId, jobs, onOpenSaved, onSavedJobsChanged, onDe
     const making = newJob || !jobs.length;
     const ready = !!pickWho && (making ? !!newName.trim() && newSteps.some(step => step.trim()) : !!pickJob);
     return <div>
-      {back("Checklists")}
+      {back("Side work")}
       <h1 className="mt-5 text-2xl font-semibold tracking-tight">Assign a job</h1>
       <div><Notice text={error} error /></div>
       <div className="mt-5 space-y-5">
@@ -229,7 +229,7 @@ export function Today({restaurantId, jobs, onOpenSaved, onSavedJobsChanged, onDe
   if (screen === "change" && row) {
     const label = shifts.find(s => s.id === row.shift_id)?.label ?? "";
     return <div>
-      {back("Checklists")}
+      {back("Side work")}
       <p className="eyebrow muted mt-5">{dayName()} · {label}</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">{row.title}</h1>
       <p className="muted mt-1 text-sm">{nameOf(row.user_id) + " · "}{row.done_at ? "Done " + clock(row.done_at) : row.steps_done.length ? row.steps_done.length + " of " + row.steps.length + " steps" : "Not started"}</p>

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { change, laborSummary, mostOut, serviceSummary } from "../lib/ops-stats.ts";
+import { change, laborRange, laborSummary, mostOut, overtimeHours, serviceSummary } from "../lib/ops-stats.ts";
 import type { Shift } from "../lib/schedule.ts";
 import type { ShiftReport } from "../lib/shift-report.ts";
 
@@ -47,4 +47,16 @@ test("service: covers and sales against last week, by day, moods, issues and wha
   assert.equal(change(400, 200), "+100% vs last week");
   assert.equal(change(90, 100), "−10% vs last week");
   assert.equal(change(5, 0), null);
+});
+
+test("labor over any dates: overtime is judged one week at a time, and one person's overtime hours add up", () => {
+  const settings = {overtime_weekly: 40, overtime_daily: null, week_start: 1};
+  // Two weeks of 25 hours each is 50 hours in the range, but nobody went past 40 in a week.
+  const calm = [...[5, 6, 7].map(d => shift("ana", "Server", d, 12, 20)), ...[12, 13, 14].map(d => shift("ana", "Server", d, 12, 20)), shift("ana", "Server", 8, 12, 13)];
+  assert.deepEqual(laborRange(calm, [], settings).overtime, []);
+  // 45 hours in one week is overtime even when the range is longer.
+  const busy = [...[5, 6, 7, 8, 9].map(d => shift("luis", "Bartender", d, 10, 19)), shift("luis", "Bartender", 14, 10, 14)];
+  assert.deepEqual(laborRange(busy, [], settings).overtime, [{user_id: "luis", hours: 45, daily: false}]);
+  assert.equal(overtimeHours(busy, settings), 5);
+  assert.equal(overtimeHours(calm, settings), 0);
 });

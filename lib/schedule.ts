@@ -11,11 +11,39 @@ export type Shift = {
   ends_at: string;
   note: string;
   published: boolean;
+  /** Opener, mid or closer (053); empty when the shift has no tag. */
+  shift_kind?: ShiftKind | null;
+  /** On call (055): they check in to find out whether they're needed. */
+  on_call?: boolean;
+  /** The manager's answer to an on-call shift: come in, or not needed. Empty until answered. */
+  on_call_status?: OnCallStatus | null;
 };
+export type OnCallStatus = "needed" | "released";
 export type Unavailability = {id: string; user_id: string; weekday: number; starts: string | null; ends: string | null; note: string};
 export type TimeOff = {id: string; user_id: string; starts_on: string; ends_on: string; note: string; status: "pending" | "approved" | "denied"; created_at?: string};
 
 export const OVERTIME_HOURS = 40;
+// The tag a shift can carry (053): when in the day it works.
+export const SHIFT_KINDS = ["opener", "mid", "closer"] as const;
+// Off until database update 053 has been run (Supabase SQL editor). While it is off, the pop-up and the settings
+// don't offer the tags, so nobody meets a "needs database update" message. Switch to true once 053 is in.
+export const SHIFT_TYPES_READY = true;
+// On-call shifts (055). Off until that database update has been run, like the tags above.
+export const ON_CALL_READY = true;
+// An on-call shift only counts toward hours once the manager has called the person in.
+export const countsHours = (shift: Pick<Shift, "on_call" | "on_call_status">) => !shift.on_call || shift.on_call_status === "needed";
+export const ON_CALL_TEXT: Record<"waiting" | OnCallStatus, string> = {waiting: "On call", needed: "On call · Called in", released: "On call · Not needed"};
+export const onCallText = (shift: Pick<Shift, "on_call" | "on_call_status">) => shift.on_call ? ON_CALL_TEXT[shift.on_call_status ?? "waiting"] : "";
+export type ShiftKind = typeof SHIFT_KINDS[number];
+export const KIND_LABEL: Record<ShiftKind, string> = {opener: "Opener", mid: "Mid", closer: "Closer"};
+export const KIND_LETTER: Record<ShiftKind, string> = {opener: "O", mid: "M", closer: "C"};
+export const kindOf = (value: unknown): ShiftKind | null => SHIFT_KINDS.find(k => k === value) ?? null;
+/** The time a few minutes later (or earlier, with a negative number), wrapping around midnight: "23:45" + 15 is "00:00". */
+export function stepClock(time: string, minutes: number) {
+  const [h, m] = time.split(":").map(Number);
+  const next = (((h * 60 + m + minutes) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(next / 60)).padStart(2, "0")}:${String(next % 60).padStart(2, "0")}`;
+}
 // Front of house and kitchen (back of house). Each side has its own schedulers (048): the floor
 // managers build the front of house, the head chef or sous chef the kitchen; Team access does both.
 export const FOH_POSITIONS = ["Server", "Server assistant", "Bartender", "Barback", "Host", "Runner", "Busser", "Sommelier", "Bar Manager", "Manager", "GM"];
@@ -63,9 +91,10 @@ export function shortTime(date: Date) {
 export const shiftLabel = (shift: Pick<Shift, "starts_at" | "ends_at">) => `${shortTime(new Date(shift.starts_at))}–${shortTime(new Date(shift.ends_at))}`;
 
 export const shiftHours = (shift: Pick<Shift, "starts_at" | "ends_at">) => (Date.parse(shift.ends_at) - Date.parse(shift.starts_at)) / 3_600_000;
+export const countedHours = (shift: Shift) => countsHours(shift) ? shiftHours(shift) : 0;
 export function hoursByPerson(shifts: Shift[]) {
   const hours = new Map<string, number>();
-  for (const shift of shifts) hours.set(shift.user_id, (hours.get(shift.user_id) ?? 0) + shiftHours(shift));
+  for (const shift of shifts) hours.set(shift.user_id, (hours.get(shift.user_id) ?? 0) + countedHours(shift));
   return hours;
 }
 export const formatHours = (hours: number) => `${Math.round(hours * 10) / 10}h`;
@@ -106,6 +135,14 @@ export function movedShift(shift: Pick<Shift, "starts_at" | "ends_at">, day: Dat
   return {starts_at: start.toISOString(), ends_at: new Date(start.getTime() + Date.parse(shift.ends_at) - from.getTime()).toISOString()};
 }
 
+// The position a dragged or copied shift ends up with: the hours travel, not the job. Landing on someone
+// else, it becomes the position they were hired for (set in Team). Staying on the same person keeps it, and
+// so does a person with no position, or one this manager is not allowed to schedule.
+export function positionAfterDrop(shiftPosition: string, sameUser: boolean, ownPosition: string, mayScheduleOwn: boolean) {
+  const own = ownPosition.trim();
+  return !sameUser && own && mayScheduleOwn ? own : shiftPosition;
+}
+
 // What already fills someone's day before a shift goes in: their weekly unavailability and time off.
 export type DayBlock = {kind: "unavailable" | "time_off" | "time_off_pending"; label: string};
 export function dayBlocks(userId: string, day: Date, unavailable: Unavailability[], timeOff: TimeOff[]): DayBlock[] {
@@ -121,27 +158,40 @@ export function dayBlocks(userId: string, day: Date, unavailable: Unavailability
 // The footer of each day: hours scheduled and how many people work.
 export function dayTotals(shifts: Shift[], day: Date) {
   const mine = shifts.filter(s => dayKey(new Date(s.starts_at)) === dayKey(day));
-  return {hours: mine.reduce((sum, s) => sum + shiftHours(s), 0), people: new Set(mine.map(s => s.user_id)).size};
+  return {hours: mine.reduce((sum, s) => sum + countedHours(s), 0), people: new Set(mine.filter(countsHours).map(s => s.user_id)).size};
 }
 
 export const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]!.toUpperCase()).join("") || "?";
 
 // Copying last week: the same shifts, seven days later, as drafts.
-export function copiedWeek(shifts: Shift[]) {
+// The same shifts a week later (or `weeks` weeks later), as new drafts.
+export function copiedWeek(shifts: Shift[], weeks = 1) {
   return shifts.map(s => ({
     restaurant_id: s.restaurant_id, user_id: s.user_id, position: s.position, note: s.note,
-    starts_at: addDays(new Date(s.starts_at), 7).toISOString(), ends_at: addDays(new Date(s.ends_at), 7).toISOString(),
+    ...(s.shift_kind ? {shift_kind: s.shift_kind} : {}),
+    // An on-call shift copies as on call, waiting for a fresh answer.
+    ...(s.on_call ? {on_call: true} : {}),
+    starts_at: addDays(new Date(s.starts_at), 7 * weeks).toISOString(), ends_at: addDays(new Date(s.ends_at), 7 * weeks).toISOString(),
   }));
+}
+
+// Only the copies whose person doesn't already start a shift at that moment, so copying twice never doubles one.
+export function newCopies<T extends {user_id: string; starts_at: string}>(copies: T[], already: {user_id: string; starts_at: string}[]) {
+  const here = new Set(already.map(s => `${s.user_id}|${Date.parse(s.starts_at)}`));
+  return copies.filter(s => !here.has(`${s.user_id}|${Date.parse(s.starts_at)}`));
 }
 
 // ── Schedule settings (migration 044) ──
 export type ShiftPreset = {name: string; start: string; end: string};
+export type KindHours = Partial<Record<ShiftKind, {start: string; end: string}>>;
 export type ScheduleSettings = {
   week_start: number;
   position_colors: Record<string, string>;
   overtime_weekly: number;
   overtime_daily: number | null;
   shift_presets: ShiftPreset[];
+  /** The usual hours of an opener, a mid and a closer (053). */
+  shift_kind_hours: KindHours;
   team_sees_all: boolean;
   /** The positions that count as kitchen (back of house) here, or null for the usual ones (048). */
   kitchen_positions: string[] | null;
@@ -150,7 +200,7 @@ export type ScheduleSettings = {
 };
 // What a restaurant without saved settings gets: the schedule as it always was.
 export const DEFAULT_SETTINGS: ScheduleSettings = {
-  week_start: 1, position_colors: {}, overtime_weekly: OVERTIME_HOURS, overtime_daily: null, shift_presets: [], team_sees_all: true, change_cutoff_hours: 24, kitchen_positions: null,
+  week_start: 1, position_colors: {}, overtime_weekly: OVERTIME_HOURS, overtime_daily: null, shift_presets: [], shift_kind_hours: {}, team_sees_all: true, change_cutoff_hours: 24, kitchen_positions: null,
 };
 // Whatever the database row holds, read safely: anything missing or malformed falls back to the default.
 export function readSettings(row: Partial<Record<keyof ScheduleSettings, unknown>> | null | undefined): ScheduleSettings {
@@ -158,12 +208,16 @@ export function readSettings(row: Partial<Record<keyof ScheduleSettings, unknown
   const colors = row.position_colors && typeof row.position_colors === "object" ? row.position_colors as Record<string, unknown> : {};
   const presets = Array.isArray(row.shift_presets) ? row.shift_presets : [];
   const time = /^\d\d:\d\d$/;
+  const kinds = row.shift_kind_hours && typeof row.shift_kind_hours === "object" ? row.shift_kind_hours as Record<string, {start?: unknown; end?: unknown} | null> : {};
+  const kindHours: KindHours = {};
+  for (const kind of SHIFT_KINDS) { const k = kinds[kind]; if (k && typeof k.start === "string" && typeof k.end === "string" && time.test(k.start) && time.test(k.end)) kindHours[kind] = {start: k.start, end: k.end}; }
   return {
     week_start: Number.isInteger(Number(row.week_start)) && Number(row.week_start) >= 0 && Number(row.week_start) <= 6 ? Number(row.week_start) : 1,
     position_colors: Object.fromEntries(Object.entries(colors).filter(([, c]) => typeof c === "string" && c in PALETTE)) as Record<string, string>,
     overtime_weekly: Number(row.overtime_weekly) > 0 ? Number(row.overtime_weekly) : OVERTIME_HOURS,
     overtime_daily: row.overtime_daily == null || !(Number(row.overtime_daily) > 0) ? null : Number(row.overtime_daily),
     shift_presets: presets.filter((p): p is ShiftPreset => !!p && typeof p.name === "string" && time.test(p.start) && time.test(p.end)).slice(0, 12),
+    shift_kind_hours: kindHours,
     team_sees_all: row.team_sees_all !== false,
     kitchen_positions: Array.isArray(row.kitchen_positions) ? (row.kitchen_positions as unknown[]).filter((p): p is string => typeof p === "string") : null,
     change_cutoff_hours: Number.isInteger(Number(row.change_cutoff_hours)) && Number(row.change_cutoff_hours) >= 0 ? Number(row.change_cutoff_hours) : 24,
@@ -187,6 +241,20 @@ export const SUGGESTED_COLORS: Record<string, string> = {
 export function colorFor(position: string, colors: Record<string, string>) {
   const key = Object.keys(colors).find(name => name.trim().toLowerCase() === position.trim().toLowerCase());
   return key ? colors[key] : undefined;
+}
+
+// The colour a position shows in: the one chosen in the settings, or else its usual one, so every
+// position has a colour from the first day without anyone opening the gear.
+export function positionColor(position: string, colors: Record<string, string>) {
+  return colorFor(position, colors) ?? colorFor(position, SUGGESTED_COLORS);
+}
+// Where a position sits in the list: front of house in its usual order (Server, Server assistant,
+// Bartender…), then the kitchen; anything else after, by name; nobody with no position last.
+export function positionRank(position: string) {
+  const clean = position.trim().toLowerCase();
+  if (!clean) return Number.MAX_SAFE_INTEGER;
+  const i = POSITIONS.findIndex(p => p.toLowerCase() === clean);
+  return i >= 0 ? i : POSITIONS.length;
 }
 
 // Hours this person works on the calendar day this shift starts, this shift included.
