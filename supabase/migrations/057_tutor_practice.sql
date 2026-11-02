@@ -34,7 +34,8 @@ drop policy if exists "People read their practice, managers their team's" on pub
 create policy "People read their practice, managers their team's" on public.tutor_practice for select to authenticated
   using ((user_id = (select auth.uid()) and public.can_read_restaurant(restaurant_id)) or public.can_manage(restaurant_id, 'team'));
 
-revoke all on public.tutor_practice from anon;
+-- Supabase gives new tables every privilege by default; people may only read and add here.
+revoke all on public.tutor_practice from anon, authenticated;
 grant select, insert on public.tutor_practice to authenticated;
 
 commit;
