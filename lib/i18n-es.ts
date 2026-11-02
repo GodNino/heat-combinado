@@ -718,6 +718,17 @@ const PHRASES: Record<string, string> = {
   "Confirm all guest allergies and preparation with the kitchen. Notes marked with ! indicate cross-contamination (CC).": "Confirma todas las alergias del cliente y la preparación con cocina. Las notas con ! indican contaminación cruzada (CC).",
   "No guides yet. Open a word under Words, add the full write-up, and it appears here for your team to browse.": "Todavía no hay guías. Abre una palabra en Palabras, escribe la versión completa y aparece aquí para tu equipo.",
   "The words your menu uses, in your own wording. A word shows on every card that mentions it. Write one up properly and it becomes a guide your team can browse before service.": "Las palabras de tu menú, con tus propias palabras. Una palabra aparece en cada ficha que la menciona. Escríbela completa y se vuelve una guía que tu equipo puede leer antes del servicio.",
+  // ── Tutor ──
+  "Tutor": "Tutor", "New conversation": "Nueva conversación", "What would you like to study today?": "¿Qué quieres estudiar hoy?",
+  "Quiz me on allergens": "Pregúntame los alérgenos", "Play a guest": "Haz de cliente", "Topics": "Temas", "Send": "Enviar",
+  "Or ask anything about the menu below.": "O pregunta lo que quieras sobre el menú aquí abajo.",
+  "Type your answer or question": "Escribe tu respuesta o pregunta", "Your message": "Tu mensaje",
+  "Study by talking. The tutor asks you about the menu, the restaurant's story and its standards, and corrects you from the cards. Nothing here is saved or scored. Allergens: it only repeats what the cards say; when in doubt, ask the chef or a manager.": "Estudia conversando. El tutor te pregunta sobre el menú, la historia del restaurante y sus estándares, y te corrige con lo que dicen las fichas. Nada de esto se guarda ni se califica. Alérgenos: solo repite lo que dicen las fichas; si tienes dudas, pregunta al chef o a un manager.",
+  "The tutor isn’t switched on yet. The app’s owner needs to add the tutor’s key (ANTHROPIC_API_KEY) in Vercel.": "El tutor todavía no está activado. El dueño de la app tiene que agregar la clave del tutor (ANTHROPIC_API_KEY) en Vercel.",
+  "Couldn't reach the tutor. Check your connection and try again.": "No se pudo conectar con el tutor. Revisa tu conexión e inténtalo de nuevo.",
+  "The tutor is busy. Try again in a minute.": "El tutor está ocupado. Inténtalo de nuevo en un minuto.",
+  "The tutor didn't answer. Try again.": "El tutor no respondió. Inténtalo de nuevo.",
+  "Long conversation: the tutor now only remembers the most recent messages. Start a new one for a new topic.": "Conversación larga: ahora el tutor solo recuerda los mensajes más recientes. Empieza una nueva para otro tema.",
 };
 
 // Allergens and dietary words: managers type these, and they're the same words in any kitchen,

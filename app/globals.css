@@ -3162,3 +3162,12 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .sched-grid tr.sched-row.pos > td { background:color-mix(in srgb, var(--pos) 7%, var(--c-surface)); }
 :root:root:root:root:root:root:root .sched-grid tr.sched-row.pos .sched-role { color:var(--c-text); font-weight:600; }
 :root:root:root:root:root:root:root .sched-grid tr.sched-row.pos .sched-avatar { background:var(--pos); color:#fff; border-color:transparent; }
+
+/* Tutor (app/tutor.tsx): the conversation, newest at the bottom, the person's turns on the right. */
+.tutor-hello { display:flex; align-items:center; gap:8px; font-weight:600; }
+.tutor-chat { display:flex; flex-direction:column; gap:10px; }
+.tutor-bubble { max-width:85%; padding:10px 14px; border-radius:16px; white-space:pre-wrap; line-height:1.45; }
+.tutor-bubble.assistant { align-self:flex-start; background:var(--c-surface); border:1px solid var(--c-line); border-bottom-left-radius:6px; }
+.tutor-bubble.user { align-self:flex-end; background:var(--c-invert-bg); color:var(--c-invert-text); border-bottom-right-radius:6px; }
+.tutor-input { display:flex; align-items:flex-end; gap:8px; position:sticky; bottom:0; padding:8px 0; background:var(--c-bg); }
+.tutor-input textarea { flex:1; min-width:0; resize:none; }
