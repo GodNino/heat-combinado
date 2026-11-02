@@ -8,8 +8,12 @@
 // Until it's sent, the plan is only on this screen. Sending saves the floor plan and gives every job
 // to its person, the same assignments side work has always used, so each person's phone shows it.
 // After that, changing a name changes that assignment straight away.
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Pencil, RefreshCw, Send } from "lucide-react";
+//
+// Giving a job to someone: drag a name onto the job (computer) or tap the name and then the job (phone).
+// A person can have several jobs, and a job can have several people; each person on a job is one row in
+// checklist_assignments, so nothing changes in the database. The "+ Add" list on each job does the same.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, Pencil, RefreshCw, Send, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Notice } from "./ui";
 import { FloorPlan, defaultService, helpers, localDate, runningHistory, startingRows, suggestedList, type FloorRow, type Plan, type SideworkList, type Working } from "./floor-plan";
@@ -45,6 +49,10 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [editingFloor, setEditingFloor] = useState(false);
+  // The name tapped (or being dragged), waiting for a job; and the job it is over.
+  const [picked, setPicked] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const added = useRef(0);
 
   const explain = (e: unknown) => {
     const text = e instanceof Error ? e.message : String((e as {message?: string})?.message ?? e);
@@ -123,6 +131,42 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
     if (result.error) { setError(explain(result.error)); return; }
     setSent(s => s.map(a => a.id === line.key ? {...a, user_id: userId || null} : a));
   }
+
+  // Give a job to a person: into the empty spot if the job has one, otherwise as one more person on it.
+  async function giveTo(group: Line[], userId: string, role: Role) {
+    setMessage(""); setError("");
+    const person = people.find(p => p.user_id === userId);
+    if (!person || !group.length) return;
+    if (roleOf(person.shift_position) !== role) { setError(role === "server" ? "That job is for servers. Pick a server." : "That job is for S.A.s. Pick an S.A."); return; }
+    setPicked(null);
+    if (group.some(l => l.user_id === userId)) return;
+    const empty = group.find(l => !l.user_id);
+    if (empty) { await changePerson(empty, userId); return; }
+    const first = group[0];
+    if (!isSent) { setDraft(d => [...d, {key: `added-${++added.current}`, title: first.title, user_id: userId, phase: first.phase, jobId: first.jobId}]); return; }
+    const job = jobs.find(j => j.id === first.jobId);
+    const made = await supabase!.from("checklist_assignments").insert({shift_id: shiftId, restaurant_id: restaurantId, job_id: first.jobId ?? null, title: first.title, group_name: job?.group_name ?? "", steps: job?.steps ?? [], user_id: userId, locked: true, phase: first.phase, sort_order: (job?.sort_order ?? 0) * 100 + 50 + ++added.current}).select("id, title, user_id, phase, done_at, job_id, steps_done").single();
+    if (made.error) { setError(explain(made.error)); return; }
+    setSent(s => [...s, made.data as Sent]);
+  }
+
+  // Take one person off a job. A job with other people just loses the row; the last person leaves it empty.
+  async function takeOff(line: Line, group: Line[]) {
+    setMessage(""); setError("");
+    const row = sent.find(s => s.id === line.key);
+    if (row && (row.done_at || row.steps_done.length)) { setError("They already started this job, so it can't be taken off."); return; }
+    if (group.length < 2) { await changePerson(line, ""); return; }
+    if (!isSent) { setDraft(d => d.filter(l => l.key !== line.key)); return; }
+    const gone = await supabase!.from("checklist_assignments").delete().eq("id", line.key);
+    if (gone.error) { setError(explain(gone.error)); return; }
+    setSent(s => s.filter(a => a.id !== line.key));
+  }
+  // The lines of a phase, one card per job, so a job with two people is one card with two names.
+  const byJob = (list: Line[]) => {
+    const cards = new Map<string, Line[]>();
+    for (const l of list) cards.set(l.jobId ?? l.title, [...(cards.get(l.jobId ?? l.title) ?? []), l]);
+    return [...cards.entries()];
+  };
 
   // Sending: save the floor, open (or reuse) the service's side work, and give each job to its person.
   // Jobs someone already started are left alone when it's sent again.
@@ -205,22 +249,50 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
           const covers = rows.filter(r => r.sa.some(h => h.id === p.user_id)).map(r => r.section).filter(Boolean);
           return {key: `cover-${p.user_id}`, title: covers.length ? `Sections ${covers.join("/")}` : "No section yet", user_id: p.user_id, phase: "opening" as Phase, who: p.name || "Team member"};
         });
+        const mine = people.filter(p => roleOf(p.shift_position) === role);
+        const given = new Set(lines.filter(l => l.user_id && lineRole(l) === role).map(l => l.user_id!));
         return <section key={role} className={`tonight-block tonight-role ${role}`} aria-label={role === "server" ? "Side work · Servers" : "Side work · S.A.s"}>
           <div className="tonight-block-head"><h3>{role === "server" ? "Side work · Servers" : "Side work · S.A.s"}</h3></div>
+          {mine.length > 0 && <div className="who-board">
+            <p className="tonight-phase-title">Working tonight</p>
+            <div className="who-strip" role="group" aria-label="Working tonight">
+              {mine.map(p => <button key={p.user_id} type="button" draggable className={`who-chip${given.has(p.user_id) ? " has" : ""}`} aria-pressed={picked === p.user_id}
+                onClick={() => setPicked(x => x === p.user_id ? null : p.user_id)}
+                onDragStart={e => { e.dataTransfer.setData("text/plain", p.user_id); e.dataTransfer.effectAllowed = "move"; setPicked(p.user_id); }}>
+                {p.name || "Team member"}{closing.has(p.user_id) && <span className="sched-kind" role="img" aria-label="Closer" title="Closer">C</span>}
+              </button>)}
+            </div>
+            <p className="muted text-xs">{picked && mine.some(p => p.user_id === picked) ? `${nameOf(picked)} is picked. Tap a job to give it to them.` : "Tap or drag a name onto a job."}</p>
+          </div>}
           <div className="tonight-phases">
             {PHASES.map(([phase, label]) => {
               const list = phase === "during" ? duringFor : lines.filter(l => l.phase === phase && lineRole(l) === role);
               return <div key={phase} className="tonight-phase">
                 <p className="tonight-phase-title">{label}</p>
-                {list.length ? list.map(l => <div key={l.key} className="tonight-line">
-                  <span className="min-w-0">{l.done && <Check size={13} aria-label="Done" />}{l.title}</span>
-                  {phase === "during"
-                    ? <small>{l.who || nameOf(l.user_id)}</small>
-                    : <select aria-label={`Who does ${l.title}`} value={l.user_id ?? ""} onChange={e => void changePerson(l, e.target.value)}>
-                        <option value="">Nobody yet</option>
-                        {choicesFor(l).map(p => <option key={p.user_id} value={p.user_id}>{`${p.name || "Team member"}${closing.has(p.user_id) ? " · Closer" : ""}`}</option>)}
+                {list.length ? (phase === "during" ? list.map(l => <div key={l.key} className="tonight-line">
+                  <span className="min-w-0">{l.title}</span>
+                  <small>{l.who || nameOf(l.user_id)}</small>
+                </div>) : byJob(list).map(([cardKey, group]) => {
+                  const title = group[0].title;
+                  const open = choicesFor(group[0]).filter(p => !group.some(l => l.user_id === p.user_id));
+                  return <div key={cardKey} className={`job-card${picked ? " ready" : ""}${over === cardKey ? " over" : ""}`}
+                    onClick={e => { if (picked && !(e.target as HTMLElement).closest("button, select")) void giveTo(group, picked, role); }}
+                    onDragOver={e => { e.preventDefault(); setOver(cardKey); }}
+                    onDragLeave={() => setOver(o => o === cardKey ? null : o)}
+                    onDrop={e => { e.preventDefault(); setOver(null); const id = e.dataTransfer.getData("text/plain") || picked; if (id) void giveTo(group, id, role); }}>
+                    <p className="job-card-title">{title}</p>
+                    <div className="job-card-who">
+                      {group.map(l => l.user_id
+                        ? <span key={l.key} className="who-on">{l.done && <Check size={12} aria-label="Done" />}{nameOf(l.user_id)}{closing.has(l.user_id) && <span className="sched-kind" role="img" aria-label="Closer" title="Closer">C</span>}
+                            {!l.done && <button type="button" className="who-off" aria-label={`Take ${nameOf(l.user_id)} off ${title}`} onClick={() => void takeOff(l, group)}><X size={12} aria-hidden="true" /></button>}</span>
+                        : <span key={l.key} className="who-none">Nobody yet</span>)}
+                      {open.length > 0 && <select className="who-add" aria-label={`Add someone to ${title}`} value="" onChange={e => { if (e.target.value) void giveTo(group, e.target.value, role); }}>
+                        <option value="">+ Add</option>
+                        {open.map(p => <option key={p.user_id} value={p.user_id}>{p.name || "Team member"}</option>)}
                       </select>}
-                </div>) : <p className="muted text-xs">{phase === "during" ? (role === "server" ? "Comes from the floor plan's running side work." : "No S.A.s on the schedule.") : "Nothing set up for this yet."}</p>}
+                    </div>
+                  </div>;
+                })) : <p className="muted text-xs">{phase === "during" ? (role === "server" ? "Comes from the floor plan's running side work." : "No S.A.s on the schedule.") : "Nothing set up for this yet."}</p>}
               </div>;
             })}
           </div>
