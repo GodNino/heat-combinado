@@ -4,7 +4,7 @@
 // conversation lives on this screen only: leaving or "New conversation" starts again, nothing is
 // saved or scored.
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { GraduationCap, RotateCcw, Send } from "lucide-react";
+import { ArrowLeft, GraduationCap, RotateCcw, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { MAX_CHARS, MAX_TURNS, type TutorTurn } from "@/lib/tutor";
 import { Notice, ScreenHeader } from "./ui";
@@ -18,9 +18,11 @@ const EXTRA_TOPICS: {label: string; en: string; es: string}[] = [
   {label: "Our story", en: "Teach me the story of the restaurant.", es: "Enséñame la historia del restaurante."},
   {label: "Standards", en: "Help me learn our standards, one at a time.", es: "Ayúdame a aprender nuestros estándares, uno a la vez."},
 ];
+const practiceCard = (name: string) => currentLang() === "es" ? `Quiero practicar la ficha "${name}". Hazme preguntas sobre ella.` : `I want to practice the card "${name}". Ask me about it.`;
 const studyTopic = (name: string) => currentLang() === "es" ? `Quiero estudiar: ${name}.` : `I want to study the ${name}.`;
 
-export function Tutor({restaurantId, restaurantName, categories}: {restaurantId: string; restaurantName: string; categories: string[]}) {
+// Opened from a card, it starts on that card straight away and offers a way back to it.
+export function Tutor({restaurantId, restaurantName, categories, card}: {restaurantId: string; restaurantName: string; categories: string[]; card?: {name: string; onBack: () => void}}) {
   const [turns, setTurns] = useState<TutorTurn[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,6 +30,7 @@ export function Tutor({restaurantId, restaurantName, categories}: {restaurantId:
   const [off, setOff] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => { end.current?.scrollIntoView({block: "end", behavior: "smooth"}); }, [turns, busy]);
+  const started = useRef(false);
 
   async function ask(text: string) {
     const content = text.trim().slice(0, MAX_CHARS);
@@ -47,8 +50,17 @@ export function Tutor({restaurantId, restaurantName, categories}: {restaurantId:
     } finally { setBusy(false); }
   }
   const send = (event: FormEvent) => { event.preventDefault(); void ask(draft); };
+  // Once per card: the screen is remounted for each card, and the ref keeps a second effect run
+  // (React's development double-run) from asking twice.
+  useEffect(() => {
+    if (!card || started.current) return;
+    started.current = true;
+    void ask(practiceCard(card.name));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return <section className="tutor mx-auto max-w-2xl">
+    {card && <button type="button" className="btn secondary mb-4" onClick={card.onBack}><ArrowLeft size={16} /><span data-no-translate>{card.name}</span></button>}
     <ScreenHeader
       eyebrow={restaurantName}
       title="Tutor"

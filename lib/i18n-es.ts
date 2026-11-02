@@ -719,7 +719,7 @@ const PHRASES: Record<string, string> = {
   "No guides yet. Open a word under Words, add the full write-up, and it appears here for your team to browse.": "Todavía no hay guías. Abre una palabra en Palabras, escribe la versión completa y aparece aquí para tu equipo.",
   "The words your menu uses, in your own wording. A word shows on every card that mentions it. Write one up properly and it becomes a guide your team can browse before service.": "Las palabras de tu menú, con tus propias palabras. Una palabra aparece en cada ficha que la menciona. Escríbela completa y se vuelve una guía que tu equipo puede leer antes del servicio.",
   // ── Tutor ──
-  "Tutor": "Tutor", "New conversation": "Nueva conversación", "What would you like to study today?": "¿Qué quieres estudiar hoy?",
+  "Tutor": "Tutor", "New conversation": "Nueva conversación", "Practice with the tutor": "Practicar con el tutor", "What would you like to study today?": "¿Qué quieres estudiar hoy?",
   "Quiz me on allergens": "Pregúntame los alérgenos", "Play a guest": "Haz de cliente", "Topics": "Temas", "Send": "Enviar",
   "Or ask anything about the menu below.": "O pregunta lo que quieras sobre el menú aquí abajo.",
   "Type your answer or question": "Escribe tu respuesta o pregunta", "Your message": "Tu mensaje",

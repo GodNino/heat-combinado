@@ -686,6 +686,7 @@ input,textarea,select { font-family:var(--font-sans); font-size:1rem; line-heigh
 
 .item-detail .quiz-cta { min-height:40px; padding:8px 14px; font-size:var(--text-base); line-height:1.5; }
 .item-detail>.quiz-cta { display:flex; width:fit-content; max-width:100%; margin-inline:auto; text-align:center; }
+.item-detail>.tutor-cta { display:flex; width:fit-content; max-width:100%; margin-inline:auto; }
 
 .card-navigation .btn { width:44px; height:44px; min-height:44px; padding:0; justify-content:center; }
 
