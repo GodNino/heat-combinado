@@ -718,6 +718,19 @@ const PHRASES: Record<string, string> = {
   "Confirm all guest allergies and preparation with the kitchen. Notes marked with ! indicate cross-contamination (CC).": "Confirma todas las alergias del cliente y la preparación con cocina. Las notas con ! indican contaminación cruzada (CC).",
   "No guides yet. Open a word under Words, add the full write-up, and it appears here for your team to browse.": "Todavía no hay guías. Abre una palabra en Palabras, escribe la versión completa y aparece aquí para tu equipo.",
   "The words your menu uses, in your own wording. A word shows on every card that mentions it. Write one up properly and it becomes a guide your team can browse before service.": "Las palabras de tu menú, con tus propias palabras. Una palabra aparece en cada ficha que la menciona. Escríbela completa y se vuelve una guía que tu equipo puede leer antes del servicio.",
+  // ── Tutor ──
+  "Tutor": "Tutor", "New conversation": "Nueva conversación", "Practice with the tutor": "Practicar con el tutor", "What would you like to study today?": "¿Qué quieres estudiar hoy?",
+  "Quiz me on allergens": "Pregúntame los alérgenos", "Play a guest": "Haz de cliente", "Topics": "Temas", "Send": "Enviar",
+  "Or ask anything about the menu below.": "O pregunta lo que quieras sobre el menú aquí abajo.",
+  "Type your answer or question": "Escribe tu respuesta o pregunta", "Your message": "Tu mensaje",
+  "Study by talking. The tutor asks you about the menu, the restaurant's story and its standards, and corrects you from the cards. It remembers which cards you practised and starts with what you missed; none of it is a quiz score. Allergens: it only repeats what the cards say; when in doubt, ask the chef or a manager.": "Estudia conversando. El tutor te pregunta sobre el menú, la historia del restaurante y sus estándares, y te corrige con lo que dicen las fichas. Recuerda qué fichas practicaste y empieza por lo que fallaste; nada de esto cuenta como nota de un quiz. Alérgenos: solo repite lo que dicen las fichas; si tienes dudas, pregunta al chef o a un manager.",
+  "The tutor stopped partway. Try again.": "El tutor se detuvo a mitad de la respuesta. Inténtalo de nuevo.", "Please sign in again.": "Vuelve a iniciar sesión.",
+  "Missed": "Fallada", "Partly right": "Parcialmente bien",
+  "The tutor isn’t switched on yet. The app’s owner needs to add the tutor’s key (ANTHROPIC_API_KEY) in Vercel.": "El tutor todavía no está activado. El dueño de la app tiene que agregar la clave del tutor (ANTHROPIC_API_KEY) en Vercel.",
+  "Couldn't reach the tutor. Check your connection and try again.": "No se pudo conectar con el tutor. Revisa tu conexión e inténtalo de nuevo.",
+  "The tutor is busy. Try again in a minute.": "El tutor está ocupado. Inténtalo de nuevo en un minuto.",
+  "The tutor didn't answer. Try again.": "El tutor no respondió. Inténtalo de nuevo.",
+  "Long conversation: the tutor now only remembers the most recent messages. Start a new one for a new topic.": "Conversación larga: ahora el tutor solo recuerda los mensajes más recientes. Empieza una nueva para otro tema.",
 };
 
 // Allergens and dietary words: managers type these, and they're the same words in any kitchen,
@@ -746,6 +759,8 @@ const lower = (text: string) => (translateCore(text) ?? text).toLowerCase();
 
 // Sentences with a name or a number inside: the automatic quiz's questions, and a few counters.
 const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/^Review what I missed · (\d+)$/, m => `Repasar lo que fallé · ${m[1]}`],
+  [/^(\d+) cards? practised · (\d+) to review$/, m => `${m[1]} ${m[1] === "1" ? "ficha practicada" : "fichas practicadas"} · ${m[2]} por repasar`],
   [/^HEAT uses your longest list \((.+)\)\. The other (\d+) lists? (?:is|are) kept but not used\.$/, m => `HEAT usa tu lista más larga (${m[1]}). ${m[2] === "1" ? "La otra lista se guarda" : `Las otras ${m[2]} listas se guardan`} pero no se usa${m[2] === "1" ? "" : "n"}.`],
   [/^Add to (Server opening|Server closing|S\.A\. opening|S\.A\. closing)$/, m => `Agregar a ${({"Server opening": "apertura de meseros", "Server closing": "cierre de meseros", "S.A. opening": "apertura de S.A.", "S.A. closing": "cierre de S.A."} as Record<string, string>)[m[1]]}`],
   [/^(Server|S\.A\.) (opening|closing)$/, m => `${m[2] === "opening" ? "Apertura" : "Cierre"} de ${m[1] === "Server" ? "meseros" : "S.A."}`],
