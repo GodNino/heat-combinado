@@ -1,18 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MAX_CHARS, MAX_TURNS, cleanConversation, knowledgeText, tutorSystem, type TutorItem } from "../lib/tutor.ts";
+import { MAX_CHARS, MAX_TURNS, cleanConversation, historyText, knowledge, parsePractice, toReview, tutorSystem, type PracticeRow, type TutorItem } from "../lib/tutor.ts";
+
+const knowledgeText = (input: Parameters<typeof knowledge>[0]) => knowledge(input).text;
 import type { CardFieldRow } from "../lib/card-fields.ts";
 
 const ceviche: TutorItem = {
-  name: "Ceviche Nikkei", description: "Fresh fish in a soy tiger's milk.", ingredients: ["fish", "soy", "sesame oil"],
+  id: "c1", name: "Ceviche Nikkei", description: "Fresh fish in a soy tiger's milk.", ingredients: ["fish", "soy", "sesame oil"],
   allergens: ["Fish", "Sesame", "Soy CC"], category: "Ceviches", content_type: "food",
   price_label: "$24", observations: "Ask about spice", details: {},
 };
-const plain: TutorItem = {name: "House water", description: "Still or sparkling.", ingredients: ["water"], allergens: [], category: "Drinks", content_type: "food"};
+const plain: TutorItem = {id: "w1", name: "House water", description: "Still or sparkling.", ingredients: ["water"], allergens: [], category: "Drinks", content_type: "food"};
 
 test("every dish carries its allergens, and CC is spelled out", () => {
   const doc = knowledgeText({restaurant: "Osaka", items: [ceviche, plain]});
-  assert.match(doc, /### Ceviche Nikkei[\s\S]*Allergens: Fish, Sesame, Soy cross-contamination/);
+  assert.match(doc, /### Ceviche Nikkei \(card 1\)[\s\S]*Allergens: Fish, Sesame, Soy cross-contamination/);
   assert.match(doc, /### House water[\s\S]*Allergens: none listed on the card/, "an empty list says so instead of disappearing");
   assert.match(doc, /Category: Ceviches/);
 });
@@ -61,4 +63,39 @@ test("only clean user and assistant turns reach the model", () => {
   long.push({role: "user", content: "last"});
   const kept = cleanConversation(long)!;
   assert.ok(kept.length <= MAX_TURNS && kept[0].role === "user" && kept.at(-1)!.content === "last");
+});
+
+test("cards are numbered in the order of the document, so the tutor can name one", () => {
+  const tiradito: TutorItem = {...ceviche, id: "t1", name: "Tiradito", category: "Ceviches"};
+  const {text, cards} = knowledge({restaurant: "Osaka", items: [plain, tiradito, ceviche]});
+  assert.deepEqual(cards.map(c => c.name), ["Ceviche Nikkei", "Tiradito", "House water"], "by category, then name");
+  assert.match(text, /### Tiradito \(card 2\)/);
+  assert.match(text, /### House water \(card 3\)/);
+});
+
+const row = (id: string, result: PracticeRow["result"], day: number, missed = ""): PracticeRow => ({menu_item_id: id, result, missed, created_at: `2026-11-0${day}T20:00:00Z`});
+const cards = [{id: "c1", name: "Ceviche Nikkei"}, {id: "t1", name: "Tiradito"}, {id: "w1", name: "House water"}];
+
+test("the newest result decides what is still to review", () => {
+  const rows = [row("c1", "wrong", 1, "sesame"), row("c1", "correct", 3), row("t1", "correct", 1), row("t1", "partly", 2, "soy CC")];
+  assert.deepEqual(toReview(rows).map(r => [r.menu_item_id, r.missed]), [["t1", "soy CC"]], "the ceviche was fixed on the 3rd; the tiradito slipped on the 2nd");
+});
+
+test("the tutor is told what to review first, with what was missed", () => {
+  assert.match(historyText([], cards), /haven't practised any card/);
+  const text = historyText([row("c1", "wrong", 2, "sesame allergen"), row("t1", "correct", 1), row("gone", "wrong", 1)], cards);
+  assert.match(text, /practised 2 of 3 cards/, "a card that no longer exists isn't counted");
+  assert.match(text, /To review[^\n]*\n- Ceviche Nikkei \(card 1\): practised 1 time, last wrong \(missed: sesame allergen\)/);
+  assert.match(text, /Got right last time:\n- Tiradito \(card 2\)/);
+  assert.ok(text.indexOf("To review") < text.indexOf("Got right"));
+});
+
+test("only a real card, a known result and a short note can be recorded", () => {
+  assert.deepEqual(parsePractice({card: 2, result: "partly", missed: "  soy   CC "}, cards), {menu_item_id: "t1", result: "partly", missed: "soy CC"});
+  assert.deepEqual(parsePractice({card: 1, result: "correct"}, cards), {menu_item_id: "c1", result: "correct", missed: ""});
+  for (const bad of [null, "card 1", {card: 0, result: "correct"}, {card: 4, result: "correct"}, {card: 1.5, result: "correct"}, {card: "1", result: "correct"}, {card: 1, result: "great"}, {card: 1, result: "wrong", missed: 7}]) {
+    assert.equal(parsePractice(bad, cards), null, JSON.stringify(bad));
+  }
+  assert.equal(parsePractice({card: 1, result: "wrong", missed: "x".repeat(500)}, cards)!.missed.length, 200);
+  assert.equal(parsePractice({card: 1, result: "correct"}, [{id: "", name: "No id"}]), null, "a card without an id can't be saved");
 });
