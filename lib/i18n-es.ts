@@ -719,9 +719,17 @@ const PHRASES: Record<string, string> = {
   "No guides yet. Open a word under Words, add the full write-up, and it appears here for your team to browse.": "Todavía no hay guías. Abre una palabra en Palabras, escribe la versión completa y aparece aquí para tu equipo.",
   "The words your menu uses, in your own wording. A word shows on every card that mentions it. Write one up properly and it becomes a guide your team can browse before service.": "Las palabras de tu menú, con tus propias palabras. Una palabra aparece en cada ficha que la menciona. Escríbela completa y se vuelve una guía que tu equipo puede leer antes del servicio.",
   // ── Tutor ──
-  "Tutor": "Tutor", "New conversation": "Nueva conversación", "Practice with the tutor": "Practicar con el tutor", "What would you like to study today?": "¿Qué quieres estudiar hoy?",
-  "Quiz me on allergens": "Pregúntame los alérgenos", "Play a guest": "Haz de cliente", "Topics": "Temas", "Send": "Enviar",
-  "Or ask anything about the menu below.": "O pregunta lo que quieras sobre el menú aquí abajo.",
+  "Tutor": "Tutor", "New conversation": "Nueva conversación", "Practice with the tutor": "Practicar con el tutor",
+  "Play a guest": "Haz de cliente", "Send": "Enviar",
+  "Quiz me": "Pregúntame", "Explain it": "Explícame", "Way to practise": "Forma de practicar",
+  "I ask you questions, one card at a time, and correct you.": "Te hago preguntas, una ficha a la vez, y te corrijo.",
+  "I explain each card first, then ask you about it so it sticks.": "Te explico cada ficha primero y luego te pregunto para que se te quede.",
+  "Practise a real table: I'm the guest, then I coach you.": "Practica una mesa real: yo soy el cliente y luego te doy consejos.",
+  "Pick up where you left off": "Sigue donde lo dejaste", "Review now": "Repasar ahora", "Start here": "Empieza por aquí", "Start": "Empezar",
+  "1 · How do you want to practise?": "1 · Cómo quieres practicar", "2 · What do you want to study?": "2 · Qué quieres estudiar",
+  "How do you want to practise?": "¿Cómo quieres practicar?", "What do you want to study?": "¿Qué quieres estudiar?",
+  "Allergens in this section": "Alérgenos de esta sección", "All practised": "Todo practicado",
+  "Get to know the restaurant": "Conoce el restaurante", "Or ask anything below.": "O pregunta lo que quieras aquí abajo.",
   "Type your answer or question": "Escribe tu respuesta o pregunta", "Your message": "Tu mensaje",
   "Study by talking. The tutor asks you about the menu, the restaurant's story and its standards, and corrects you from the cards. It remembers which cards you practised and starts with what you missed; none of it is a quiz score. Allergens: it only repeats what the cards say; when in doubt, ask the chef or a manager.": "Estudia conversando. El tutor te pregunta sobre el menú, la historia del restaurante y sus estándares, y te corrige con lo que dicen las fichas. Recuerda qué fichas practicaste y empieza por lo que fallaste; nada de esto cuenta como nota de un quiz. Alérgenos: solo repite lo que dicen las fichas; si tienes dudas, pregunta al chef o a un manager.",
   "The tutor stopped partway. Try again.": "El tutor se detuvo a mitad de la respuesta. Inténtalo de nuevo.", "Please sign in again.": "Vuelve a iniciar sesión.",
@@ -759,7 +767,9 @@ const lower = (text: string) => (translateCore(text) ?? text).toLowerCase();
 
 // Sentences with a name or a number inside: the automatic quiz's questions, and a few counters.
 const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
-  [/^Review what I missed · (\d+)$/, m => `Repasar lo que fallé · ${m[1]}`],
+  [/^(\d+) cards? to review$/, m => `${m[1]} ${m[1] === "1" ? "ficha" : "fichas"} por repasar`],
+  [/^(\d+) cards?, about (\d+) minutes\. I ask, correct you and remember what you miss for next time\.$/, m => `${m[1]} ${m[1] === "1" ? "ficha" : "fichas"}, unos ${m[2]} minutos. Te pregunto, te corrijo y recuerdo lo que fallas para la próxima vez.`],
+  [/^(\d+) of (\d+) practised$/, m => `${m[1]} de ${m[2]} practicadas`],
   [/^(\d+) cards? practised · (\d+) to review$/, m => `${m[1]} ${m[1] === "1" ? "ficha practicada" : "fichas practicadas"} · ${m[2]} por repasar`],
   [/^HEAT uses your longest list \((.+)\)\. The other (\d+) lists? (?:is|are) kept but not used\.$/, m => `HEAT usa tu lista más larga (${m[1]}). ${m[2] === "1" ? "La otra lista se guarda" : `Las otras ${m[2]} listas se guardan`} pero no se usa${m[2] === "1" ? "" : "n"}.`],
   [/^Add to (Server opening|Server closing|S\.A\. opening|S\.A\. closing)$/, m => `Agregar a ${({"Server opening": "apertura de meseros", "Server closing": "cierre de meseros", "S.A. opening": "apertura de S.A.", "S.A. closing": "cierre de S.A."} as Record<string, string>)[m[1]]}`],
