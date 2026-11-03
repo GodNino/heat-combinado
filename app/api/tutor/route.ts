@@ -5,7 +5,8 @@
 // restaurant they belong to -- and what it can write: practice results for that person only
 // (tutor_practice, migration 057). No service key is involved.
 //
-// The answer comes from Claude Haiku 5.5. Until ANTHROPIC_API_KEY is set in Vercel this route answers
+// The tutor reads HEAT's shared manual (lib/tutor-manual.ts) and then the restaurant's own document,
+// which always wins over it. The answer comes from Claude Haiku 5.5. Until ANTHROPIC_API_KEY is set in Vercel this route answers
 // {configured: false} and the Tutor screen says so. The restaurant's document is sent as a cached
 // prefix, so each new turn of a conversation only pays full price for the newest messages.
 //
@@ -15,6 +16,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import type { CardFieldRow } from "@/lib/card-fields";
 import { cleanConversation, historyText, knowledge, parsePractice, tutorSystem, type PracticeRow, type TutorItem, type TutorStandard, type TutorStory, type TutorWord } from "@/lib/tutor";
+import { TUTOR_EXAMPLES, TUTOR_MANUAL } from "@/lib/tutor-manual";
 
 const MODEL = "claude-haiku-5-5";
 // A turn that records practice takes two rounds (answer + record, then the rest of the answer);
@@ -79,6 +81,8 @@ export async function POST(request: Request) {
   });
   const system: Anthropic.TextBlockParam[] = [
     {type: "text", text: tutorSystem(restaurant)},
+    // HEAT's shared craft and how the tutor should sound, the same for every restaurant.
+    {type: "text", text: `<heat_tutor_manual>\n${TUTOR_MANUAL}\n</heat_tutor_manual>\n\n<how_you_sound>\n${TUTOR_EXAMPLES}\n</how_you_sound>`, cache_control: {type: "ephemeral"}},
     {type: "text", text: `<restaurant_information>\n${doc.text}\n</restaurant_information>`, cache_control: {type: "ephemeral"}},
     ...(remembers ? [{type: "text" as const, text: `<their_history>\n${historyText((practice.data ?? []) as PracticeRow[], doc.cards)}\n</their_history>`}] : []),
     {type: "text", text: body.lang === "es" ? "Reply in Spanish (tú), keeping dish names as the menu writes them." : "Reply in English."},

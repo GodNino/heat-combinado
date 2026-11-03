@@ -3240,3 +3240,13 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .assistant-proposal dd { margin:0; font-weight:600; }
 :root:root:root:root:root:root:root .assistant-proposal-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
 :root:root:root:root:root:root:root .assistant-proposal-done { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:var(--c-pass); }
+
+/* Landing: the AI tutor and manager assistant drawn small (app/page.tsx TutorVisual, AssistantVisual).
+   A short conversation: the person's turns dark on the right, the tutor's or assistant's on the left.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .lp-chat { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+:root:root:root:root:root:root:root .lp-bubble { margin:0; max-width:88%; padding:8px 12px; border-radius:14px; font-size:.8rem; line-height:1.45; display:flex; flex-direction:column; gap:6px; }
+:root:root:root:root:root:root:root .lp-bubble.ai { align-self:flex-start; background:var(--c-surface-3); border:1px solid var(--c-line); border-bottom-left-radius:5px; }
+:root:root:root:root:root:root:root .lp-bubble.me { align-self:flex-end; background:var(--c-invert-bg); color:var(--c-invert-text); border-bottom-right-radius:5px; }
+:root:root:root:root:root:root:root .lp-bubble small { color:var(--c-muted); font-size:.68rem; }
+:root:root:root:root:root:root:root .lp-bubble-row { display:flex; justify-content:space-between; align-items:center; gap:10px; }

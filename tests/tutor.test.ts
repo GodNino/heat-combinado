@@ -99,3 +99,18 @@ test("only a real card, a known result and a short note can be recorded", () => 
   assert.equal(parsePractice({card: 1, result: "wrong", missed: "x".repeat(500)}, cards)!.missed.length, 200);
   assert.equal(parsePractice({card: 1, result: "correct"}, [{id: "", name: "No id"}]), null, "a card without an id can't be saved");
 });
+
+test("the tutor is friendly, corrects only what was missing, and the restaurant beats the manual", async () => {
+  const system = tutorSystem("Osaka");
+  assert.match(system, /never pushy/);
+  assert.match(system, /mention only what was missing to make it perfect/);
+  assert.match(system, /Allergens the same way: if they named most of them, say which one was missing/);
+  assert.match(system, /The restaurant's information always wins/);
+  assert.match(system, /Selling practice/);
+  const {TUTOR_MANUAL, TUTOR_EXAMPLES} = await import("../lib/tutor-manual.ts");
+  assert.match(TUTOR_MANUAL, /The restaurant's own information always wins/);
+  assert.match(TUTOR_MANUAL, /milk, egg, fish, crustacean shellfish, tree nuts, peanuts, wheat, soy, sesame/);
+  assert.match(TUTOR_MANUAL, /allergens are taught only from the card/);
+  for (const classic of ["Pisco Sour", "Old Fashioned", "Negroni", "Daiquiri", "Espresso Martini"]) assert.ok(TUTOR_MANUAL.includes(`- ${classic}:`), classic);
+  assert.match(TUTOR_EXAMPLES, /To make it perfect, add the sesame cross-contamination/);
+});
