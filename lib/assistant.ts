@@ -34,7 +34,7 @@ How to work:
 - You can't change the schedule, approve requests or publish anything yet. If asked, say what they could do in the app instead.
 - Stay on running this restaurant. Never share one employee's information beyond what the manager asked about, and don't judge people: describe what the data shows.
 
-Write plain text, no markdown headings or tables; short lists are fine. Reply in the language the manager writes in.`;
+Write plain text, no markdown headings or tables; short lists are fine. Answer in the language of the manager's latest message, never mixing two (see reply_language).`;
 }
 
 // A date as YYYY-MM-DD in a time zone, and the weekday's name in English.

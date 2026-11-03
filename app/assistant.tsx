@@ -58,7 +58,7 @@ export function Assistant({restaurantId, restaurantName}: {restaurantId: string;
       const response = await fetch("/api/assistant", {
         method: "POST",
         headers: {"Content-Type": "application/json", Authorization: `Bearer ${session.session?.access_token ?? ""}`},
-        body: JSON.stringify({restaurantId, messages: next.slice(-MAX_TURNS).map(t => ({role: t.role, content: t.content}))}),
+        body: JSON.stringify({restaurantId, messages: next.slice(-MAX_TURNS).map(t => ({role: t.role, content: t.content})), lang: currentLang()}),
       }).catch(() => null);
       if (!response) return undo(FAILED);
       // Plain JSON means the assistant never started: not switched on, or the request was refused.

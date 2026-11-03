@@ -13,6 +13,7 @@
 // The reply is newline-separated JSON: {"text": "..."} pieces as they are written, and {"error": "..."}
 // if the tutor stops partway. Problems found before the tutor starts answer with plain JSON instead.
 import Anthropic from "@anthropic-ai/sdk";
+import { replyLanguage } from "@/lib/reply-language";
 import { createClient } from "@supabase/supabase-js";
 import type { CardFieldRow } from "@/lib/card-fields";
 import { cleanConversation, historyText, knowledge, parsePractice, tutorSystem, type PracticeRow, type TutorItem, type TutorStandard, type TutorStory, type TutorWord } from "@/lib/tutor";
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
     {type: "text", text: `<heat_tutor_manual>\n${TUTOR_MANUAL}\n</heat_tutor_manual>\n\n<how_you_sound>\n${TUTOR_EXAMPLES}\n</how_you_sound>`, cache_control: {type: "ephemeral"}},
     {type: "text", text: `<restaurant_information>\n${doc.text}\n</restaurant_information>`, cache_control: {type: "ephemeral"}},
     ...(remembers ? [{type: "text" as const, text: `<their_history>\n${historyText((practice.data ?? []) as PracticeRow[], doc.cards)}\n</their_history>`}] : []),
-    {type: "text", text: body.lang === "es" ? "Reply in Spanish (tú), keeping dish names as the menu writes them." : "Reply in English."},
+    {type: "text", text: replyLanguage(body.lang)},
   ];
 
   const client = new Anthropic({apiKey});

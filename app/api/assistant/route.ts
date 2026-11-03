@@ -13,6 +13,7 @@
 // while a tool runs, {"proposal": {...}} for a card to confirm, and {"error"} if it stops partway.
 // Problems found before the assistant starts answer with plain JSON instead.
 import Anthropic from "@anthropic-ai/sdk";
+import { replyLanguage } from "@/lib/reply-language";
 import { createClient } from "@supabase/supabase-js";
 import { assistantSystem, checkProposal, checkRange, hoursView, localDay, reportsView, scheduleView, type MenuEntry, type Proposal, type Report, type Shift, type TeamMember } from "@/lib/assistant";
 import { cleanConversation } from "@/lib/tutor";
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  const body = await request.json().catch(() => ({})) as {restaurantId?: string; messages?: unknown};
+  const body = await request.json().catch(() => ({})) as {restaurantId?: string; messages?: unknown; lang?: string};
   const messages = cleanConversation(body.messages);
   if (!url || !key || !token || !body.restaurantId || !messages) return Response.json({error: "Missing restaurant, message or sign-in."}, {status: 400});
 
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
     restaurant: place.data.name as string, today: today.day, weekday: today.weekday, timeZone,
     weekStart: WEEKDAYS[s.week_start ?? 1] ?? "Monday", overtimeWeekly: weeklyLimit, overtimeDaily: s.overtime_daily ?? null,
     manager: team.find(m => m.user_id === me)?.name ?? "the manager",
-  }) + (canAssign ? "" : "\n\nThis manager has no Team access: you can't propose study assignments.")}];
+  }) + (canAssign ? "" : "\n\nThis manager has no Team access: you can't propose study assignments.")}, {type: "text", text: replyLanguage(body.lang)}];
 
   const denied = (error: {code?: string; message?: string} | null) =>
     error && (error.code === "42501" || /access|permission|denied/i.test(error.message ?? "")) ? "Not available with your access." : "Couldn't read that right now.";
