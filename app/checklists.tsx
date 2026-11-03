@@ -157,7 +157,8 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
     <MyShift restaurantId={restaurantId} />
   </section>;
 
-  return <section className="mx-auto max-w-3xl">
+  // Tonight's board uses the whole width, like the Schedule; Setup and History stay a readable column.
+  return <section className={tab === "tonight" && !deep ? "mx-auto w-full" : "mx-auto max-w-3xl"}>
     <ScreenHeader
       eyebrow="Manager workspace"
       title="Side work"
