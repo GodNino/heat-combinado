@@ -3,14 +3,14 @@
 // Every picture on this page is the app's own screens drawn in HTML, not a screenshot: they stay
 // sharp, follow light and dark, and translate with the rest of the page.
 import type { ReactNode } from "react";
-import { ArrowRight, Bell, BookOpen, CalendarDays, Check, ChefHat, ClipboardCheck, Crown, FileText, Globe, Languages, MapPin, ShieldAlert, Store, Users, UtensilsCrossed, X } from "lucide-react";
+import { ArrowRight, Bell, BookOpen, CalendarDays, CalendarOff, Check, ChefHat, Crown, FileText, Globe, Languages, ListChecks, MapPin, Store, Users, UtensilsCrossed, X } from "lucide-react";
 import { HeatLogo } from "./heat-logo";
 import { AuthForward } from "./auth-forward";
 import { LanguageSwitch } from "./language";
 import { Reveal } from "./landing-motion";
 
 const FACTS = [
-  ["One link", "to bring the team in"],
+  ["AI tutor", "that knows your menu"],
   ["FOH + BOH", "in one schedule"],
   ["English · Español", "every screen"],
   ["14 days free", "no card needed"],
@@ -24,17 +24,20 @@ const BEFORE_AFTER = [
   ["Allergy questions answered from memory", "Pick the allergies, see what to avoid and what to confirm with the kitchen"],
   ["86s shouted across the pass", "Tonight's 86 list on the phone of everyone working today"],
   ["The night's story leaves with the closing manager", "An end-of-shift report the owners can read, and a dashboard that remembers"],
+  ["Training means reading the binder alone", "A tutor that quizzes, corrects and practises selling with every server"],
+  ["Side work on a whiteboard, the same names every night", "Side work built from the schedule, rotating so nobody gets yesterday's job"],
+  ["Answers buried in texts, schedules and reports", "Ask the assistant: who's near overtime, who needs to study, what the reports say"],
 ];
 
 const ROLES = [
   {icon: Crown, title: "Owners and GMs", text: "Labor and service for the week, every location side by side, and an alert the moment a report is urgent."},
-  {icon: CalendarDays, title: "Floor managers", text: "Build the front of house, post pre-shift, hand out checklists and approve swaps with the hours in front of you."},
+  {icon: CalendarDays, title: "Floor managers", text: "Build the front of house, post pre-shift, send tonight's side work and approve swaps with the hours in front of you, or simply ask the assistant."},
   {icon: ChefHat, title: "Head chefs and sous chefs", text: "Build the kitchen schedule, 86 what's out, and keep the line's time off in your own hands."},
-  {icon: UtensilsCrossed, title: "Servers, bartenders and cooks", text: "Your shifts, tonight's board and what to study, on your phone. Release or swap a shift without a single text."},
+  {icon: UtensilsCrossed, title: "Servers, bartenders and cooks", text: "Your shifts, tonight's board, your side work and a tutor that helps you study and sell, on your phone. Release or swap a shift without a single text."},
 ];
 
 const MORE = [
-  {icon: ClipboardCheck, title: "Checklists", text: "Opening, running and closing jobs, handed out by service, with a record of who did what."},
+  {icon: CalendarOff, title: "Time off and on-call", text: "Time-off requests, weekly availability and on-call shifts, approved where the schedule is built."},
   {icon: Languages, title: "Words to know", text: "How to say it and what it means, for every term a guest might ask about."},
   {icon: Store, title: "Standards and story", text: "Your service standards and the story of the house, written once and read by everyone."},
   {icon: FileText, title: "Printable sheets", text: "Dish cards, allergy sheets, the pre-shift and the week's schedule, as clean PDFs."},
@@ -50,6 +53,8 @@ const FAQ = [
   ["Does it work in Spanish?", "Every screen works in English and Spanish, and each person picks their own. Dish names and notes stay exactly as you wrote them."],
   ["Is the allergy check a guarantee?", "No, and it never pretends to be. It shows what to avoid and what to confirm, based on what your restaurant recorded. The kitchen always has the last word."],
   ["We have more than one location.", "Each location gets its own workspace, team and schedule under your brand. The owner moves between them and compares them side by side."],
+  ["Is the AI tutor safe with allergens?", "It only repeats what your cards say, and when a card doesn't say, it tells them to ask the kitchen. It teaches the craft too, from describing a dish to classic cocktails and selling, but your menu and your standards always win."],
+  ["What can the manager assistant see?", "Only what that manager's access lets them see in the app: the schedule, the team's study and the shift reports. It never changes anything until the manager confirms."],
   ["Can I see it before adding my own menu?", "Open the demo kitchen: the real app with a sample menu, team and week of shifts, no account needed. Then start a 14-day trial with your own, no card."],
 ];
 
@@ -62,6 +67,7 @@ export default function Landing() {
         <a href="/" className="site-logo" aria-label="HEAT home"><HeatLogo /></a>
         <nav className="site-links" aria-label="Sections">
           <a href="#product">Product</a>
+          <a href="#tutor">AI tutor</a>
           <a href="#schedule">Schedule</a>
           <a href="#roles">For your team</a>
           <a href="#faq">FAQ</a>
@@ -82,7 +88,7 @@ export default function Landing() {
           <div className="enter">
             <p className="lp-kicker"><span className="lp-dot" aria-hidden="true" />Built inside a working restaurant</p>
             <h1 className="site-title lp-title">Great service<br />starts with<br /><span className="lp-lime">knowing the menu.</span></h1>
-            <p className="mt-6 max-w-lg text-lg text-white/75">One app for what your team needs to know and what your managers need to run: the menu, allergens, schedule, pre-shift, checklists and the end-of-shift report.</p>
+            <p className="mt-6 max-w-lg text-lg text-white/75">One app for what your team needs to know and what your managers need to run: the menu, allergens, an AI tutor, the schedule, side work, pre-shift and the end-of-shift report, with an assistant that knows your restaurant.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="/trial" className="btn lp-btn-big">Start free trial<ArrowRight size={17} aria-hidden="true" /></a>
               <a href="/demo" className="btn secondary lp-btn-ghost">Try the demo kitchen</a>
@@ -129,13 +135,21 @@ export default function Landing() {
             points={["Every dish, cocktail and wine on a card, in your menu's own sections", "Quizzes write and grade themselves; 80% means they know it", "Assign what to study and see who's done it"]}
             visual={<MenuVisual />} />
 
-          <Scene flip eyebrow="Allergy check" title="Answer the allergy question with the whole menu in front of you"
+          <Scene id="tutor" flip eyebrow="AI tutor" title="A tutor that studies with every server, before every shift"
+            points={["They chat about any dish and it asks, corrects and explains from your own cards", "Close answers get only what was missing; allergens are never left out", "Practise selling: it plays the guest, then coaches what would sell even better", "It remembers what each person missed and starts there next time"]}
+            visual={<TutorVisual />} />
+
+          <Scene eyebrow="Allergy check" title="Answer the allergy question with the whole menu in front of you"
             points={["Pick a guest's allergies and see what to avoid and what to confirm", "Cross-contamination flagged dish by dish", "Print the sheet for the pass. It never calls a dish safe."]}
             visual={<AllergyVisual />} />
 
-          <Scene id="schedule" eyebrow="Schedule" title="Build the week in minutes. Publish it to every phone."
+          <Scene id="schedule" flip eyebrow="Schedule" title="Build the week in minutes. Publish it to every phone."
             points={["Drag shifts between days and people; copy last week", "Overtime, double-booking and time off flagged before you publish", "Releases and swaps reach only people who can cover them, and a manager always approves", "The floor manager builds front of house; the head chef builds the kitchen"]}
             visual={<ScheduleVisual />} />
+
+          <Scene eyebrow="Side work" title="Tonight's side work builds itself from the schedule"
+            points={["Sections, S.A.s and running side work for every server on tonight's schedule", "Opening and closing jobs handed out by their rules; whoever comes in last closes", "It rotates, so nobody gets yesterday's job", "Drag a name onto a job to change it; each person sees their own on their phone"]}
+            visual={<SideworkVisual />} />
 
           <Scene flip eyebrow="Pre-shift" title="Tonight's board, on the phone of everyone working tonight"
             points={["The 86 list, the dishes to push and a note", "Send it to everyone, or only to who's on today's schedule", "Edit it after posting and the team sees what changed"]}
@@ -144,6 +158,10 @@ export default function Landing() {
           <Scene eyebrow="End of shift" title="Know how the night went, even when you weren't there"
             points={["Covers, sales, issues and what to order, with the 86 list and checklists filled in", "Urgent reports reach the owners' phones right away", "Labor and service next to the same days last week"]}
             visual={<DashboardVisual />} />
+
+          <Scene id="assistant" flip eyebrow="Manager assistant" title="Ask your restaurant a question. Get the answer from your own data."
+            points={["Who's close to overtime, who's off, what's waiting for approval", "Who needs to study, and what they keep missing", "This week's shift reports in a few lines: what's urgent and what keeps coming up", "It proposes giving study to the right people; nothing changes until you confirm"]}
+            visual={<AssistantVisual />} />
         </div>
       </section>
 
@@ -279,6 +297,61 @@ function HeroPhone() {
         <div className="lp-bar-row"><span>Cocktails</span><i style={{width: "64%"}} /><b>64%</b></div>
         <div className="lp-bar-row"><span>Wine & Sake</span><i style={{width: "45%"}} /><b>45%</b></div>
       </div>
+    </div>
+  </div>;
+}
+
+function TutorVisual() {
+  return <div className="lp-stack">
+    <div className="lp-card">
+      <p className="lp-card-eyebrow">Tutor · Ceviches</p>
+      <div className="lp-chat">
+        <p className="lp-bubble ai">The Ceviche Nikkei: what's in it, and its allergens?</p>
+        <p className="lp-bubble me">Fish, soy, lime and leche de tigre. Fish and soy.</p>
+        <p className="lp-bubble ai">Almost perfect! To nail it, add the sesame cross-contamination. Now sell it to a table in 15 seconds.</p>
+      </div>
+      <div className="lp-pills"><span>Quiz me</span><span>Explain it</span><span className="on">Practise selling</span></div>
+    </div>
+    <div className="lp-card lp-card-offset">
+      <div className="lp-row"><span>Review what I missed</span><b className="lp-count warn">3</b></div>
+      <div className="lp-row"><span>Ceviches</span><b className="lp-count">5 of 6</b></div>
+      <div className="lp-row"><span>Classic cocktails</span><b className="lp-count">8 of 15</b></div>
+    </div>
+  </div>;
+}
+
+function SideworkVisual() {
+  return <div className="lp-stack">
+    <div className="lp-card">
+      <p className="lp-card-eyebrow">Tonight · Dinner · from the schedule</p>
+      <div className="lp-row"><span><b>1</b> · Ana · S.A. Leo</span><span className="muted">Coffee station</span></div>
+      <div className="lp-row"><span><b>2</b> · Luis · S.A. Leo</span><span className="muted">Side station trash</span></div>
+      <div className="lp-row"><span><b>3</b> · Sofía · S.A. Mia</span><span className="muted">Glassware</span></div>
+      <p className="lp-card-eyebrow lp-gap">Closing</p>
+      <div className="lp-pills"><span>Ice buckets · Ana</span><span>Soy sauce · Luis</span><span className="on">Side station · Sofía ©</span></div>
+    </div>
+    <div className="lp-toast static"><ListChecks size={14} /><div><b>Your side work tonight</b><span>Section 3 · Glassware · Closing: side station</span></div></div>
+  </div>;
+}
+
+function AssistantVisual() {
+  return <div className="lp-stack">
+    <div className="lp-card">
+      <p className="lp-card-eyebrow">Assistant</p>
+      <div className="lp-chat">
+        <p className="lp-bubble me">Who's close to overtime this week?</p>
+        <div className="lp-bubble ai">
+          <span>Two people pass 40 hours if they work what's scheduled:</span>
+          <span className="lp-bubble-row"><b>Luis</b><span className="lp-flag">45.5 h · +5.5</span></span>
+          <span className="lp-bubble-row"><b>Ana</b><span className="lp-flag">41 h · +1</span></span>
+          <small>From the published schedule</small>
+        </div>
+      </div>
+    </div>
+    <div className="lp-card lp-card-offset">
+      <p className="lp-card-eyebrow">Proposal · Give study</p>
+      <p className="lp-card-text"><b>Ceviches</b> to Leo and Mia: they missed the sesame allergen.</p>
+      <div className="lp-pills"><span className="on">Confirm</span><span>Cancel</span></div>
     </div>
   </div>;
 }
