@@ -739,11 +739,11 @@ const PHRASES: Record<string, string> = {
   "The assistant stopped partway. Try again.": "El asistente se detuvo a mitad de la respuesta. Inténtalo de nuevo.", "The assistant is for managers.": "El asistente es para managers.",
   // ── Tutor ──
   "Tutor": "Tutor", "New conversation": "Nueva conversación", "Practice with the tutor": "Practicar con el tutor",
-  "Play a guest": "Haz de cliente", "Send": "Enviar",
+  "Play a guest": "Haz de cliente", "Practise selling": "Practicar ventas", "Send": "Enviar",
   "Quiz me": "Pregúntame", "Explain it": "Explícame", "Way to practise": "Forma de practicar",
   "I ask you questions, one card at a time, and correct you.": "Te hago preguntas, una ficha a la vez, y te corrijo.",
   "I explain each card first, then ask you about it so it sticks.": "Te explico cada ficha primero y luego te pregunto para que se te quede.",
-  "Practise a real table: I'm the guest, then I coach you.": "Practica una mesa real: yo soy el cliente y luego te doy consejos.",
+  "I'm the guest at your table: you describe, recommend and sell, then I tell you what would make it even better.": "Yo soy el cliente de tu mesa: tú describes, recomiendas y vendes, y luego te digo qué lo haría aún mejor.",
   "Pick up where you left off": "Sigue donde lo dejaste", "Review now": "Repasar ahora", "Start here": "Empieza por aquí", "Start": "Empezar",
   "1 · How do you want to practise?": "1 · Cómo quieres practicar", "2 · What do you want to study?": "2 · Qué quieres estudiar",
   "How do you want to practise?": "¿Cómo quieres practicar?", "What do you want to study?": "¿Qué quieres estudiar?",
