@@ -53,7 +53,8 @@ export function MyShiftCard({restaurantId, userId: given, onOpen}: {restaurantId
   return <section className="panel my-shift mb-4" aria-label="My shift">
     <p className="eyebrow muted">{`My shift · ${service}`}</p>
     {row && <div className="my-shift-floor">
-      <b>{asServer ? (row.section ? `Section ${row.section}` : "No section") : (sectionsAsSA.length ? `Sections ${sectionsAsSA.join("/")}` : "No section")}</b>
+      <b>{asServer ? (row.section ? `Section ${row.section}` : "No section") : (sectionsAsSA.length ? (sectionsAsSA.every(n => /^\d+$/.test(n)) ? `Sections ${sectionsAsSA.join("/")}` : sectionsAsSA.join(" · ")) : "No section")}</b>
+      {asServer && row.where && <span className="muted" data-no-translate>{row.where}</span>}
       <span className="muted">{asServer ? (row.sa.length ? `S.A.: ${helpers(row.sa)}` : "No S.A. assigned") : `Server: ${row.server_name || "Team member"}`}</span>
     </div>}
     <div className="my-shift-phases">

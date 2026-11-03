@@ -3351,3 +3351,54 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .swb-job-title { overflow-wrap:normal; word-break:normal; }
 :root:root:root:root:root:root:root .swb-names { flex:0 1 auto; min-width:0; max-width:55%; }
 :root:root:root:root:root:root:root .swb-add { overflow:hidden; text-overflow:ellipsis; }
+
+/* Side work Tonight > Sections: the floor map where the manager draws tonight's sections (tables lime while
+   drawing, a solid outline per section, a name tag), the list of sections and the people chips. On phones
+   the map scrolls sideways inside its card. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .fs-views { display:flex; flex-wrap:wrap; gap:14px; align-items:center; }
+:root:root:root:root:root:root:root .fs-grid { grid-template-columns:minmax(0,1fr) 380px; }
+:root:root:root:root:root:root:root .fs-side { display:grid; gap:14px; min-width:0; }
+:root:root:root:root:root:root:root .fs-scroll { overflow-x:auto; margin:0 -16px; padding:0 16px; }
+:root:root:root:root:root:root:root .fs-scroll svg { display:block; width:100%; min-width:720px; height:auto; user-select:none; -webkit-user-select:none; }
+:root:root:root:root:root:root:root .fs-wall { fill:none; stroke:var(--c-text); stroke-width:3; }
+:root:root:root:root:root:root:root .fs-area { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:11px; font-weight:600; letter-spacing:.06em; fill:var(--c-muted); }
+:root:root:root:root:root:root:root .fs-table { cursor:pointer; }
+:root:root:root:root:root:root:root .fs-table rect, :root:root:root:root:root:root:root .fs-table circle { fill:var(--c-surface); stroke:var(--c-text); stroke-width:1.5; }
+:root:root:root:root:root:root:root .fs-table text { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:11px; font-weight:600; fill:var(--c-text); text-anchor:middle; dominant-baseline:central; pointer-events:none; }
+:root:root:root:root:root:root:root .fs-table.in rect, :root:root:root:root:root:root:root .fs-table.in circle { fill:var(--c-surface-hover); }
+:root:root:root:root:root:root:root .fs-table.drawing rect, :root:root:root:root:root:root:root .fs-table.drawing circle { fill:var(--lime); stroke:var(--c-on-heat); }
+:root:root:root:root:root:root:root .fs-table.drawing text { fill:var(--c-on-heat); }
+:root:root:root:root:root:root:root .fs-table:focus-visible { outline:none; }
+:root:root:root:root:root:root:root .fs-table:focus-visible rect, :root:root:root:root:root:root:root .fs-table:focus-visible circle { stroke-width:3; }
+:root:root:root:root:root:root:root .fs-hull { fill:var(--c-text); fill-opacity:.05; stroke:var(--c-text); stroke-width:2; stroke-linejoin:round; cursor:pointer; }
+:root:root:root:root:root:root:root .fs-hull.sel { fill-opacity:.12; stroke-width:3; }
+:root:root:root:root:root:root:root .fs-tag { cursor:pointer; }
+:root:root:root:root:root:root:root .fs-tag rect { fill:var(--c-surface); stroke:var(--c-text); stroke-width:1.5; }
+:root:root:root:root:root:root:root .fs-tag circle { fill:var(--c-text); }
+:root:root:root:root:root:root:root .fs-tag-n { font-size:12px; font-weight:700; fill:var(--c-bg); text-anchor:middle; dominant-baseline:central; }
+:root:root:root:root:root:root:root .fs-tag-name { font-size:13px; font-weight:700; fill:var(--c-text); dominant-baseline:central; }
+:root:root:root:root:root:root:root .fs-tag-sa { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:10px; font-weight:600; fill:var(--c-muted); dominant-baseline:central; }
+:root:root:root:root:root:root:root .fs-foot { display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between; }
+:root:root:root:root:root:root:root .fs-actions { display:flex; flex-wrap:wrap; gap:6px; }
+:root:root:root:root:root:root:root .fs-list { display:grid; margin:0 -16px -16px; }
+:root:root:root:root:root:root:root .fs-list > div + div > .fs-row, :root:root:root:root:root:root:root .fs-list .swb-sub + .fs-row { border-top:1px solid var(--c-line-5); }
+:root:root:root:root:root:root:root .fs-row { display:grid; grid-template-columns:32px minmax(0,1fr) auto; gap:12px; align-items:center; width:100%; min-height:52px; padding:8px 16px; border:0; background:transparent; color:var(--c-text); text-align:left; cursor:pointer; }
+:root:root:root:root:root:root:root .fs-list > div:last-child > .fs-row { border-radius:0 0 16px 16px; }
+:root:root:root:root:root:root:root .fs-row[aria-pressed="true"] { background:var(--c-text); color:var(--c-bg); }
+:root:root:root:root:root:root:root .fs-n { display:grid; place-items:center; width:32px; height:32px; border-radius:50%; border:1.5px solid currentColor; font-size:14px; font-weight:700; }
+:root:root:root:root:root:root:root .fs-n.post { border-color:var(--c-line-5); color:var(--c-muted); }
+:root:root:root:root:root:root:root .fs-row[aria-pressed="true"] .fs-n { background:var(--lime); border-color:var(--lime); color:var(--c-on-heat); }
+:root:root:root:root:root:root:root .fs-what { min-width:0; }
+:root:root:root:root:root:root:root .fs-what b, :root:root:root:root:root:root:root .fs-who { display:block; font-size:13px; font-weight:600; }
+:root:root:root:root:root:root:root .fs-what small { display:block; overflow:hidden; font-size:12px; color:var(--c-muted); white-space:nowrap; text-overflow:ellipsis; }
+:root:root:root:root:root:root:root .fs-who { text-align:right; white-space:nowrap; }
+:root:root:root:root:root:root:root .fs-who small { display:block; font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:11px; color:var(--c-muted); }
+:root:root:root:root:root:root:root .fs-row[aria-pressed="true"] small { color:var(--c-bg); opacity:.75; }
+:root:root:root:root:root:root:root .fs-people { display:grid; gap:6px; }
+:root:root:root:root:root:root:root .fs-plabel { font-size:12px; font-weight:600; color:var(--c-muted); }
+:root:root:root:root:root:root:root .fs-chips { display:flex; flex-wrap:wrap; gap:6px; }
+:root:root:root:root:root:root:root .fs-chip { display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px; border:1px solid var(--c-line-5); border-radius:999px; background:transparent; color:var(--c-text); font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer; }
+:root:root:root:root:root:root:root .fs-chip small { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:11px; color:var(--c-muted); }
+:root:root:root:root:root:root:root .fs-chip[aria-pressed="true"] { background:var(--c-text); border-color:var(--c-text); color:var(--c-bg); }
+:root:root:root:root:root:root:root .fs-chip[aria-pressed="true"] small { color:var(--c-bg); opacity:.75; }
+@media (max-width: 1100px) { :root:root:root:root:root:root:root .fs-grid { grid-template-columns:minmax(0,1fr); } }
