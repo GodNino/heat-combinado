@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Notice } from "./ui";
-import { defaultService, localDate, type Working } from "./floor-plan";
+import { defaultService, localDate, mainList, type SideworkList, type Working } from "./floor-plan";
 import { SERVICES, closers, peopleIn, roleOf, weekdayOf, type Phase, type Role, type RuledJob } from "@/lib/sidework-plan";
 import { DayPill } from "./day-pill";
 import { currentLang } from "./language";
@@ -36,6 +36,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   const [team, setTeam] = useState<Role>("server");
   const [working, setWorking] = useState<Working[]>([]);
   const [jobs, setJobs] = useState<RuledJob[]>([]);
+  // The running side work tasks from Setup, shown under the servers' "During the shift".
+  const [running, setRunning] = useState<string[]>([]);
   const [shiftId, setShiftId] = useState<string | null>(null);
   const [sentAt, setSentAt] = useState<string | null>(null);
   const [sent, setSent] = useState<Sent[]>([]);
@@ -58,14 +60,18 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
     if (!supabase) return;
     setLoading(true); setError(""); setPicked(null);
     try {
-      const [people, savedJobs, shift] = await Promise.all([
+      const [people, savedJobs, shift, lists] = await Promise.all([
         supabase.rpc("floor_plan_people", {rid: restaurantId, day}),
         supabase.from("checklist_jobs").select(JOB_COLUMNS).eq("restaurant_id", restaurantId).eq("archived", false),
         supabase.from("checklist_shifts").select("id, posted_at").eq("restaurant_id", restaurantId).eq("shift_date", day).eq("label", service).maybeSingle(),
+        supabase.from("running_sidework_lists").select("id, name, tasks").eq("restaurant_id", restaurantId),
       ]);
       for (const r of [people, savedJobs, shift]) if (r.error) throw r.error;
       setWorking((people.data ?? []) as Working[]);
       setJobs((savedJobs.data ?? []) as RuledJob[]);
+      // Without the list (or before its table exists) the column just shows the saved jobs.
+      const tasks = lists.error ? [] : mainList((lists.data ?? []) as SideworkList[])?.tasks ?? [];
+      setRunning([...new Set(tasks.map(t => t.trim()).filter(Boolean))]);
       const shiftRow = shift.data as {id: string; posted_at: string | null} | null;
       setShiftId(shiftRow?.id ?? null);
       let given: Sent[] = [];
@@ -97,6 +103,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   const roleJobs = jobs.filter(j => j.phase && j.role === team && (!j.days?.length || j.days.includes(weekday)))
     .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
   const cards: Card[] = roleJobs.map(j => ({key: j.id, title: j.name, phase: j.phase!, jobId: j.id}));
+  // Servers' "During the shift" also shows the running side work list, one card per task.
+  if (team === "server") for (const task of running) if (!cards.some(c => c.title === task)) cards.push({key: `title-${task}`, title: task, phase: "during", jobId: null});
   for (const l of lines) {
     const key = l.jobId ?? `title-${l.title}`;
     if (!cards.some(c => c.key === key) && (jobs.find(j => j.id === l.jobId)?.role ?? roleOfPerson(l.user_id)) === team) cards.push({key, title: l.title, phase: l.phase, jobId: l.jobId});
