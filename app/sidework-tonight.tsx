@@ -16,6 +16,7 @@ import { defaultService, localDate, mainList, type SideworkList, type Working } 
 import { SERVICES, closers, peopleIn, roleOf, weekdayOf, type Phase, type Role, type RuledJob } from "@/lib/sidework-plan";
 import { DayPill } from "./day-pill";
 import { currentLang } from "./language";
+import { FloorSections } from "./floor-sections";
 
 type Sent = {id: string; title: string; user_id: string | null; phase: Phase; done_at: string | null; job_id: string | null; steps_done: number[]};
 // One person on one job: saved (key is its row id) or only on this screen (key starts with "draft-").
@@ -49,6 +50,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   const [message, setMessage] = useState("");
   // The name tapped, waiting for a job.
   const [picked, setPicked] = useState<string | null>(null);
+  // Side work (the board) or Sections (the floor map).
+  const [view, setView] = useState<"sidework" | "sections">("sidework");
   const drafted = useRef(0);
 
   const explain = (e: unknown) => {
@@ -175,11 +178,11 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
         {/* The date is formatted in the browser's language, so it waits for the first load (no server mismatch). */}
         {!loading && <p className="tonight-title"><span data-no-translate>{longDay(day)}</span> · <span>{service}</span></p>}
       </div>
-      <div className="sw-head-actions">
+      {view === "sidework" && <div className="sw-head-actions">
         {isSent && sentAt ? <span className="muted text-sm">{`Sent ${clock(sentAt)} · changes go out as you make them`}</span>
           : <span className="swb-progress"><span>{`${named} of ${cards.length} jobs named`}</span><span className="swb-bar" aria-hidden="true"><i style={{width: cards.length ? `${named / cards.length * 100}%` : 0}} /></span></span>}
         {!isSent && <button type="button" className="btn" disabled={busy || !draft.length} onClick={() => void send()}>{busy ? "Sending…" : "Send to the team"}</button>}
-      </div>
+      </div>}
     </div>
     <div className="floor-bar">
       <DayPill label="Day" value={day} onChange={setDay} />
@@ -190,12 +193,19 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
     <Notice text={error} error /><Notice text={message} />
     {loading ? <p className="muted py-6" role="status">Loading tonight…</p> : <>
       <div className="sw-tabs-row">
-        <div className="category-tabs" role="group" aria-label="Team">
-          {TEAMS.map(([role, label]) => <button key={role} type="button" aria-pressed={team === role} onClick={() => {setTeam(role); setPicked(null);}}>{label}</button>)}
+        <div className="fs-views">
+        <div className="category-tabs" role="group" aria-label="Tonight view">
+          <button type="button" aria-pressed={view === "sidework"} onClick={() => setView("sidework")}>Side work</button>
+          <button type="button" aria-pressed={view === "sections"} onClick={() => {setView("sections"); setPicked(null);}}>Sections</button>
         </div>
-        <p className="muted text-sm">{picked ? `${nameOf(picked)} is selected: tap a job.` : team === "server" ? "Tap a server, then a job." : "Tap an S.A., then a job."}</p>
+        {view === "sidework" && <div className="category-tabs" role="group" aria-label="Team">
+          {TEAMS.map(([role, label]) => <button key={role} type="button" aria-pressed={team === role} onClick={() => {setTeam(role); setPicked(null);}}>{label}</button>)}
+        </div>}
+        </div>
+        {view === "sidework" && <p className="muted text-sm">{picked ? `${nameOf(picked)} is selected: tap a job.` : team === "server" ? "Tap a server, then a job." : "Tap an S.A., then a job."}</p>}
       </div>
 
+      {view === "sections" ? <FloorSections restaurantId={restaurantId} day={day} service={service} people={people} /> : <>
       <div className="swb-grid">
         <section className="swb-card swb-people" aria-label={`${teamLabel} tonight`}>
           <div className="swb-card-head"><b>{`${teamLabel} tonight`}</b><span className="swb-count">{mine.length}</span></div>
@@ -242,7 +252,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
           })}
         </section>
       </div>
-      {unruled > 0 && <p className="muted mt-4 text-xs">{`${unruled} ${unruled === 1 ? "job has" : "jobs have"} no time of the shift yet, so ${unruled === 1 ? "it isn't" : "they aren't"} on the board (Setup)`}</p>}
+      </>}
+      {view === "sidework" && unruled > 0 && <p className="muted mt-4 text-xs">{`${unruled} ${unruled === 1 ? "job has" : "jobs have"} no time of the shift yet, so ${unruled === 1 ? "it isn't" : "they aren't"} on the board (Setup)`}</p>}
     </>}
   </div>;
 }

@@ -14,7 +14,8 @@ import { PillSelect } from "./pill-select";
 import { SERVICES, defaultServiceAt, halfOf, spreadHelpers, planRunning, dayNumber, type PastTask } from "@/lib/sidework-plan";
 
 export type Helper = {id: string; name: string};
-export type FloorRow = {server_id: string | null; server_name: string; sa: Helper[]; section: string; task: string};
+// tables and where come from Tonight > Sections (058): the tables the section covers, and the same in words.
+export type FloorRow = {server_id: string | null; server_name: string; sa: Helper[]; section: string; task: string; tables?: string[]; where?: string};
 export type SideworkList = {id: string; name: string; tasks: string[]};
 export type Working = {user_id: string; name: string; shift_position: string; starts_at: string};
 export type Plan = {id: string; service_date: string; service: string; list_id: string | null; rows: FloorRow[]; updated_at: string};
