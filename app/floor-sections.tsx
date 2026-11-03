@@ -6,14 +6,15 @@
 //
 // The map is the restaurant's floor_maps row (058). Sections are saved, on every change, as the rows
 // of that service's floor plan (050), which My shift already shows to each server and S.A.
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Notice } from "./ui";
 import { closers, roleOf, type OnShift } from "@/lib/sidework-plan";
 import { localDate, type FloorRow } from "./floor-plan";
 
-type Table = {id: string; label: string; x: number; y: number; shape: "r" | "s" | "c"; group?: string};
+// Shapes: r round, s square, w long (a booth or a long table), c a seat at a counter.
+type Table = {id: string; label: string; x: number; y: number; shape: "r" | "s" | "w" | "c"; group?: string};
 export type FloorLayout = {width: number; height: number; walls: string[]; labels: {x: number; y: number; text: string}[]; tables: Table[]; spots?: [number, number][]};
 type Person = {id: string; name: string};
 // A section on the map (n is its number) or a post without tables (n is 0, name says what it is).
@@ -21,7 +22,30 @@ type Section = {n: number; name: string; tables: string[]; server: Person | null
 
 const POSTS = ["Hot runner", "Cold runner"];
 const isPost = (s: Section) => s.n === 0;
-const size = (shape: Table["shape"]) => shape === "c" ? 11 : shape === "r" ? 20 : 24;
+// Half the width and half the height of each shape.
+const dims = (shape: Table["shape"]): [number, number] => shape === "c" ? [11, 11] : shape === "r" ? [20, 20] : shape === "w" ? [40, 22] : [24, 24];
+const EMPTY_MAP: FloorLayout = {width: 1000, height: 640, walls: [], labels: [], tables: []};
+
+// One table on the map: its shape and its number.
+function TableMark({t}: {t: Table}) {
+  const [w, h] = dims(t.shape);
+  return <>{t.shape === "r" || t.shape === "c" ? <circle cx={t.x} cy={t.y} r={w} /> : <rect x={t.x - w} y={t.y - h} width={w * 2} height={h * 2} rx={6} />}
+    {t.label && <text x={t.x} y={t.y}>{t.label}</text>}</>;
+}
+
+// Where a section's tag goes: the free place nearest the middle of its tables, so it covers no table and no other tag.
+function placeTag(layout: FloorLayout, ts: Table[], w: number, taken: [number, number, number, number][]): [number, number] {
+  const cx = ts.reduce((a, t) => a + t.x, 0) / ts.length, cy = ts.reduce((a, t) => a + t.y, 0) / ts.length;
+  const boxes: [number, number, number, number][] = [...layout.tables.map(t => { const [hw, hh] = dims(t.shape); return [t.x - hw - 4, t.y - hh - 4, t.x + hw + 4, t.y + hh + 4] as [number, number, number, number]; }), ...taken];
+  const free = (x: number, y: number) => x - w / 2 >= 0 && x + w / 2 <= layout.width && y - 19 >= 0 && y + 19 <= layout.height
+    && boxes.every(([a, b, c, d]) => x + w / 2 < a || x - w / 2 > c || y + 19 < b || y - 19 > d);
+  let best: [number, number] = [cx, cy], bestD = Infinity;
+  for (let dx = -200; dx <= 200; dx += 10) for (let dy = -160; dy <= 160; dy += 10) {
+    const d = dx * dx + dy * dy;
+    if (d < bestD && free(cx + dx, cy + dy)) { bestD = d; best = [cx + dx, cy + dy]; }
+  }
+  return best;
+}
 const clock = (iso: string) => new Date(iso).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"});
 const dayBefore = (day: string, days: number) => { const d = new Date(`${day}T12:00:00`); d.setDate(d.getDate() - days); return localDate(d); };
 
@@ -65,6 +89,8 @@ export function FloorSections({restaurantId, day, service, people}: {restaurantI
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
+  // True while the manager is moving and adding tables (Edit map).
+  const [editing, setEditing] = useState(false);
 
   const explain = (e: unknown) => {
     const text = e instanceof Error ? e.message : String((e as {message?: string})?.message ?? e);
@@ -149,19 +175,29 @@ export function FloorSections({restaurantId, day, service, people}: {restaurantI
     await save(sections.map(x => x === s ? {...x, sas: x.sas.some(h => h.id === p.id) ? x.sas.filter(h => h.id !== p.id) : [...x.sas, p]} : x));
   }
 
+  async function saveMap(next: FloorLayout) {
+    if (!supabase) return false;
+    setError("");
+    const {data: who} = await supabase.auth.getUser();
+    const res = await supabase.from("floor_maps").upsert({restaurant_id: restaurantId, layout: next, updated_by: who.user?.id, updated_at: new Date().toISOString()}, {onConflict: "restaurant_id"});
+    if (res.error) { setError(explain(res.error)); return false; }
+    setLayout(next); setEditing(false); setSaved("Floor map saved.");
+    return true;
+  }
+
   if (loading) return <p className="muted py-6" role="status">Loading the floor map…</p>;
-  if (!layout) return <><Notice text={error} error />{!error && <div className="swb-card"><p className="muted text-sm">This restaurant has no floor map yet. Once it&apos;s set up, you draw tonight&apos;s sections on it here.</p></div>}</>;
+  if (editing) return <><Notice text={error} error /><MapEditor start={layout ?? EMPTY_MAP} onCancel={() => setEditing(false)} onSave={saveMap} /></>;
+  if (!layout) return <><Notice text={error} error />{!error && <div className="swb-card"><p className="muted text-sm">This restaurant has no floor map yet. Place your tables once, then you draw tonight&apos;s sections on it here.</p>
+    <div><button type="button" className="btn secondary" onClick={() => setEditing(true)}>Create the floor map</button></div></div>}</>;
 
   // Each section's outline and tag. The tag sits in the free spot nearest its tables.
-  const used = new Set<number>();
-  const shapes = onMap.filter(s => s.tables.length).map(s => {
-    const ts = s.tables.map(id => layout.tables.find(t => t.id === id)).filter((t): t is Table => !!t);
-    const pts = ts.flatMap(t => { const r = size(t.shape) + 16; return [[t.x - r, t.y - r], [t.x + r, t.y - r], [t.x + r, t.y + r], [t.x - r, t.y + r]] as [number, number][]; });
+  const placed: [number, number, number, number][] = [];
+  const tagWidth = (s: Section) => Math.max((s.server?.name ?? "Pick-up").length * 8 + 44, (s.sas.map(h => h.name).join(" · ") || "No S.A.").length * 7 + 20);
+  const shapes = onMap.map(s => ({s, ts: s.tables.map(id => layout.tables.find(t => t.id === id)).filter((t): t is Table => !!t)})).filter(x => x.ts.length).map(({s, ts}) => {
+    const pts = ts.flatMap(t => { const [w, h] = dims(t.shape); return [[t.x - w - 16, t.y - h - 16], [t.x + w + 16, t.y - h - 16], [t.x + w + 16, t.y + h + 16], [t.x - w - 16, t.y + h + 16]] as [number, number][]; });
     const h = hull(pts);
-    const cx = ts.reduce((a, t) => a + t.x, 0) / (ts.length || 1), cy = ts.reduce((a, t) => a + t.y, 0) / (ts.length || 1);
-    let spot: [number, number] = [cx, cy], best = Infinity, bestI = -1;
-    (layout.spots ?? []).forEach(([x, y], i) => { const d = (x - cx) ** 2 + (y - cy) ** 2; if (!used.has(i) && d < best && d < 160 ** 2) { best = d; bestI = i; spot = [x, y]; } });
-    if (bestI >= 0) used.add(bestI);
+    const w = tagWidth(s), spot = placeTag(layout, ts, w, placed);
+    placed.push([spot[0] - w / 2 - 4, spot[1] - 23, spot[0] + w / 2 + 4, spot[1] + 23]);
     return {s, d: h.length ? `M${h.map(p => p.join(" ")).join(" L")} Z` : "", spot};
   });
 
@@ -174,16 +210,15 @@ export function FloorSections({restaurantId, day, service, people}: {restaurantI
           {layout.labels.map((l, i) => <text key={i} className="fs-area" x={l.x} y={l.y}>{l.text}</text>)}
           {shapes.map(({s, d}) => d && <path key={s.n} className={`fs-hull${selected === String(s.n) && !drawing.size ? " sel" : ""}`} d={d} onClick={() => { if (!drawing.size) setSelected(String(s.n)); }} />)}
           {layout.tables.map(t => {
-            const r = size(t.shape), cls = drawing.has(t.id) ? " drawing" : sectionOf(t.id) ? " in" : "";
+            const cls = drawing.has(t.id) ? " drawing" : sectionOf(t.id) ? " in" : "";
             return <g key={t.id} className={`fs-table${cls}`} role="button" tabIndex={0} aria-label={`Table ${t.label || t.group || t.id}`} aria-pressed={drawing.has(t.id)}
               onClick={() => tapTable(t.id)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tapTable(t.id); } }}>
-              {t.shape === "s" ? <rect x={t.x - r} y={t.y - r} width={r * 2} height={r * 2} rx={6} /> : <circle cx={t.x} cy={t.y} r={r} />}
-              {t.label && <text x={t.x} y={t.y}>{t.label}</text>}
+              <TableMark t={t} />
             </g>;
           })}
           {shapes.map(({s, spot: [x, y]}) => {
             const name = s.server?.name ?? "Pick-up", helpers = s.sas.map(h => h.name).join(" · ") || "No S.A.";
-            const w = Math.max(name.length * 8 + 44, helpers.length * 7 + 20);
+            const w = tagWidth(s);
             return <g key={`tag-${s.n}`} className="fs-tag" onClick={() => { if (!drawing.size) setSelected(String(s.n)); }} data-no-translate>
               <rect x={x - w / 2} y={y - 19} width={w} height={38} rx={10} />
               <circle cx={x - w / 2 + 16} cy={y - 6} r={10} /><text className="fs-tag-n" x={x - w / 2 + 16} y={y - 6}>{s.n}</text>
@@ -198,7 +233,7 @@ export function FloorSections({restaurantId, day, service, people}: {restaurantI
         <span className="fs-actions">
           {drawing.size > 0 && <button type="button" className="btn secondary" onClick={() => setDrawing(new Set())}>Cancel</button>}
           {drawing.size > 0 ? <button type="button" className="btn" onClick={() => void createSection()}>{`Create section ${nextNumber}`}</button>
-            : <button type="button" className="btn secondary" onClick={() => void copyLastWeek()}>Copy from a week ago</button>}
+            : <><button type="button" className="btn secondary" onClick={() => {setSaved(""); setEditing(true);}}>Edit map</button><button type="button" className="btn secondary" onClick={() => void copyLastWeek()}>Copy from a week ago</button></>}
         </span>
       </div>
     </section>
@@ -246,4 +281,110 @@ export function FloorSections({restaurantId, day, service, people}: {restaurantI
       </section>
     </div>
   </div></>;
+}
+
+// Edit map: drag tables to move them, add tables, and change a table's number, shape or area. Nothing is
+// saved until Save map; sections already drawn keep their tables (a deleted table just drops out of them).
+function MapEditor({start, onCancel, onSave}: {start: FloorLayout; onCancel: () => void; onSave: (layout: FloorLayout) => Promise<boolean>}) {
+  const [map, setMap] = useState<FloorLayout>(start);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const svg = useRef<SVGSVGElement>(null);
+  const drag = useRef<{id: string; dx: number; dy: number} | null>(null);
+  const table = map.tables.find(t => t.id === picked) ?? null;
+  const snap = (v: number) => Math.round(v / 5) * 5;
+
+  const toMap = (e: ReactPointerEvent) => {
+    const el = svg.current, m = el?.getScreenCTM();
+    if (!el || !m) return {x: 0, y: 0};
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+    return {x: p.x, y: p.y};
+  };
+  const change = (id: string, patch: Partial<Table>) => setMap(m => ({...m, tables: m.tables.map(t => t.id === id ? {...t, ...patch} : t)}));
+
+  function startDrag(e: ReactPointerEvent, t: Table) {
+    e.preventDefault();
+    setPicked(t.id);
+    const p = toMap(e);
+    drag.current = {id: t.id, dx: p.x - t.x, dy: p.y - t.y};
+    svg.current?.setPointerCapture(e.pointerId);
+  }
+  function moveDrag(e: ReactPointerEvent) {
+    const d = drag.current;
+    if (!d) return;
+    const p = toMap(e), t = map.tables.find(x => x.id === d.id);
+    if (!t) return;
+    const [w, h] = dims(t.shape);
+    change(d.id, {x: Math.min(map.width - w, Math.max(w, snap(p.x - d.dx))), y: Math.min(map.height - h, Math.max(h, snap(p.y - d.dy)))});
+  }
+  function addTable() {
+    const numbers = map.tables.map(t => Number(t.label)).filter(n => Number.isFinite(n) && n > 0);
+    const label = String(numbers.length ? Math.max(...numbers) + 1 : 1);
+    const id = `t${Date.now().toString(36)}`;
+    // A little apart from the last table added, so several new ones don't sit on top of each other.
+    const offset = (map.tables.filter(t => t.id.startsWith("t")).length % 6) * 30;
+    setMap(m => ({...m, tables: [...m.tables, {id, label, x: snap(m.width / 2 + offset), y: snap(m.height / 2 + offset), shape: "s"}]}));
+    setPicked(id);
+  }
+  function removeTable(id: string) {
+    setMap(m => ({...m, tables: m.tables.filter(t => t.id !== id)}));
+    setPicked(null);
+  }
+  async function save() {
+    setBusy(true);
+    const clean = {...map, tables: map.tables.map(t => ({...t, label: t.label.trim().slice(0, 8), group: t.group?.trim().slice(0, 30) || undefined}))};
+    await onSave(clean);
+    setBusy(false);
+  }
+
+  return <div className="swb-grid fs-grid">
+    <section className="swb-card fs-map" aria-label="Edit the floor map">
+      <div className="swb-card-head"><p className="section-chip">Edit map</p><span className="muted text-xs">{`${map.tables.length} ${map.tables.length === 1 ? "table" : "tables"}`}</span></div>
+      <div className="fs-scroll">
+        <svg ref={svg} className="fs-edit" viewBox={`0 0 ${map.width} ${map.height}`} role="img" aria-label="Floor map, editing"
+          onPointerMove={moveDrag} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}
+          onClick={e => { if (e.target === svg.current) setPicked(null); }}>
+          <defs><pattern id="fs-dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" className="fs-dot" /></pattern></defs>
+          <rect className="fs-grid-bg" x="0" y="0" width={map.width} height={map.height} fill="url(#fs-dots)" onClick={() => setPicked(null)} />
+          {map.tables.map(t => <g key={t.id} className={`fs-table fs-move${picked === t.id ? " picked" : ""}`} role="button" tabIndex={0} aria-label={`Table ${t.label || t.group || t.id}`} aria-pressed={picked === t.id}
+            onPointerDown={e => startDrag(e, t)}
+            onKeyDown={e => {
+              const step = e.shiftKey ? 20 : 5, moves: Record<string, [number, number]> = {ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step]};
+              if (moves[e.key]) { e.preventDefault(); change(t.id, {x: t.x + moves[e.key][0], y: t.y + moves[e.key][1]}); }
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPicked(t.id); }
+            }}>
+            <TableMark t={t} />
+          </g>)}
+        </svg>
+      </div>
+      <div className="fs-foot">
+        <span className="muted text-xs">Drag a table to move it. Tap it to change its number or shape.</span>
+        <span className="fs-actions">
+          <button type="button" className="btn secondary" onClick={addTable}><Plus size={14} aria-hidden="true" />Add table</button>
+          <button type="button" className="btn secondary" disabled={busy} onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn" disabled={busy} onClick={() => void save()}>{busy ? "Saving…" : "Save map"}</button>
+        </span>
+      </div>
+    </section>
+
+    <div className="fs-side">
+      <section className="swb-card" aria-label="Table">
+        <div className="swb-card-head"><b>{table ? (table.label ? `Table ${table.label}` : "Seat") : "Pick a table"}</b>
+          {table && <button type="button" className="icon-chip" aria-label="Delete table" title="Delete table" onClick={() => removeTable(table.id)}><Trash2 size={14} /></button>}</div>
+        {!table ? <p className="muted text-sm">Tap a table on the map to change it, or add a new one.</p> : <>
+          <label className="fs-people"><span className="fs-plabel">Number</span>
+            <input className="fs-input" value={table.label} maxLength={8} inputMode="text" onChange={e => change(table.id, {label: e.target.value})} placeholder="Leave empty for a counter seat" /></label>
+          <div className="fs-people"><span className="fs-plabel">Shape</span>
+            <div className="fs-chips">
+              {([["r", "Round"], ["s", "Square"], ["w", "Long"], ["c", "Seat"]] as [Table["shape"], string][]).map(([shape, name]) =>
+                <button key={shape} type="button" className="fs-chip" aria-pressed={table.shape === shape} onClick={() => change(table.id, {shape})}>{name}</button>)}
+            </div>
+          </div>
+          <label className="fs-people"><span className="fs-plabel">Area (optional)</span>
+            <input className="fs-input" value={table.group ?? ""} maxLength={30} onChange={e => change(table.id, {group: e.target.value})} placeholder="Like Sushi counter" /></label>
+          <p className="muted text-xs">Seats without a number show by their area in the list of sections.</p>
+        </>}
+      </section>
+    </div>
+  </div>;
 }
