@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { FloorTable, defaultService, helpers, localDate, type FloorRow } from "./floor-plan";
 
 type Plan = {service: string; rows: FloorRow[]};
-type Mine = {title: string; phase: "opening" | "during" | "closing"; done_at: string | null; shift_id: string};
+type Mine = {title: string; phase: "opening" | "closing"; done_at: string | null; shift_id: string};
 type Shift = {id: string; label: string};
 
 export function MyShiftCard({restaurantId, userId: given, onOpen}: {restaurantId: string; userId?: string; onOpen?: () => void}) {
@@ -47,7 +47,6 @@ export function MyShiftCard({restaurantId, userId: given, onOpen}: {restaurantId
   const sectionsAsSA = plan?.rows.filter(r => r.sa.some(h => h.id === userId)).map(r => r.section).filter(Boolean) ?? [];
   const jobs = mine.filter(m => shifts.find(x => x.id === m.shift_id)?.label === service);
   const opening = jobs.filter(j => j.phase === "opening");
-  const during = jobs.filter(j => j.phase === "during");
   const closing = jobs.filter(j => j.phase === "closing");
 
   return <section className="panel my-shift mb-4" aria-label="My shift">
@@ -58,7 +57,7 @@ export function MyShiftCard({restaurantId, userId: given, onOpen}: {restaurantId
     </div>}
     <div className="my-shift-phases">
       {opening.length > 0 && <div><small className="muted">Opening</small>{opening.map((j, i) => <p key={i}>{j.title}{j.done_at ? " ✓" : ""}</p>)}</div>}
-      {(during.length > 0 || (asServer && row?.task)) && <div><small className="muted">During the shift</small>{asServer && row?.task && <p>{row.task}</p>}{during.map((j, i) => <p key={i}>{j.title}{j.done_at ? " ✓" : ""}</p>)}</div>}
+      {asServer && row?.task && <div><small className="muted">During the shift</small><p>{row.task}</p></div>}
       {closing.length > 0 && <div><small className="muted">Closing</small>{closing.map((j, i) => <p key={i}>{j.title}{j.done_at ? " ✓" : ""}</p>)}</div>}
     </div>
     <div className="my-shift-links">

@@ -8,7 +8,7 @@
 //   * "Everyone" jobs go to everybody in the role; "closer" jobs to that role's closer.
 //   * A job set for certain weekdays only appears on those days.
 
-export type Phase = "opening" | "during" | "closing";
+export type Phase = "opening" | "closing";
 export type Role = "server" | "sa";
 export type Who = "one" | "all" | "closer";
 export type RuledJob = {id: string; name: string; group_name: string; steps: string[]; sort_order: number; phase: Phase | null; role: Role | null; who: Who; days: number[]};
