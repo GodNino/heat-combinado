@@ -100,14 +100,15 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
 
   // This tab's jobs: saved jobs for this role on tonight's weekday, plus any job its assignments still name.
   const weekday = weekdayOf(day);
-  const roleJobs = jobs.filter(j => j.phase && j.role === team && (!j.days?.length || j.days.includes(weekday)))
+  // "During the shift" is the same work for servers and S.A.s, so both tabs show every during job.
+  const roleJobs = jobs.filter(j => j.phase && (j.role === team || j.phase === "during") && (!j.days?.length || j.days.includes(weekday)))
     .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
   const cards: Card[] = roleJobs.map(j => ({key: j.id, title: j.name, phase: j.phase!, jobId: j.id}));
-  // Servers' "During the shift" also shows the running side work list, one card per task.
-  if (team === "server") for (const task of running) if (!cards.some(c => c.title === task)) cards.push({key: `title-${task}`, title: task, phase: "during", jobId: null, running: true});
+  // "During the shift" also shows the running side work list, one card per task, for both teams.
+  for (const task of running) if (!cards.some(c => c.title === task)) cards.push({key: `title-${task}`, title: task, phase: "during", jobId: null, running: true});
   for (const l of lines) {
     const key = l.jobId ?? `title-${l.title}`;
-    if (!cards.some(c => c.key === key) && (jobs.find(j => j.id === l.jobId)?.role ?? roleOfPerson(l.user_id)) === team) cards.push({key, title: l.title, phase: l.phase, jobId: l.jobId});
+    if (!cards.some(c => c.key === key) && (l.phase === "during" || (jobs.find(j => j.id === l.jobId)?.role ?? roleOfPerson(l.user_id)) === team)) cards.push({key, title: l.title, phase: l.phase, jobId: l.jobId});
   }
   const onCard = (card: Card) => lines.filter(l => (l.jobId ?? `title-${l.title}`) === card.key);
   const jobsOf = (id: string) => cards.filter(c => onCard(c).some(l => l.user_id === id)).map(c => c.title);

@@ -28,10 +28,10 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TABS: Array<[Tab, string]> = [["tonight", "Tonight"], ["setup", "Setup"], ["history", "History"]];
 const SECTIONS: Array<{key: string; title: string; hint: string; phase: Phase; role: Role}> = [
   {key: "server-opening", title: "Server opening", hint: "Before service, for servers.", phase: "opening", role: "server"},
-  {key: "server-during", title: "Server during the shift", hint: "What servers keep an eye on in service.", phase: "during", role: "server"},
+  {key: "server-during", title: "Server during the shift", hint: "What servers and S.A.s keep an eye on in service. Both see it on Tonight.", phase: "during", role: "server"},
   {key: "server-closing", title: "Server closing", hint: "After service, for servers.", phase: "closing", role: "server"},
   {key: "sa-opening", title: "S.A. opening", hint: "Before service, for S.A.s.", phase: "opening", role: "sa"},
-  {key: "sa-during", title: "S.A. during the shift", hint: "What S.A.s keep up in service.", phase: "during", role: "sa"},
+  {key: "sa-during", title: "S.A. during the shift", hint: "Also shown to servers: during the shift is the same work for both.", phase: "during", role: "sa"},
   {key: "sa-closing", title: "S.A. closing", hint: "After service, for S.A.s.", phase: "closing", role: "sa"},
 ];
 // Inside a section, when and whose are already said: only who does it and on which days.
