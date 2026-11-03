@@ -68,6 +68,37 @@ function placeTag(layout: FloorLayout, ts: Table[], w: number, taken: [number, n
 const clock = (iso: string) => new Date(iso).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"});
 const dayBefore = (day: string, days: number) => { const d = new Date(`${day}T12:00:00`); d.setDate(d.getDate() - days); return localDate(d); };
 
+// The outline around a group of tables: each table padded into a rounded box, and neighbours joined by a
+// thick round band (the shortest links that connect them all), drawn twice, the outer copy in ink and the
+// inner one in the fill, so only the outside edge shows as a line. It hugs the tables instead of a straight
+// polygon that would cross other tables.
+const PAD = 14, LINK = 210, NEAR = 130;
+function Outline({tables, className}: {tables: Table[]; className: string}) {
+  if (!tables.length) return null;
+  const links: [Table, Table][] = [];
+  const joined = new Set<string>([tables[0].id]);
+  while (joined.size < tables.length) {
+    let best: [Table, Table] | null = null, bestD = Infinity;
+    for (const a of tables) if (joined.has(a.id)) for (const b of tables) if (!joined.has(b.id)) {
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d < bestD) { bestD = d; best = [a, b]; }
+    }
+    if (!best) break;
+    joined.add(best[1].id);
+    if (bestD <= LINK) links.push(best);
+  }
+  // Close neighbours are joined too, so a block of tables reads as one area, without notches between them.
+  for (let i = 0; i < tables.length; i++) for (let j = i + 1; j < tables.length; j++) {
+    const a = tables[i], b = tables[j];
+    if (Math.hypot(a.x - b.x, a.y - b.y) <= NEAR && !links.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) links.push([a, b]);
+  }
+  const shape = (grow: number) => <>
+    {tables.map(t => { const [w, h] = dimsOf(t); const p = PAD + grow; return <rect key={t.id} x={t.x - w - p} y={t.y - h - p} width={2 * (w + p)} height={2 * (h + p)} rx={Math.min(w, h) + p} />; })}
+    {links.map(([a, b]) => { const band = 2 * (Math.min(...dimsOf(a), ...dimsOf(b)) + PAD + grow); return <line key={`${a.id}-${b.id}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} strokeWidth={band} strokeLinecap="round" />; })}
+  </>;
+  return <g className={`fs-outline ${className}`} aria-hidden="true"><g className="fs-outline-edge">{shape(2)}</g><g className="fs-outline-fill">{shape(0)}</g></g>;
+}
+
 // Where a section's tables are, in words: their numbers, then the counters by name.
 function whereOf(layout: FloorLayout, ids: string[]) {
   const tables = ids.map(id => layout.tables.find(t => t.id === id)).filter((t): t is Table => !!t && !isFixture(t));
@@ -264,6 +295,10 @@ export function FloorSections({restaurantId, day, service, people}: {restaurantI
         <svg viewBox={`0 0 ${layout.width} ${layout.height}`} role="img" aria-label="Floor map with tonight's sections">
           {layout.walls.map((d, i) => <path key={i} className="fs-wall" d={d} />)}
           {layout.labels.map((l, i) => <text key={i} className="fs-area" x={l.x} y={l.y}>{l.text}</text>)}
+          {/* Each section's outline, and the one growing around the tables being picked. */}
+          {onMap.map(s => { const ts = s.tables.map(id => layout.tables.find(t => t.id === id)).filter((t): t is Table => !!t);
+            return <Outline key={`o-${s.n}`} tables={ts} className={selected === String(s.n) && !drawing.size ? "sel" : ""} />; })}
+          {drawing.size > 0 && <Outline tables={layout.tables.filter(t => drawing.has(t.id))} className="drawing" />}
           {layout.tables.map(t => {
             const own = sectionOf(t.id);
             const cls = drawing.has(t.id) ? " drawing" : own ? (selected === String(own.n) ? " in sel" : " in") : "";
