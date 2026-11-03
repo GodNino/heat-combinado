@@ -28,10 +28,8 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TABS: Array<[Tab, string]> = [["tonight", "Tonight"], ["setup", "Setup"], ["history", "History"]];
 const SECTIONS: Array<{key: string; title: string; hint: string; phase: Phase; role: Role}> = [
   {key: "server-opening", title: "Server opening", hint: "Before service, for servers.", phase: "opening", role: "server"},
-  {key: "server-during", title: "Server during the shift", hint: "What servers keep an eye on in service.", phase: "during", role: "server"},
   {key: "server-closing", title: "Server closing", hint: "After service, for servers.", phase: "closing", role: "server"},
   {key: "sa-opening", title: "S.A. opening", hint: "Before service, for S.A.s.", phase: "opening", role: "sa"},
-  {key: "sa-during", title: "S.A. during the shift", hint: "What S.A.s keep up in service.", phase: "during", role: "sa"},
   {key: "sa-closing", title: "S.A. closing", hint: "After service, for S.A.s.", phase: "closing", role: "sa"},
 ];
 // Inside a section, when and whose are already said: only who does it and on which days.
@@ -128,7 +126,7 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
           <fieldset className="job-rules">
             <legend>Hand it out on its own</legend>
             <Field label="When"><select id="job-phase" value={draft.phase} onChange={e => setDraft({...draft, phase: e.target.value as Phase | ""})}>
-              <option value="">Not automatic (I give it by hand)</option><option value="opening">Opening</option><option value="during">During the shift</option><option value="closing">Closing</option>
+              <option value="">Not automatic (I give it by hand)</option><option value="opening">Opening</option><option value="closing">Closing</option>
             </select></Field>
             {draft.phase && <>
               <Field label="For"><select id="job-role" value={draft.role} onChange={e => setDraft({...draft, role: e.target.value as Role})}><option value="server">Servers</option><option value="sa">S.A.s</option></select></Field>
