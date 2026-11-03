@@ -1,91 +1,71 @@
 "use client";
-// Tonight: the whole night's side work, worked out from the published schedule, so the manager only
-// has to look it over and send it. The floor (sections, S.A.s, running side work) comes from the
-// floor plan (050); opening and closing jobs are handed out by their rules (051, lib/sidework-plan):
-// one person rotating, everyone, or the closer -- whoever comes in last. The rotation reads the
-// week before from side work already sent, so nobody gets the same job two days running.
+// Tonight: the manager gives out tonight's side work by hand. Two tabs, Servers and S.A.s; in each, the
+// people on the published schedule for that service sit on the left and the side work on the right,
+// in three columns: opening, during the shift and closing. Tap a name, then a job, and it's theirs;
+// the same on a computer and a phone. Nothing is handed out on its own.
 //
-// Until it's sent, the plan is only on this screen. Sending saves the floor plan and gives every job
-// to its person, the same assignments side work has always used, so each person's phone shows it.
-// After that, changing a name changes that assignment straight away.
-//
-// Giving a job to someone: drag a name onto the job (computer) or tap the name and then the job (phone).
-// A person can have several jobs, and a job can have several people; each person on a job is one row in
-// checklist_assignments, so nothing changes in the database. The "+ Add" list on each job does the same.
+// Until it's sent, the plan is only on this screen. Sending gives every job to its people, the same
+// assignments side work has always used (checklist_assignments, one row per person on a job), so each
+// person's phone shows theirs. After that, changes go out as they're made. A job someone already
+// started can't be taken off them.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Pencil, RefreshCw, Send, X } from "lucide-react";
+import { X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Notice } from "./ui";
-import { FloorPlan, defaultService, helpers, localDate, runningHistory, startingRows, suggestedList, type FloorRow, type Plan, type SideworkList, type Working } from "./floor-plan";
-import { SERVICES, closers, dayNumber, peopleIn, planJobs, roleOf, type PastJob, type PastTask, type Phase, type Role, type RuledJob } from "@/lib/sidework-plan";
+import { defaultService, localDate, type Working } from "./floor-plan";
+import { SERVICES, closers, peopleIn, roleOf, weekdayOf, type Phase, type Role, type RuledJob } from "@/lib/sidework-plan";
 import { DayPill } from "./day-pill";
+import { currentLang } from "./language";
 
 type Sent = {id: string; title: string; user_id: string | null; phase: Phase; done_at: string | null; job_id: string | null; steps_done: number[]};
-type Line = {key: string; title: string; user_id: string | null; phase: Phase; done?: boolean; jobId?: string | null; who?: string};
+// One person on one job: saved (key is its row id) or only on this screen (key starts with "draft-").
+type Line = {key: string; title: string; user_id: string; phase: Phase; jobId: string | null; started?: boolean};
+// A job on the board: a saved job for this role and weekday, or a job only the assignments still name.
+type Card = {key: string; title: string; phase: Phase; jobId: string | null};
 
 const JOB_COLUMNS = "id, name, group_name, steps, sort_order, phase, role, who, days";
-const PHASES: [Phase | "during", string][] = [["opening", "Opening"], ["during", "During the shift"], ["closing", "Closing"]];
-// The rotation looks back a week (History keeps the same).
-const weekBefore = (day: string) => new Date((dayNumber(day) - 7) * 864e5).toISOString().slice(0, 10);
-const longDay = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {weekday: "long"});
+const PHASES: [Phase, string][] = [["opening", "Opening"], ["during", "During the shift"], ["closing", "Closing"]];
+const TEAMS: [Role, string][] = [["server", "Servers"], ["sa", "S.A.s"]];
+// The day in the app's language; the service name is its own text so the app translates it.
+const longDay = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(currentLang() === "es" ? "es" : undefined, {weekday: "long", month: "long", day: "numeric"});
+const clock = (iso: string) => new Date(iso).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"});
 
 export function Tonight({restaurantId}: {restaurantId: string}) {
   const [day, setDay] = useState(localDate);
   const [service, setService] = useState<string>(defaultService);
+  const [team, setTeam] = useState<Role>("server");
   const [working, setWorking] = useState<Working[]>([]);
   const [jobs, setJobs] = useState<RuledJob[]>([]);
-  const [past, setPast] = useState<PastJob[]>([]);
-  // Who kept an eye on what during service in the week before, so the running side work rotates too.
-  const [runningPast, setRunningPast] = useState<PastTask[]>([]);
-  const [lists, setLists] = useState<SideworkList[]>([]);
-  const [plan, setPlan] = useState<Plan | null>(null);
   const [shiftId, setShiftId] = useState<string | null>(null);
   const [sentAt, setSentAt] = useState<string | null>(null);
   const [sent, setSent] = useState<Sent[]>([]);
-  // The plan worked out on this screen, before it's sent.
+  // What the manager has given out on this screen, before it's sent.
   const [draft, setDraft] = useState<Line[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [editingFloor, setEditingFloor] = useState(false);
-  // The name tapped (or being dragged), waiting for a job; and the job it is over.
+  // The name tapped, waiting for a job.
   const [picked, setPicked] = useState<string | null>(null);
-  const [over, setOver] = useState<string | null>(null);
-  const added = useRef(0);
+  const drafted = useRef(0);
 
   const explain = (e: unknown) => {
     const text = e instanceof Error ? e.message : String((e as {message?: string})?.message ?? e);
-    return /floor_plans_service_check/.test(text) ? "Brunch needs database update 054." : /phase|who|floor_plan|running_sidework|PGRST20[0-9]|42P01|42703|42883/.test(text) ? "Tonight needs the database updates (050 and 051)." : text;
+    return /phase_check/.test(text) ? "During-the-shift side work needs database update 052." : /phase|who|floor_plan|PGRST20[0-9]|42P01|42703|42883/.test(text) ? "Tonight needs the database updates (050 and 051)." : text;
   };
 
   const load = useCallback(async () => {
     if (!supabase) return;
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setPicked(null);
     try {
-      const [people, savedJobs, savedLists, floor, shift, before] = await Promise.all([
+      const [people, savedJobs, shift] = await Promise.all([
         supabase.rpc("floor_plan_people", {rid: restaurantId, day}),
         supabase.from("checklist_jobs").select(JOB_COLUMNS).eq("restaurant_id", restaurantId).eq("archived", false),
-        supabase.from("running_sidework_lists").select("id, name, tasks").eq("restaurant_id", restaurantId).order("name"),
-        supabase.from("floor_plans").select("id, service_date, service, list_id, rows, updated_at").eq("restaurant_id", restaurantId).eq("service_date", day).eq("service", service).maybeSingle(),
         supabase.from("checklist_shifts").select("id, posted_at").eq("restaurant_id", restaurantId).eq("shift_date", day).eq("label", service).maybeSingle(),
-        supabase.from("checklist_shifts").select("id, shift_date").eq("restaurant_id", restaurantId).gte("shift_date", weekBefore(day)).lt("shift_date", day),
       ]);
-      for (const r of [people, savedJobs, savedLists, floor, shift, before]) if (r.error) throw r.error;
-      // Who did which job in the week before, so nobody gets the same job again tomorrow.
-      const earlier = (before.data ?? []) as {id: string; shift_date: string}[];
-      let history: PastJob[] = [];
-      if (earlier.length) {
-        const done = await supabase.from("checklist_assignments").select("shift_id, job_id, user_id").in("shift_id", earlier.map(s => s.id)).not("job_id", "is", null).not("user_id", "is", null);
-        if (done.error) throw done.error;
-        const dayOf = new Map(earlier.map(s => [s.id, s.shift_date]));
-        history = ((done.data ?? []) as {shift_id: string; job_id: string; user_id: string}[]).map(a => ({job_id: a.job_id, user_id: a.user_id, day: dayOf.get(a.shift_id)!}));
-      }
-      setPast(history);
-      setRunningPast(await runningHistory(restaurantId, day));
-      const team = (people.data ?? []) as Working[];
-      const ruled = (savedJobs.data ?? []) as RuledJob[];
-      setWorking(team); setJobs(ruled); setLists((savedLists.data ?? []) as SideworkList[]); setPlan(floor.data as Plan | null);
+      for (const r of [people, savedJobs, shift]) if (r.error) throw r.error;
+      setWorking((people.data ?? []) as Working[]);
+      setJobs((savedJobs.data ?? []) as RuledJob[]);
       const shiftRow = shift.data as {id: string; posted_at: string | null} | null;
       setShiftId(shiftRow?.id ?? null);
       let given: Sent[] = [];
@@ -96,89 +76,64 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
       }
       setSent(given);
       setSentAt(given.length ? shiftRow?.posted_at ?? null : null);
-      setDraft(planJobs(ruled, peopleIn(service, team), day, history).map((p, i) => ({key: `${p.job.id}-${i}`, title: p.job.name, user_id: p.user_id, phase: p.phase, jobId: p.job.id})));
+      setDraft([]);
     } catch (e) { setError(explain(e)); }
     finally { setLoading(false); }
   }, [restaurantId, day, service]);
   useEffect(() => { void load(); }, [load]);
 
   const people = useMemo(() => peopleIn(service, working), [working, service]);
-  const nameOf = (id: string | null) => {
-    const person = id ? working.find(p => p.user_id === id) : undefined;
-    return person ? person.name || "Team member" : "Nobody yet";
-  };
-  const closing = useMemo(() => new Set([...closers(people.filter(p => roleOf(p.shift_position) === "server")), ...closers(people.filter(p => roleOf(p.shift_position) === "sa"))]), [people]);
-  const servers = people.filter(p => roleOf(p.shift_position) === "server").length;
-  const sas = people.filter(p => roleOf(p.shift_position) === "sa").length;
-  // The floor: what was saved, or what the schedule suggests.
-  const rows: FloorRow[] = useMemo(() => plan?.rows ?? startingRows(working, service, day, suggestedList(working, service, lists), runningPast), [plan, working, service, day, lists, runningPast]);
+  const mine = people.filter(p => roleOf(p.shift_position) === team).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at) || a.name.localeCompare(b.name));
+  const closing = useMemo(() => new Set(closers(mine)), [mine]);
+  const nameOf = (id: string) => working.find(p => p.user_id === id)?.name || "Team member";
+  const roleOfPerson = (id: string) => roleOf(working.find(p => p.user_id === id)?.shift_position ?? "");
   const isSent = sent.length > 0;
-  const lines: Line[] = isSent ? sent.map(s => ({key: s.id, title: s.title, user_id: s.user_id, phase: s.phase, done: !!s.done_at, jobId: s.job_id})) : draft;
-  const during: Line[] = rows.filter(r => r.task).map((r, i) => ({key: `during-${i}`, title: r.task, user_id: r.server_id, phase: "opening", who: r.server_name || (r.section ? "Pick-up" : "")}));
-  const unruled = jobs.filter(j => !j.phase).length;
-  // Which side of the floor a task belongs to: its job says so; failing that, whoever has it.
-  const lineRole = (l: Line): Role => jobs.find(j => j.id === l.jobId)?.role ?? (roleOf(working.find(p => p.user_id === l.user_id)?.shift_position ?? "") ?? "server");
-  const choicesFor = (line: Line) => {
-    const role = jobs.find(j => j.id === line.jobId)?.role;
-    const same = people.filter(p => !role || roleOf(p.shift_position) === role);
-    return same.length ? same : people;
-  };
+  const lines: Line[] = isSent
+    ? sent.filter(s => s.user_id).map(s => ({key: s.id, title: s.title, user_id: s.user_id!, phase: s.phase, jobId: s.job_id, started: !!s.done_at || s.steps_done.length > 0}))
+    : draft;
 
-  async function changePerson(line: Line, userId: string) {
-    setMessage("");
-    if (!isSent) { setDraft(d => d.map(l => l.key === line.key ? {...l, user_id: userId || null} : l)); return; }
-    const result = await supabase!.from("checklist_assignments").update({user_id: userId || null, locked: true}).eq("id", line.key);
-    if (result.error) { setError(explain(result.error)); return; }
-    setSent(s => s.map(a => a.id === line.key ? {...a, user_id: userId || null} : a));
+  // This tab's jobs: saved jobs for this role on tonight's weekday, plus any job its assignments still name.
+  const weekday = weekdayOf(day);
+  const roleJobs = jobs.filter(j => j.phase && j.role === team && (!j.days?.length || j.days.includes(weekday)))
+    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+  const cards: Card[] = roleJobs.map(j => ({key: j.id, title: j.name, phase: j.phase!, jobId: j.id}));
+  for (const l of lines) {
+    const key = l.jobId ?? `title-${l.title}`;
+    if (!cards.some(c => c.key === key) && (jobs.find(j => j.id === l.jobId)?.role ?? roleOfPerson(l.user_id)) === team) cards.push({key, title: l.title, phase: l.phase, jobId: l.jobId});
   }
+  const onCard = (card: Card) => lines.filter(l => (l.jobId ?? `title-${l.title}`) === card.key);
+  const jobsOf = (id: string) => cards.filter(c => onCard(c).some(l => l.user_id === id)).map(c => c.title);
+  const named = cards.filter(c => onCard(c).length > 0).length;
+  const unruled = jobs.filter(j => !j.phase).length;
+  const teamLabel = team === "server" ? "Servers" : "S.A.s";
 
-  // Give a job to a person: into the empty spot if the job has one, otherwise as one more person on it.
-  async function giveTo(group: Line[], userId: string, role: Role) {
-    setMessage(""); setError("");
-    const person = people.find(p => p.user_id === userId);
-    if (!person || !group.length) return;
-    if (roleOf(person.shift_position) !== role) { setError(role === "server" ? "That job is for servers. Pick a server." : "That job is for S.A.s. Pick an S.A."); return; }
-    setPicked(null);
-    if (group.some(l => l.user_id === userId)) return;
-    const empty = group.find(l => !l.user_id);
-    if (empty) { await changePerson(empty, userId); return; }
-    const first = group[0];
-    if (!isSent) { setDraft(d => [...d, {key: `added-${++added.current}`, title: first.title, user_id: userId, phase: first.phase, jobId: first.jobId}]); return; }
-    const job = jobs.find(j => j.id === first.jobId);
-    const made = await supabase!.from("checklist_assignments").insert({shift_id: shiftId, restaurant_id: restaurantId, job_id: first.jobId ?? null, title: first.title, group_name: job?.group_name ?? "", steps: job?.steps ?? [], user_id: userId, locked: true, phase: first.phase, sort_order: (job?.sort_order ?? 0) * 100 + 50 + ++added.current}).select("id, title, user_id, phase, done_at, job_id, steps_done").single();
+  // Give a job to a person; a job can have several people and a person several jobs.
+  async function giveTo(card: Card, userId: string) {
+    setMessage(""); setError(""); setPicked(null);
+    if (roleOfPerson(userId) !== team) { setError(team === "server" ? "That job is for servers. Pick a server." : "That job is for S.A.s. Pick an S.A."); return; }
+    if (onCard(card).some(l => l.user_id === userId)) return;
+    if (!isSent) { setDraft(d => [...d, {key: `draft-${++drafted.current}`, title: card.title, user_id: userId, phase: card.phase, jobId: card.jobId}]); return; }
+    const job = jobs.find(j => j.id === card.jobId);
+    const made = await supabase!.from("checklist_assignments").insert({shift_id: shiftId, restaurant_id: restaurantId, job_id: card.jobId, title: card.title, group_name: job?.group_name ?? "", steps: job?.steps ?? [], user_id: userId, locked: true, phase: card.phase, sort_order: (job?.sort_order ?? 0) * 100 + 50 + ++drafted.current}).select("id, title, user_id, phase, done_at, job_id, steps_done").single();
     if (made.error) { setError(explain(made.error)); return; }
     setSent(s => [...s, made.data as Sent]);
   }
 
-  // Take one person off a job. A job with other people just loses the row; the last person leaves it empty.
-  async function takeOff(line: Line, group: Line[]) {
+  // Take one person off a job. A job someone already started stays theirs.
+  async function takeOff(line: Line) {
     setMessage(""); setError("");
-    const row = sent.find(s => s.id === line.key);
-    if (row && (row.done_at || row.steps_done.length)) { setError("They already started this job, so it can't be taken off."); return; }
-    if (group.length < 2) { await changePerson(line, ""); return; }
+    if (line.started) { setError("They already started this job, so it can't be taken off."); return; }
     if (!isSent) { setDraft(d => d.filter(l => l.key !== line.key)); return; }
     const gone = await supabase!.from("checklist_assignments").delete().eq("id", line.key);
     if (gone.error) { setError(explain(gone.error)); return; }
     setSent(s => s.filter(a => a.id !== line.key));
   }
-  // The lines of a phase, one card per job, so a job with two people is one card with two names.
-  const byJob = (list: Line[]) => {
-    const cards = new Map<string, Line[]>();
-    for (const l of list) cards.set(l.jobId ?? l.title, [...(cards.get(l.jobId ?? l.title) ?? []), l]);
-    return [...cards.entries()];
-  };
 
-  // Sending: save the floor, open (or reuse) the service's side work, and give each job to its person.
-  // Jobs someone already started are left alone when it's sent again.
-  async function send(rebuild = false) {
+  // Sending: open (or reuse) the service's side work and save who does what, for both tabs.
+  async function send() {
     if (!supabase || busy) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      const me = (await supabase.auth.getUser()).data.user?.id;
-      if (!plan || rebuild) {
-        const floor = await supabase.from("floor_plans").upsert({restaurant_id: restaurantId, service_date: day, service, list_id: plan?.list_id ?? suggestedList(working, service, lists)?.id ?? null, rows: rebuild ? startingRows(working, service, day, suggestedList(working, service, lists), runningPast) : rows, updated_at: new Date().toISOString(), updated_by: me}, {onConflict: "restaurant_id,service_date,service"});
-        if (floor.error) throw floor.error;
-      }
       let id = shiftId;
       if (!id) {
         const made = await supabase.from("checklist_shifts").insert({restaurant_id: restaurantId, shift_date: day, label: service, status: "posted", posted_at: new Date().toISOString()}).select("id").single();
@@ -188,15 +143,9 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
         const live = await supabase.from("checklist_shifts").update({status: "posted", posted_at: new Date().toISOString()}).eq("id", id);
         if (live.error) throw live.error;
       }
-      const fresh = rebuild || !isSent ? (rebuild ? planJobs(jobs, people, day, past).map((p, i) => ({key: String(i), title: p.job.name, user_id: p.user_id, phase: p.phase, jobId: p.job.id})) : draft) : [];
-      if (isSent && rebuild) {
-        const cleared = await supabase.from("checklist_assignments").delete().eq("shift_id", id).not("phase", "is", null).is("done_at", null).eq("steps_done", "{}");
-        if (cleared.error) throw cleared.error;
-      }
-      const started = new Set(sent.filter(s => s.done_at || s.steps_done.length).map(s => `${s.job_id}|${s.user_id}`));
-      const insert = fresh.filter(l => !started.has(`${l.jobId}|${l.user_id}`)).map((l, i) => {
+      const insert = draft.map((l, i) => {
         const job = jobs.find(j => j.id === l.jobId);
-        return {shift_id: id, restaurant_id: restaurantId, job_id: l.jobId ?? null, title: l.title, group_name: job?.group_name ?? "", steps: job?.steps ?? [], user_id: l.user_id, phase: l.phase, sort_order: (job?.sort_order ?? 0) * 100 + i};
+        return {shift_id: id, restaurant_id: restaurantId, job_id: l.jobId, title: l.title, group_name: job?.group_name ?? "", steps: job?.steps ?? [], user_id: l.user_id, locked: true, phase: l.phase, sort_order: (job?.sort_order ?? 0) * 100 + i};
       });
       if (insert.length) {
         const made = await supabase.from("checklist_assignments").insert(insert);
@@ -204,15 +153,24 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
       }
       const floorPeople = people.map(p => ({shift_id: id, restaurant_id: restaurantId, user_id: p.user_id}));
       if (floorPeople.length) await supabase.from("checklist_floor").upsert(floorPeople, {onConflict: "shift_id,user_id", ignoreDuplicates: true});
-      setMessage(rebuild ? "Rebuilt from the schedule and sent." : "Sent. Everyone sees their section and side work on their phone.");
+      setMessage("Sent. Everyone sees their side work on their phone.");
       await load();
     } catch (e) { setError(explain(e)); }
     finally { setBusy(false); }
   }
 
-  if (editingFloor) return <FloorPlan restaurantId={restaurantId} initialDay={day} initialService={service} onBack={() => {setEditingFloor(false); void load();}} />;
-
-  return <div className="tonight mt-4">
+  return <div className="tonight sw-board mt-4">
+    <div className="sw-head">
+      <div className="min-w-0">
+        <p className="sw-eyebrow">Side work · Tonight</p>
+        {/* The date is formatted in the browser's language, so it waits for the first load (no server mismatch). */}
+        {!loading && <p className="tonight-title"><span data-no-translate>{longDay(day)}</span> · <span>{service}</span></p>}
+      </div>
+      <div className="sw-head-actions">
+        <span className="muted text-sm">{isSent && sentAt ? `Sent ${clock(sentAt)} · changes go out as you make them` : `${named} of ${cards.length} jobs named · ${teamLabel}`}</span>
+        {!isSent && <button type="button" className="btn" disabled={busy || !draft.length} onClick={() => void send()}>{busy ? "Sending…" : "Send to the team"}</button>}
+      </div>
+    </div>
     <div className="floor-bar">
       <DayPill label="Day" value={day} onChange={setDay} />
       <div className="category-tabs" role="group" aria-label="Service">
@@ -220,84 +178,58 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
       </div>
     </div>
     <Notice text={error} error /><Notice text={message} />
-    {loading ? <p className="muted py-6" role="status">Working out tonight…</p> : <>
-      <div className="tonight-head">
-        <div className="min-w-0">
-          <p className="tonight-title">{`${longDay(day)} · ${service}`}</p>
-          <p className="muted text-xs">{people.length ? `From the schedule: ${servers} ${servers === 1 ? "server" : "servers"}, ${sas} ${sas === 1 ? "S.A." : "S.A.s"}` : "Nobody on the published schedule for this service yet."}</p>
-          <p className="muted text-xs">{isSent && sentAt ? `Sent ${new Date(sentAt).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"})}. Changes go out as you make them.` : "Not sent yet. Look it over, then send it."}</p>
+    {loading ? <p className="muted py-6" role="status">Loading tonight…</p> : <>
+      <div className="sw-tabs-row">
+        <div className="category-tabs" role="group" aria-label="Team">
+          {TEAMS.map(([role, label]) => <button key={role} type="button" aria-pressed={team === role} onClick={() => {setTeam(role); setPicked(null);}}>{label}</button>)}
         </div>
-        <div className="tonight-actions">
-          {isSent && <button type="button" className="btn secondary" disabled={busy} onClick={() => void send(true)}><RefreshCw size={14} />Rebuild</button>}
-          {!isSent && <button type="button" className="btn" disabled={busy || !people.length} onClick={() => void send()}><Send size={14} />{busy ? "Sending…" : "Send to the team"}</button>}
-        </div>
+        <p className="muted text-sm">{picked ? `${nameOf(picked)} is selected: tap a job.` : team === "server" ? "Tap a server, then a job." : "Tap an S.A., then a job."}</p>
       </div>
 
-      <section className="tonight-block" aria-label="Floor">
-        <div className="tonight-block-head"><h3>Floor</h3><button type="button" className="btn secondary" onClick={() => setEditingFloor(true)}><Pencil size={13} />Edit floor</button></div>
-        {rows.length ? <div className="tonight-sections">{rows.map((r, i) => <div key={i} className={`tonight-section${r.server_id && closing.has(r.server_id) ? " closer" : ""}`}>
-          <b>{r.section || "—"}</b><span>{r.server_name || "Pick-up"}{r.server_id && closing.has(r.server_id) && <span className="sched-kind" role="img" aria-label="Closer" title="Closer">C</span>}</span>
-          {r.sa.length > 0 && <small>{helpers(r.sa)}</small>}
-        </div>)}</div> : <p className="muted text-sm">No servers on the schedule for this service.</p>}
-        {closing.size > 0 && <p className="muted mt-2 text-xs">{`Closer: ${[...closing].map(nameOf).join(", ")}. Whoever comes in last closes.`}</p>}
-      </section>
+      <div className="sw-grid">
+        <section className="sw-people panel" aria-label={`${teamLabel} tonight`}>
+          <div className="sw-people-head"><b>{`${teamLabel} tonight · ${mine.length}`}</b><span className="muted text-xs">From the published schedule</span></div>
+          {mine.length ? mine.map(p => {
+            const theirs = jobsOf(p.user_id);
+            return <button key={p.user_id} type="button" className="sw-person" aria-pressed={picked === p.user_id}
+              onClick={() => setPicked(x => x === p.user_id ? null : p.user_id)}
+              >
+              <span className="sw-person-line">
+                <b data-no-translate>{p.name || "Team member"}</b>
+                <span className="sw-time">{`${clock(p.starts_at)}${closing.has(p.user_id) ? " ©" : ""}`}</span>
+                <span className={`sw-count${theirs.length ? "" : " none"}`}>{theirs.length === 1 ? "1 job" : `${theirs.length} jobs`}</span>
+              </span>
+              <span className="sw-person-jobs">{theirs.length ? <span data-no-translate>{theirs.join(" · ")}</span> : "No jobs yet"}</span>
+            </button>;
+          }) : <p className="muted text-sm">{team === "server" ? "No servers on the published schedule for this service." : "No S.A.s on the published schedule for this service."}</p>}
+          <p className="muted text-xs">© closes: whoever comes in last. A name can go on several jobs.</p>
+        </section>
 
-      {unruled > 0 && <p className="muted mt-4 text-xs">{`${unruled} ${unruled === 1 ? "job isn't" : "jobs aren't"} set up to hand out yet (Setup)`}</p>}
-      {(["server", "sa"] as Role[]).map(role => {
-        // During the shift: servers keep their running side work; S.A.s cover the sections they're on.
-        const duringFor: Line[] = role === "server" ? during : people.filter(p => roleOf(p.shift_position) === "sa").map(p => {
-          const covers = rows.filter(r => r.sa.some(h => h.id === p.user_id)).map(r => r.section).filter(Boolean);
-          return {key: `cover-${p.user_id}`, title: covers.length ? `Sections ${covers.join("/")}` : "No section yet", user_id: p.user_id, phase: "opening" as Phase, who: p.name || "Team member"};
-        });
-        const mine = people.filter(p => roleOf(p.shift_position) === role);
-        const given = new Set(lines.filter(l => l.user_id && lineRole(l) === role).map(l => l.user_id!));
-        return <section key={role} className={`tonight-block tonight-role ${role}`} aria-label={role === "server" ? "Side work · Servers" : "Side work · S.A.s"}>
-          <div className="tonight-block-head"><h3>{role === "server" ? "Side work · Servers" : "Side work · S.A.s"}</h3></div>
-          {mine.length > 0 && <div className="who-board">
-            <p className="tonight-phase-title">Working tonight</p>
-            <div className="who-strip" role="group" aria-label="Working tonight">
-              {mine.map(p => <button key={p.user_id} type="button" draggable className={`who-chip${given.has(p.user_id) ? " has" : ""}`} aria-pressed={picked === p.user_id}
-                onClick={() => setPicked(x => x === p.user_id ? null : p.user_id)}
-                onDragStart={e => { e.dataTransfer.setData("text/plain", p.user_id); e.dataTransfer.effectAllowed = "move"; setPicked(p.user_id); }}>
-                {p.name || "Team member"}{closing.has(p.user_id) && <span className="sched-kind" role="img" aria-label="Closer" title="Closer">C</span>}
-              </button>)}
-            </div>
-            <p className="muted text-xs">{picked && mine.some(p => p.user_id === picked) ? `${nameOf(picked)} is picked. Tap a job to give it to them.` : "Tap or drag a name onto a job."}</p>
-          </div>}
-          <div className="tonight-phases">
-            {PHASES.map(([phase, label]) => {
-              const list = phase === "during" ? duringFor : lines.filter(l => l.phase === phase && lineRole(l) === role);
-              return <div key={phase} className="tonight-phase">
-                <p className="tonight-phase-title">{label}</p>
-                {list.length ? (phase === "during" ? list.map(l => <div key={l.key} className="tonight-line">
-                  <span className="min-w-0">{l.title}</span>
-                  <small>{l.who || nameOf(l.user_id)}</small>
-                </div>) : byJob(list).map(([cardKey, group]) => {
-                  const title = group[0].title;
-                  const open = choicesFor(group[0]).filter(p => !group.some(l => l.user_id === p.user_id));
-                  return <div key={cardKey} className={`job-card${picked ? " ready" : ""}${over === cardKey ? " over" : ""}`}
-                    onClick={e => { if (picked && !(e.target as HTMLElement).closest("button, select")) void giveTo(group, picked, role); }}
-                    onDragOver={e => { e.preventDefault(); setOver(cardKey); }}
-                    onDragLeave={() => setOver(o => o === cardKey ? null : o)}
-                    onDrop={e => { e.preventDefault(); setOver(null); const id = e.dataTransfer.getData("text/plain") || picked; if (id) void giveTo(group, id, role); }}>
-                    <p className="job-card-title">{title}</p>
-                    <div className="job-card-who">
-                      {group.map(l => l.user_id
-                        ? <span key={l.key} className="who-on">{l.done && <Check size={12} aria-label="Done" />}{nameOf(l.user_id)}{closing.has(l.user_id) && <span className="sched-kind" role="img" aria-label="Closer" title="Closer">C</span>}
-                            {!l.done && <button type="button" className="who-off" aria-label={`Take ${nameOf(l.user_id)} off ${title}`} onClick={() => void takeOff(l, group)}><X size={12} aria-hidden="true" /></button>}</span>
-                        : <span key={l.key} className="who-none">Nobody yet</span>)}
-                      {open.length > 0 && <select className="who-add" aria-label={`Add someone to ${title}`} value="" onChange={e => { if (e.target.value) void giveTo(group, e.target.value, role); }}>
-                        <option value="">+ Add</option>
-                        {open.map(p => <option key={p.user_id} value={p.user_id}>{p.name || "Team member"}</option>)}
-                      </select>}
-                    </div>
-                  </div>;
-                })) : <p className="muted text-xs">{phase === "during" ? (role === "server" ? "Comes from the floor plan's running side work." : "No S.A.s on the schedule.") : "Nothing set up for this yet."}</p>}
-              </div>;
-            })}
-          </div>
-        </section>;
-      })}
+        <section className="sw-columns" aria-label="Side work">
+          {PHASES.map(([phase, label]) => {
+            const column = cards.filter(c => c.phase === phase);
+            return <div key={phase} className="sw-column">
+              <p className="section-chip">{label}</p>
+              {column.length ? column.map(card => {
+                const who = onCard(card);
+                // The whole card takes the tap; its title is the button for keyboards, and the x stays its own.
+                return <div key={card.key} className={`sw-job${picked ? " ready" : ""}${who.length ? "" : " empty"}`}
+                  onClick={e => { if (picked && !(e.target as HTMLElement).closest(".sw-on button")) void giveTo(card, picked); }}>
+                  <button type="button" className="sw-job-title" aria-label={picked ? `Give ${card.title} to ${nameOf(picked)}` : card.title}>
+                    <b data-no-translate>{card.title}</b>
+                  </button>
+                  <div className="sw-job-who">
+                    {who.map(l => <span key={l.key} className="sw-on"><span data-no-translate>{nameOf(l.user_id)}</span>
+                      {!l.started && <button type="button" aria-label={`Take ${nameOf(l.user_id)} off ${card.title}`} onClick={() => void takeOff(l)}><X size={12} aria-hidden="true" /></button>}</span>)}
+                    {!who.length && <span className="sw-drop">{picked ? "Tap to give it here" : "Nobody yet"}</span>}
+                  </div>
+                </div>;
+              }) : <p className="muted text-xs">Nothing set up for this yet (Setup).</p>}
+            </div>;
+          })}
+        </section>
+      </div>
+      {unruled > 0 && <p className="muted mt-4 text-xs">{`${unruled} ${unruled === 1 ? "job has" : "jobs have"} no time of the shift yet, so ${unruled === 1 ? "it isn't" : "they aren't"} on the board (Setup)`}</p>}
     </>}
   </div>;
 }

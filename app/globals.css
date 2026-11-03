@@ -3250,3 +3250,47 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .lp-bubble.me { align-self:flex-end; background:var(--c-invert-bg); color:var(--c-invert-text); border-bottom-right-radius:5px; }
 :root:root:root:root:root:root:root .lp-bubble small { color:var(--c-muted); font-size:.68rem; }
 :root:root:root:root:root:root:root .lp-bubble-row { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+
+/* Side work Tonight as a board (app/sidework-tonight.tsx): the manager drags people (left) onto side work
+   (right: opening, during the shift, closing), Servers and S.A.s on their own tabs. On phones the people
+   become one scrolling row above the jobs. Spacing 14/16/20, colours from tokens, one lime button (Send).
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .sw-board { display:flex; flex-direction:column; gap:14px; }
+:root:root:root:root:root:root:root .sw-head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:14px; }
+:root:root:root:root:root:root:root .sw-eyebrow { margin:0; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--c-muted); }
+:root:root:root:root:root:root:root .sw-head-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+:root:root:root:root:root:root:root .sw-tabs-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; }
+:root:root:root:root:root:root:root .sw-grid { display:grid; grid-template-columns:minmax(0, 1fr); gap:20px; }
+@media (min-width: 1100px) { :root:root:root:root:root:root:root .sw-grid { grid-template-columns:280px minmax(0, 1fr); } }
+:root:root:root:root:root:root:root .sw-people { padding:16px; display:flex; flex-direction:column; gap:10px; align-self:start; }
+:root:root:root:root:root:root:root .sw-people-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:6px; font-size:13px; }
+:root:root:root:root:root:root:root .sw-person { display:flex; flex-direction:column; gap:4px; width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--c-line); background:var(--c-bg); color:var(--c-text); text-align:left; cursor:pointer; }
+:root:root:root:root:root:root:root .sw-person[aria-pressed="true"] { background:var(--c-text); color:var(--c-bg); border-color:var(--c-text); }
+:root:root:root:root:root:root:root .sw-person-line { display:flex; align-items:center; gap:8px; width:100%; font-size:14px; }
+:root:root:root:root:root:root:root .sw-grip { display:inline-flex; flex-direction:column; gap:2px; width:12px; opacity:.55; }
+:root:root:root:root:root:root:root .sw-grip i { display:block; height:2px; background:currentColor; }
+:root:root:root:root:root:root:root .sw-time { font-size:12px; opacity:.75; }
+:root:root:root:root:root:root:root .sw-count { margin-left:auto; padding:2px 8px; border-radius:999px; background:var(--c-surface); border:1px solid var(--c-line); font-family:var(--font-mono); font-size:11px; font-weight:600; white-space:nowrap; }
+:root:root:root:root:root:root:root .sw-count.none { color:var(--c-fail); border-color:var(--c-fail); background:transparent; }
+:root:root:root:root:root:root:root .sw-person[aria-pressed="true"] .sw-count { background:var(--c-bg); color:var(--c-text); border-color:var(--c-bg); }
+:root:root:root:root:root:root:root .sw-person-jobs { font-size:12px; opacity:.8; }
+:root:root:root:root:root:root:root .sw-columns { display:grid; grid-template-columns:minmax(0, 1fr); gap:14px; align-content:start; }
+@media (min-width: 760px) { :root:root:root:root:root:root:root .sw-columns { grid-template-columns:repeat(3, minmax(0, 1fr)); } }
+:root:root:root:root:root:root:root .sw-column { display:flex; flex-direction:column; gap:10px; min-width:0; }
+:root:root:root:root:root:root:root .sw-column .section-chip { margin:0; }
+:root:root:root:root:root:root:root .sw-job { display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:12px; border:1px solid var(--c-line); background:var(--c-surface); }
+:root:root:root:root:root:root:root .sw-job.ready { border:2px solid var(--c-text); padding:11px; cursor:pointer; }
+:root:root:root:root:root:root:root .sw-job.over { background:var(--c-raised); }
+:root:root:root:root:root:root:root .sw-job-title { all:unset; cursor:pointer; font-size:13px; min-height:20px; }
+:root:root:root:root:root:root:root .sw-job-title:focus-visible { outline:2px solid var(--c-text); outline-offset:2px; border-radius:4px; }
+:root:root:root:root:root:root:root .sw-job-who { display:flex; flex-wrap:wrap; gap:6px; }
+:root:root:root:root:root:root:root .sw-on { display:inline-flex; align-items:center; gap:6px; height:26px; padding:0 4px 0 10px; border-radius:999px; background:var(--c-text); color:var(--c-bg); font-size:12px; font-weight:600; }
+:root:root:root:root:root:root:root .sw-on button { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:999px; background:var(--c-raised); color:var(--c-text); }
+:root:root:root:root:root:root:root .sw-drop { display:inline-flex; align-items:center; height:26px; padding:0 10px; border-radius:999px; border:1px solid var(--c-line); color:var(--c-muted); font-size:12px; }
+@media (max-width: 759px) {
+  :root:root:root:root:root:root:root .sw-people { flex-direction:row; flex-wrap:nowrap; overflow-x:auto; padding:0; border:0; background:transparent; gap:8px; }
+  :root:root:root:root:root:root:root .sw-people > .sw-people-head, :root:root:root:root:root:root:root .sw-people > p { display:none; }
+  :root:root:root:root:root:root:root .sw-person { flex:none; width:auto; min-height:44px; }
+  :root:root:root:root:root:root:root .sw-person-jobs, :root:root:root:root:root:root:root .sw-grip, :root:root:root:root:root:root:root .sw-time { display:none; }
+  :root:root:root:root:root:root:root .sw-job { min-height:44px; }
+}
