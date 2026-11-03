@@ -12,6 +12,8 @@ import { supabase } from "@/lib/supabase";
 import { Notice } from "./ui";
 import { closers, roleOf, type OnShift } from "@/lib/sidework-plan";
 import { localDate, type FloorRow } from "./floor-plan";
+import { DownloadSheet } from "./sheet-download";
+import { sectionsSheet } from "@/lib/sheets";
 
 // Shapes: r round, s square, w long (a booth or a long table), c a seat at a counter.
 type Table = {id: string; label: string; x: number; y: number; shape: "r" | "s" | "w" | "c"; group?: string};
@@ -200,6 +202,26 @@ export function FloorSections({restaurantId, day, service, people}: {restaurantI
     return {s, spot};
   });
 
+  // The sheet to pin up on the floor: the map with each section, and the list of who works what.
+  const printSections = async () => {
+    const named = await supabase?.from("restaurants").select("name").eq("id", restaurantId).maybeSingle();
+    const restaurant = (named?.data as {name: string} | null)?.name ?? "";
+    const title = `${new Date(`${day}T12:00:00`).toLocaleDateString("en-US", {weekday: "long", month: "long", day: "numeric"})} · ${service}`;
+    const helpers = new Map<string, {name: string; covers: string[]}>();
+    for (const s of sections) for (const h of s.sas) {
+      const entry = helpers.get(h.id) ?? {name: h.name || "Team member", covers: []};
+      entry.covers.push(isPost(s) ? s.name : String(s.n));
+      helpers.set(h.id, entry);
+    }
+    return sectionsSheet({
+      title, day, service, width: layout.width, height: layout.height,
+      tables: layout.tables.map(t => { const [hw, hh] = dims(t.shape); return {label: t.label, x: t.x, y: t.y, round: t.shape === "r" || t.shape === "c", hw, hh, section: sectionOf(t.id)?.n ?? null}; }),
+      tags: shapes.map(({s, spot: [x, y]}) => ({n: s.n, name: s.server?.name ?? "Pick-up", x, y})),
+      sections: onMap.map(s => ({n: s.n, server: s.server?.name ?? "Pick-up", sas: s.sas.map(h => h.name), where: whereOf(layout, s.tables)})),
+      helpers: [...helpers.values()].map(h => ({name: h.name, covers: h.covers.join("/")})),
+    }, {restaurant});
+  };
+
   return <><Notice text={error} error /><div className="swb-grid fs-grid">
     <section className="swb-card fs-map" aria-label="Floor map">
       <div className="swb-card-head"><p className="section-chip">Floor map</p><span className="muted text-xs">{drawing.size ? "Drawing a section" : "Tap tables to draw a section"}</span></div>
@@ -235,7 +257,8 @@ export function FloorSections({restaurantId, day, service, people}: {restaurantI
         <span className="fs-actions">
           {drawing.size > 0 && <button type="button" className="btn secondary" onClick={() => setDrawing(new Set())}>Cancel</button>}
           {drawing.size > 0 ? <button type="button" className="btn" onClick={() => void createSection()}>{`Create section ${nextNumber}`}</button>
-            : <><button type="button" className="btn secondary" onClick={() => {setSaved(""); setEditing(true);}}>Edit map</button><button type="button" className="btn secondary" onClick={() => void copyLastWeek()}>Copy from a week ago</button></>}
+            : <><DownloadSheet variant="button" buttonLabel="Print" busyLabel="Preparing the sections" label="Download tonight's sections to print" build={printSections} />
+              <button type="button" className="btn secondary" onClick={() => {setSaved(""); setEditing(true);}}>Edit map</button><button type="button" className="btn secondary" onClick={() => void copyLastWeek()}>Copy from a week ago</button></>}
         </span>
       </div>
     </section>
