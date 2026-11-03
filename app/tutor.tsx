@@ -21,13 +21,13 @@ type Mode = "ask" | "teach" | "guest";
 const MODES: {id: Mode; label: string; hint: string}[] = [
   {id: "ask", label: "Quiz me", hint: "I ask you questions, one card at a time, and correct you."},
   {id: "teach", label: "Explain it", hint: "I explain each card first, then ask you about it so it sticks."},
-  {id: "guest", label: "Play a guest", hint: "Practise a real table: I'm the guest, then I coach you."},
+  {id: "guest", label: "Practise selling", hint: "I'm the guest at your table: you describe, recommend and sell, then I tell you what would make it even better."},
 ];
 const es = () => currentLang() === "es";
 const topicPrompt = (mode: Mode, name: string) => mode === "teach"
   ? (es() ? `Explícame ${name}: cuéntame cada ficha y luego pregúntame.` : `Teach me the ${name}: explain each card, then ask me about it.`)
   : mode === "guest"
-    ? (es() ? `Haz de cliente en mi mesa interesado en ${name}. Déjame recomendar y responder, y luego dame consejos.` : `Play a guest at my table who's interested in the ${name}. Let me recommend and answer, then coach me.`)
+    ? (es() ? `Quiero practicar ventas con ${name}: haz de cliente en mi mesa, déjame describir, recomendar y vender, y luego dime qué haría mi venta aún mejor.` : `I want to practise selling the ${name}: be a guest at my table, let me describe, recommend and sell, then tell me what would make my sale even better.`)
     : (es() ? `Pregúntame sobre ${name}, una ficha a la vez.` : `Quiz me on the ${name}, one card at a time.`);
 const allergenPrompt = (mode: Mode, library: string) => mode === "teach"
   ? (es() ? `Explícame los alérgenos de ${library} y luego pregúntame.` : `Explain the allergens in ${library}, then ask me about them.`)
