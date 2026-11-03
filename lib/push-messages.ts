@@ -1,7 +1,7 @@
 // What each phone notification says, in the language the person chose (migration 039 keeps it per
 // device). Short enough for a lock screen: a title and one line.
 export const PUSH_EVENTS = ["preshift_posted", "study_assigned", "urgent_report", "retake_requested", "schedule_published", "time_off_requested", "time_off_decided",
-  "shift_released", "shift_offered", "shift_change_pending", "shift_change_declined", "shift_change_decided"] as const;
+  "shift_released", "shift_offered", "shift_change_pending", "shift_change_declined", "shift_change_decided", "sections_posted"] as const;
 export type PushEvent = typeof PUSH_EVENTS[number];
 
 const MESSAGES: Record<PushEvent, Record<"en" | "es", (place: string) => {title: string; body: string}>> = {
@@ -48,6 +48,10 @@ const MESSAGES: Record<PushEvent, Record<"en" | "es", (place: string) => {title:
   shift_change_decided: {
     en: place => ({title: "Shift change answered", body: `Your manager at ${place} answered a shift change. Check your shifts.`}),
     es: place => ({title: "Respondieron un cambio de turno", body: `Tu manager en ${place} respondió un cambio de turno. Revisa tus turnos.`}),
+  },
+  sections_posted: {
+    en: place => ({title: "Tonight's sections are out", body: `Your section at ${place} is ready. Open HEAT to see your tables and who you work with.`}),
+    es: place => ({title: "Ya salieron las secciones", body: `Tu sección de hoy en ${place} está lista. Abre HEAT para ver tus mesas y con quién trabajas.`}),
   },
   retake_requested: {
     en: place => ({title: "Quiz retake request", body: `Someone at ${place} asked for another quiz attempt. Approve it from Home.`}),

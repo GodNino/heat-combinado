@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { FloorTable, defaultService, helpers, localDate, type FloorRow } from "./floor-plan";
 
-type Plan = {service: string; rows: FloorRow[]};
+type Plan = {service: string; rows: FloorRow[]; posted_at?: string | null};
 type Mine = {title: string; phase: "opening" | "during" | "closing"; done_at: string | null; shift_id: string};
 type Shift = {id: string; label: string};
 
@@ -23,13 +23,14 @@ export function MyShiftCard({restaurantId, userId: given, onOpen}: {restaurantId
     const today = localDate();
     void (async () => {
       const [floor, posted] = await Promise.all([
-        supabase!.from("floor_plans").select("service, rows").eq("restaurant_id", restaurantId).eq("service_date", today),
+        supabase!.from("floor_plans").select("service, rows, posted_at").eq("restaurant_id", restaurantId).eq("service_date", today),
         supabase!.from("checklist_shifts").select("id, label").eq("restaurant_id", restaurantId).eq("shift_date", today).neq("status", "draft"),
       ]);
       const ids = ((posted.data ?? []) as Shift[]).map(s => s.id);
       const jobs = ids.length ? await supabase!.from("checklist_assignments").select("title, phase, done_at, shift_id").in("shift_id", ids).eq("user_id", userId).not("phase", "is", null).order("sort_order") : {data: []};
       if (!live) return;
-      setPlans((floor.data ?? []) as Plan[]);
+      // Sections drawn on the floor map (059) show only once the manager has sent them.
+      setPlans(((floor.data ?? []) as Plan[]).map(p => p.posted_at ? p : {...p, rows: p.rows.filter(r => !r.tables)}));
       setShifts((posted.data ?? []) as Shift[]);
       setMine((jobs.data ?? []) as Mine[]);
     })();
