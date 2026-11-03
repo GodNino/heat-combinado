@@ -3343,3 +3343,11 @@ span.dash-name { text-decoration:none; }
   :root:root:root:root:root:root:root .swb-job { min-height:44px; }
 }
 @media (prefers-reduced-motion: reduce) { :root:root:root:root:root:root:root .swb-bar i { transition:none; } }
+
+/* Side work Tonight at any width: the phase cards fill the row and drop to fewer columns before a job name
+   gets squeezed, names never break letter by letter, and the phase chips stay on one line. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .swb-phases { grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); }
+:root:root:root:root:root:root:root .swb-card-head .section-chip { white-space:nowrap; }
+:root:root:root:root:root:root:root .swb-job-title { overflow-wrap:normal; word-break:normal; }
+:root:root:root:root:root:root:root .swb-names { flex:0 1 auto; min-width:0; max-width:55%; }
+:root:root:root:root:root:root:root .swb-add { overflow:hidden; text-overflow:ellipsis; }

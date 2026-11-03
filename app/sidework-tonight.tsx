@@ -227,7 +227,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
                 <span className="swb-names">
                   {who.map(l => <span key={l.key} className="swb-pill"><span data-no-translate>{nameOf(l.user_id)}</span>
                     {!l.started && <button type="button" aria-label={`Take ${nameOf(l.user_id)} off ${card.title}`} onClick={() => void takeOff(l)}><X size={11} aria-hidden="true" /></button>}</span>)}
-                  {picked && !mineToo ? <span className="swb-add" data-no-translate>{`+ ${nameOf(picked)}`}</span> : !who.length && <span className="swb-empty">Nobody yet</span>}
+                  {picked && !mineToo ? <span className="swb-add" data-no-translate>{`+ ${nameOf(picked).split(" ")[0]}`}</span> : !who.length && <span className="swb-empty">Nobody yet</span>}
                 </span>
               </div>;
             };
