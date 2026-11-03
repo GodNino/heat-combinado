@@ -21,7 +21,7 @@ type Sent = {id: string; title: string; user_id: string | null; phase: Phase; do
 // One person on one job: saved (key is its row id) or only on this screen (key starts with "draft-").
 type Line = {key: string; title: string; user_id: string; phase: Phase; jobId: string | null; started?: boolean};
 // A job on the board: a saved job for this role and weekday, or a job only the assignments still name.
-type Card = {key: string; title: string; phase: Phase; jobId: string | null};
+type Card = {key: string; title: string; phase: Phase; jobId: string | null; running?: boolean};
 
 const JOB_COLUMNS = "id, name, group_name, steps, sort_order, phase, role, who, days";
 const PHASES: [Phase, string][] = [["opening", "Opening"], ["during", "During the shift"], ["closing", "Closing"]];
@@ -104,7 +104,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
     .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
   const cards: Card[] = roleJobs.map(j => ({key: j.id, title: j.name, phase: j.phase!, jobId: j.id}));
   // Servers' "During the shift" also shows the running side work list, one card per task.
-  if (team === "server") for (const task of running) if (!cards.some(c => c.title === task)) cards.push({key: `title-${task}`, title: task, phase: "during", jobId: null});
+  if (team === "server") for (const task of running) if (!cards.some(c => c.title === task)) cards.push({key: `title-${task}`, title: task, phase: "during", jobId: null, running: true});
   for (const l of lines) {
     const key = l.jobId ?? `title-${l.title}`;
     if (!cards.some(c => c.key === key) && (jobs.find(j => j.id === l.jobId)?.role ?? roleOfPerson(l.user_id)) === team) cards.push({key, title: l.title, phase: l.phase, jobId: l.jobId});
@@ -175,7 +175,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
         {!loading && <p className="tonight-title"><span data-no-translate>{longDay(day)}</span> · <span>{service}</span></p>}
       </div>
       <div className="sw-head-actions">
-        <span className="muted text-sm">{isSent && sentAt ? `Sent ${clock(sentAt)} · changes go out as you make them` : `${named} of ${cards.length} jobs named · ${teamLabel}`}</span>
+        {isSent && sentAt ? <span className="muted text-sm">{`Sent ${clock(sentAt)} · changes go out as you make them`}</span>
+          : <span className="swb-progress"><span>{`${named} of ${cards.length} jobs named`}</span><span className="swb-bar" aria-hidden="true"><i style={{width: cards.length ? `${named / cards.length * 100}%` : 0}} /></span></span>}
         {!isSent && <button type="button" className="btn" disabled={busy || !draft.length} onClick={() => void send()}>{busy ? "Sending…" : "Send to the team"}</button>}
       </div>
     </div>
@@ -194,45 +195,48 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
         <p className="muted text-sm">{picked ? `${nameOf(picked)} is selected: tap a job.` : team === "server" ? "Tap a server, then a job." : "Tap an S.A., then a job."}</p>
       </div>
 
-      <div className="sw-grid">
-        <section className="sw-people panel" aria-label={`${teamLabel} tonight`}>
-          <div className="sw-people-head"><b>{`${teamLabel} tonight · ${mine.length}`}</b><span className="muted text-xs">From the published schedule</span></div>
-          {mine.length ? mine.map(p => {
+      <div className="swb-grid">
+        <section className="swb-card swb-people" aria-label={`${teamLabel} tonight`}>
+          <div className="swb-card-head"><b>{`${teamLabel} tonight`}</b><span className="swb-count">{mine.length}</span></div>
+          {mine.length ? <div className="swb-plist">{mine.map(p => {
             const theirs = jobsOf(p.user_id);
-            return <button key={p.user_id} type="button" className="sw-person" aria-pressed={picked === p.user_id}
-              onClick={() => setPicked(x => x === p.user_id ? null : p.user_id)}
-              >
-              <span className="sw-person-line">
-                <b data-no-translate>{p.name || "Team member"}</b>
-                <span className="sw-time">{`${clock(p.starts_at)}${closing.has(p.user_id) ? " ©" : ""}`}</span>
-                <span className={`sw-count${theirs.length ? "" : " none"}`}>{theirs.length === 1 ? "1 job" : `${theirs.length} jobs`}</span>
+            const name = p.name || "Team member";
+            return <button key={p.user_id} type="button" className="swb-person" aria-pressed={picked === p.user_id}
+              onClick={() => setPicked(x => x === p.user_id ? null : p.user_id)}>
+              <span className="swb-av" aria-hidden="true" data-no-translate>{name.trim()[0]?.toUpperCase()}</span>
+              <span className="swb-who">
+                <b data-no-translate>{name}</b>
+                <small>{`${clock(p.starts_at)}${closing.has(p.user_id) ? " · ©" : ""} · `}{theirs.length ? <span data-no-translate>{theirs.join(", ")}</span> : "No jobs yet"}</small>
               </span>
-              <span className="sw-person-jobs">{theirs.length ? <span data-no-translate>{theirs.join(" · ")}</span> : "No jobs yet"}</span>
+              <span className="swb-tag">{theirs.length}</span>
             </button>;
-          }) : <p className="muted text-sm">{team === "server" ? "No servers on the published schedule for this service." : "No S.A.s on the published schedule for this service."}</p>}
-          <p className="muted text-xs">© closes: whoever comes in last. A name can go on several jobs.</p>
+          })}</div> : <p className="muted text-sm">{team === "server" ? "No servers on the published schedule for this service." : "No S.A.s on the published schedule for this service."}</p>}
+          <p className="swb-legend">© closes: whoever comes in last. A name can go on several jobs.</p>
         </section>
 
-        <section className="sw-columns" aria-label="Side work">
+        <section className={`swb-phases${picked ? " ready" : ""}`} aria-label="Side work">
           {PHASES.map(([phase, label]) => {
             const column = cards.filter(c => c.phase === phase);
-            return <div key={phase} className="sw-column">
-              <p className="section-chip">{label}</p>
-              {column.length ? column.map(card => {
-                const who = onCard(card);
-                // The whole card takes the tap; its title is the button for keyboards, and the x stays its own.
-                return <div key={card.key} className={`sw-job${picked ? " ready" : ""}${who.length ? "" : " empty"}`}
-                  onClick={e => { if (picked && !(e.target as HTMLElement).closest(".sw-on button")) void giveTo(card, picked); }}>
-                  <button type="button" className="sw-job-title" aria-label={picked ? `Give ${card.title} to ${nameOf(picked)}` : card.title}>
-                    <b data-no-translate>{card.title}</b>
-                  </button>
-                  <div className="sw-job-who">
-                    {who.map(l => <span key={l.key} className="sw-on"><span data-no-translate>{nameOf(l.user_id)}</span>
-                      {!l.started && <button type="button" aria-label={`Take ${nameOf(l.user_id)} off ${card.title}`} onClick={() => void takeOff(l)}><X size={12} aria-hidden="true" /></button>}</span>)}
-                    {!who.length && <span className="sw-drop">{picked ? "Tap to give it here" : "Nobody yet"}</span>}
-                  </div>
-                </div>;
-              }) : <p className="muted text-xs">Nothing set up for this yet (Setup).</p>}
+            const own = column.filter(c => !c.running), run = column.filter(c => c.running);
+            const row = (card: Card) => {
+              const who = onCard(card);
+              const mineToo = picked && who.some(l => l.user_id === picked);
+              // The whole row takes the tap; its title is the button for keyboards, and the x stays its own.
+              return <div key={card.key} className="swb-job" onClick={e => { if (picked && !(e.target as HTMLElement).closest(".swb-pill button")) void giveTo(card, picked); }}>
+                <button type="button" className="swb-job-title" aria-label={picked ? `Give ${card.title} to ${nameOf(picked)}` : card.title}><span data-no-translate>{card.title}</span></button>
+                <span className="swb-names">
+                  {who.map(l => <span key={l.key} className="swb-pill"><span data-no-translate>{nameOf(l.user_id)}</span>
+                    {!l.started && <button type="button" aria-label={`Take ${nameOf(l.user_id)} off ${card.title}`} onClick={() => void takeOff(l)}><X size={11} aria-hidden="true" /></button>}</span>)}
+                  {picked && !mineToo ? <span className="swb-add" data-no-translate>{`+ ${nameOf(picked)}`}</span> : !who.length && <span className="swb-empty">Nobody yet</span>}
+                </span>
+              </div>;
+            };
+            return <div key={phase} className="swb-card">
+              <div className="swb-card-head"><p className="section-chip">{label}</p><span className="swb-count">{`${column.filter(c => onCard(c).length).length}/${column.length}`}</span></div>
+              {column.length ? <div className="swb-rows">
+                {own.map(row)}
+                {run.length > 0 && <><p className="swb-sub">Running side work</p>{run.map(row)}</>}
+              </div> : <p className="muted text-xs">Nothing set up for this yet (Setup).</p>}
             </div>;
           })}
         </section>

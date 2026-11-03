@@ -836,6 +836,8 @@ const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Sent (\d{1,2}:\d\d ?[AP]M) · changes go out as you make them$/, m => `Enviado ${m[1]} · los cambios salen al momento`],
   [/^(.+) is selected: tap a job\.$/, m => `${m[1]} seleccionado: toca una tarea.`],
   [/^(Servers|S\.A\.s) tonight · (\d+)$/, m => `${m[1] === "Servers" ? "Meseros" : "S.A."} esta noche · ${m[2]}`],
+  [/^(Servers|S\.A\.s) tonight$/, m => `${m[1] === "Servers" ? "Meseros" : "S.A."} esta noche`],
+  [/^(\d+) of (\d+) jobs named$/, m => `${m[1]} de ${m[2]} tareas asignadas`],
   [/^(\d+) jobs?$/, m => `${m[1]} ${m[1] === "1" ? "tarea" : "tareas"}`],
   [/^Give (.+) to (.+)$/, m => `Dar ${m[1]} a ${m[2]}`],
   [/^(\d+) jobs? (?:has|have) no time of the shift yet, so (?:it isn't|they aren't) on the board \(Setup\)$/, m => `${m[1]} ${m[1] === "1" ? "tarea no tiene" : "tareas no tienen"} momento del turno, así que no ${m[1] === "1" ? "está" : "están"} en el tablero (Setup)`],

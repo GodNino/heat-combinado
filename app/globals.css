@@ -3294,3 +3294,52 @@ span.dash-name { text-decoration:none; }
   :root:root:root:root:root:root:root .sw-person-jobs, :root:root:root:root:root:root:root .sw-grip, :root:root:root:root:root:root:root .sw-time { display:none; }
   :root:root:root:root:root:root:root .sw-job { min-height:44px; }
 }
+
+/* Side work Tonight, restyled board (mockup v2): one card per phase with 36px job rows and solid dividers,
+   people with an initial, selected dark; on phones the people become a row of chips. Replaces the look of
+   the .sw-grid board (those rules stay but are no longer used). To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .swb-progress { display:grid; gap:6px; min-width:150px; font-size:12px; color:var(--c-muted); font-variant-numeric:tabular-nums; }
+:root:root:root:root:root:root:root .swb-bar { display:block; height:4px; border-radius:999px; background:var(--c-surface-hover); overflow:hidden; }
+:root:root:root:root:root:root:root .swb-bar i { display:block; height:100%; border-radius:999px; background:var(--c-text); transition:width .2s; }
+:root:root:root:root:root:root:root .swb-grid { display:grid; grid-template-columns:280px minmax(0,1fr); gap:14px; align-items:start; }
+:root:root:root:root:root:root:root .swb-card { display:grid; gap:14px; min-width:0; padding:16px; border:1px solid var(--c-line-5); border-radius:16px; background:var(--c-surface); }
+:root:root:root:root:root:root:root .swb-card-head { display:flex; align-items:center; justify-content:space-between; gap:14px; font-size:13px; }
+:root:root:root:root:root:root:root .swb-card-head .section-chip { margin:0; }
+:root:root:root:root:root:root:root .swb-count, :root:root:root:root:root:root:root .swb-tag { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:11px; font-weight:600; color:var(--c-muted); white-space:nowrap; }
+:root:root:root:root:root:root:root .swb-plist { display:grid; }
+:root:root:root:root:root:root:root .swb-person { display:grid; grid-template-columns:32px minmax(0,1fr) auto; align-items:center; gap:12px; min-height:52px; margin:0 -8px; padding:8px; border:0; border-radius:12px; background:transparent; color:var(--c-text); text-align:left; cursor:pointer; }
+:root:root:root:root:root:root:root .swb-person + .swb-person { border-top:1px solid var(--c-line-5); border-radius:0 0 12px 12px; }
+:root:root:root:root:root:root:root .swb-person[aria-pressed="true"] { background:var(--c-text); color:var(--c-bg); border-radius:12px; border-top-color:transparent; }
+:root:root:root:root:root:root:root .swb-person[aria-pressed="true"] + .swb-person { border-top-color:transparent; }
+:root:root:root:root:root:root:root .swb-av { display:grid; place-items:center; width:32px; height:32px; border-radius:50%; background:var(--c-surface-hover); font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:12px; font-weight:600; }
+:root:root:root:root:root:root:root .swb-person[aria-pressed="true"] .swb-av { background:var(--lime); color:var(--c-on-heat); }
+:root:root:root:root:root:root:root .swb-who { min-width:0; }
+:root:root:root:root:root:root:root .swb-who b { display:block; font-size:14px; font-weight:600; }
+:root:root:root:root:root:root:root .swb-who small { display:block; overflow:hidden; font-size:12px; color:var(--c-muted); white-space:nowrap; text-overflow:ellipsis; }
+:root:root:root:root:root:root:root .swb-person[aria-pressed="true"] small, :root:root:root:root:root:root:root .swb-person[aria-pressed="true"] .swb-tag { color:var(--c-bg); opacity:.75; }
+:root:root:root:root:root:root:root .swb-legend { margin:0; font-size:12px; color:var(--c-muted); }
+:root:root:root:root:root:root:root .swb-phases { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; align-items:start; }
+:root:root:root:root:root:root:root .swb-rows { display:grid; margin:0 -16px -16px; }
+:root:root:root:root:root:root:root .swb-job { display:flex; align-items:center; gap:12px; min-height:36px; padding:4px 16px; border-top:1px solid var(--c-line-5); font-size:13px; }
+:root:root:root:root:root:root:root .swb-rows > .swb-job:first-child { border-top:0; }
+:root:root:root:root:root:root:root .swb-rows > .swb-job:last-child { border-radius:0 0 16px 16px; }
+:root:root:root:root:root:root:root .swb-job-title { flex:1; min-width:0; padding:4px 0; border:0; background:none; color:var(--c-text); font-size:13px; font-weight:600; text-align:left; overflow-wrap:anywhere; cursor:default; }
+:root:root:root:root:root:root:root .swb-names { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; }
+:root:root:root:root:root:root:root .swb-pill { display:inline-flex; align-items:center; gap:4px; height:22px; padding:0 8px; border-radius:999px; background:var(--c-text); color:var(--c-bg); font-size:11px; font-weight:600; white-space:nowrap; }
+:root:root:root:root:root:root:root .swb-pill:has(button) { padding-right:4px; }
+:root:root:root:root:root:root:root .swb-pill button { display:grid; place-items:center; width:16px; height:16px; padding:0; border:0; border-radius:50%; background:none; color:inherit; opacity:.75; cursor:pointer; }
+:root:root:root:root:root:root:root .swb-empty { font-size:12px; color:var(--c-muted); white-space:nowrap; }
+:root:root:root:root:root:root:root .swb-add { font-size:12px; font-weight:600; color:var(--c-text); white-space:nowrap; }
+:root:root:root:root:root:root:root .swb-sub { margin:0; padding:14px 16px 4px; border-top:1px solid var(--c-line-5); font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--c-muted); }
+:root:root:root:root:root:root:root .swb-phases.ready .swb-job, :root:root:root:root:root:root:root .swb-phases.ready .swb-job-title { cursor:pointer; }
+:root:root:root:root:root:root:root .swb-phases.ready .swb-job:hover { background:var(--c-surface-hover); }
+@media (max-width: 860px) {
+  :root:root:root:root:root:root:root .swb-grid, :root:root:root:root:root:root:root .swb-phases { grid-template-columns:minmax(0,1fr); }
+  :root:root:root:root:root:root:root .swb-plist { display:flex; gap:6px; overflow-x:auto; margin:0 -16px; padding:0 16px; scrollbar-width:none; }
+  :root:root:root:root:root:root:root .swb-person, :root:root:root:root:root:root:root .swb-person + .swb-person { flex:none; grid-template-columns:28px auto auto; gap:8px; min-height:44px; margin:0; padding:6px 12px 6px 6px; border:1px solid var(--c-line-5); border-radius:999px; }
+  :root:root:root:root:root:root:root .swb-person[aria-pressed="true"] { border-color:var(--c-text); border-radius:999px; }
+  :root:root:root:root:root:root:root .swb-who small, :root:root:root:root:root:root:root .swb-legend { display:none; }
+  :root:root:root:root:root:root:root .swb-av { width:28px; height:28px; }
+  :root:root:root:root:root:root:root .swb-job { min-height:44px; }
+}
+@media (prefers-reduced-motion: reduce) { :root:root:root:root:root:root:root .swb-bar i { transition:none; } }
