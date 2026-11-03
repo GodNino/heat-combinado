@@ -10,11 +10,11 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
-export type TourView = "home" | "library" | "allergy" | "preshift" | "team" | "dashboard" | "progress" | "reports" | "schedule";
+export type TourView = "home" | "library" | "allergy" | "preshift" | "team" | "dashboard" | "progress" | "reports" | "schedule" | "checklists" | "tutor" | "assistant";
 type Step = {title: string; body: string; view?: TourView; target?: string; cta?: {label: string; href: string}};
 
 // Bump when the tour changes enough that everyone should see it again.
-export const TOUR_VERSION = 2;
+export const TOUR_VERSION = 3;
 const STORAGE_KEY = "heat-tour-seen";
 
 export function tourSeen(user: User) {
@@ -39,9 +39,11 @@ export function tourSteps({manager, demo, restaurantName}: {manager: boolean; de
   if (!manager) return [
     {title: "Welcome to HEAT", body: `A quick tour of how to get ready for service at ${restaurantName}. It takes about a minute.`},
     {title: "Your home", body: "Your next shifts, tonight's pre-shift, what to study next and your progress, all on one screen.", view: "home", target: '[aria-label="Your week"]'},
+    {title: "Your side work", body: "When your manager sends tonight's side work, it shows here under My shift: opening, during the shift and closing, with who you work with. Tap Open my side work to tick each job as you finish it.", view: "home", target: '[aria-label="My shift"]'},
     {title: "Your schedule", body: "My shifts shows your week. Can't make one? Release it, offer it to someone or swap it; your manager approves. Mark when you can't work in My availability, and ask for days off in Time off.", view: "schedule", target: '[role="group"][aria-label="Schedule"]'},
     {title: "The menu", body: "Every dish, cocktail and wine. Tap one to see its card: ingredients, allergens and how it's served.", view: "library", target: ".menu-list > .compact-menu-row:first-child"},
     {title: "Quiz yourself", body: "Every card ends with QUIZ ME: a few questions, checked as you answer. 80% means you know it."},
+    {title: "Practice with the tutor", body: "The tutor asks you about the menu like a guest or a manager would, and tells you kindly what was missing: an ingredient, an allergen, how to sell it. It remembers what you got wrong and brings it back. Open it from the menu, or tap Practice with the tutor on any card.", view: "tutor", target: ".tutor"},
     {title: "Allergy check", body: "Pick a guest's allergies to see what to avoid and what to confirm with the kitchen. HEAT never calls a dish safe: the kitchen always confirms.", view: "allergy", target: ".allergy-picker"},
     {title: "Your progress", body: "What you've covered, how accurate you are and what's worth another look.", view: "progress", target: '[aria-label="Your learning progress"]'},
     replay,
@@ -53,12 +55,19 @@ export function tourSteps({manager, demo, restaurantName}: {manager: boolean; de
       : `A short tour of the things you'll use every day at ${restaurantName}. Skip it now and replay it any time.`},
     {title: "Everything is here", body: "The menu takes you to the schedule, the library, the allergy check, pre-shift, side work, your team and more.", view: "home", target: '[data-tour="nav"]'},
     {title: "Today at a glance", body: "Who's working, the hours scheduled and the requests waiting for you, then whether pre-shift and side work are out yet. Tap a row to go straight to it.", view: "dashboard", target: ".today-status"},
+    {title: "Ask the assistant", body: "Ask in your own words: who works tonight, who is close to overtime, who hasn't studied the new dishes, what the last shift reports said. When it can change something for you, like a shift, it shows you the change first and only does it when you confirm.", view: "assistant", target: ".assistant"},
     {title: "Add a dish", body: "Every dish, cocktail and wine lives in the library. Tap Add menu item: a name, ingredients, allergens and a photo is all it takes.", view: "library", target: '[data-tour="add-item"]'},
     {title: "Open any dish", body: "Tap a dish to see the card your team studies, with a QUIZ ME button at the end. The quiz writes itself from the card.", view: "library", target: ".menu-list > .compact-menu-row:first-child"},
+    {title: "The tutor", body: "Your team practises with the tutor: it quizzes them on every card, story and standard, corrects them kindly, and practises selling. It only teaches allergens from the card. Each card has Practice with the tutor.", view: "tutor", target: ".tutor"},
     {title: "Allergy check", body: "Pick a guest's allergies to see what to avoid, what to confirm with the kitchen and what has no listed match. HEAT never calls a dish safe.", view: "allergy", target: ".allergy-picker"},
     {title: "Pre-shift", body: "Before service, post tonight's 86 list, the dishes to push and a note. Send it to everyone, or only to who's working today: it reaches their phones.", view: "preshift"},
     {title: "Build the week", body: "Drag shifts between days and people, copy last week, and see hours, overtime and conflicts as you go. Publish and everyone gets their shifts; Print gives you a sheet for the wall.", view: "schedule", target: ".sched-grid"},
     {title: "Requests and time off", body: "Releases, swaps and covers always wait for a manager, with overtime flagged before you approve. A floor manager runs the front of house; the head chef or sous chef runs the kitchen.", view: "schedule", target: '[role="group"][aria-label="Schedule"]'},
+    {title: "Side work: Tonight", body: "Pick the day and the service, like Dinner. Your servers from the published schedule are on the left, tonight's jobs on the right: opening, during the shift and closing.", view: "checklists", target: ".swb-grid"},
+    {title: "Tap a name, then a job", body: "Tap a server: they turn dark. Then tap a job and it's theirs. Keep tapping jobs to give them more. The x takes someone off a job. © marks the closer, whoever comes in last.", view: "checklists", target: ".swb-people"},
+    {title: "Servers and S.A.s", body: "Switch to S.A.s to give out theirs the same way. During the shift is the same work for both: the running side work list from Setup shows there, in both tabs.", view: "checklists", target: '[role="group"][aria-label="Team"]'},
+    {title: "Send it to the team", body: "The bar shows how many jobs have a name. When you're done, tap Send to the team: each person sees their side work on their phone. After that, every change goes out as you make it.", view: "checklists", target: ".sw-head-actions"},
+    {title: "Side work setup", body: "Setup is where the jobs live: opening, during the shift and closing, for servers and S.A.s, and the running side work list, most important first. Nothing is handed out on its own; you give it out on Tonight.", view: "checklists"},
     {title: "Invite your team", body: "Tap Invite employees, copy the link and send it. Pick a position under FOH or BOH; whoever opens the link joins this restaurant, ready to study. Each person's access decides what they can change, schedules included.", view: "team", target: '[data-tour="invite"]'},
     {title: "See how it's going", body: "Labor shows hours and overtime by person and position; Service, the covers, sales and issues from shift reports; Training, who knows the menu. Each next to the period before.", view: "dashboard", target: '[aria-label="Dashboard view"]'},
     {title: "End-of-shift report", body: "After service, send the night's report from here. HEAT fills in the 86 list and checklists; you add covers, issues and notes, and it goes to the GM, managers and owners. Reports can be edited, printed or deleted, and show who wrote and changed them.", view: "reports", target: '[data-tour="nav-reports"]'},
