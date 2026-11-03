@@ -3440,3 +3440,16 @@ span.dash-name { text-decoration:none; }
   :root:root:root:root:root:root:root .mobile-drawer { position:fixed; left:0; right:auto; width:min(360px, 85vw); top:var(--header-h, 64px); bottom:0; height:auto; z-index:25; overflow-y:auto; overscroll-behavior:contain; border-right:1px solid var(--c-line-5); box-shadow:0 18px 40px rgb(0 0 0 / .35); }
   :root:root:root:root:root:root:root .mobile-drawer.hidden { display:none; }
 }
+
+/* Sections map: an outline hugs each section's tables, and grows around the tables while they are being
+   picked (lime, the selected state). Only the outer edge shows; inside, a soft fill. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .fs-outline { pointer-events:none; }
+:root:root:root:root:root:root:root .fs-outline-edge rect { fill:var(--c-text); }
+:root:root:root:root:root:root:root .fs-outline-edge line { stroke:var(--c-text); }
+:root:root:root:root:root:root:root .fs-outline-fill rect { fill:var(--c-surface-2); }
+:root:root:root:root:root:root:root .fs-outline-fill line { stroke:var(--c-surface-2); }
+:root:root:root:root:root:root:root .fs-outline.sel .fs-outline-fill rect { fill:var(--c-surface-hover); }
+:root:root:root:root:root:root:root .fs-outline.sel .fs-outline-fill line { stroke:var(--c-surface-hover); }
+:root:root:root:root:root:root:root .fs-outline.drawing .fs-outline-fill rect { fill:var(--c-heat-bg); }
+:root:root:root:root:root:root:root .fs-outline.drawing .fs-outline-fill line { stroke:var(--c-heat-bg); }
+:root:root:root:root:root:root:root .fs-table:focus:not(:focus-visible) { outline:none; }
