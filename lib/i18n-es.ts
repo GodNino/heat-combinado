@@ -721,6 +721,15 @@ const PHRASES: Record<string, string> = {
   "Confirm all guest allergies and preparation with the kitchen. Notes marked with ! indicate cross-contamination (CC).": "Confirma todas las alergias del cliente y la preparación con cocina. Las notas con ! indican contaminación cruzada (CC).",
   "No guides yet. Open a word under Words, add the full write-up, and it appears here for your team to browse.": "Todavía no hay guías. Abre una palabra en Palabras, escribe la versión completa y aparece aquí para tu equipo.",
   "The words your menu uses, in your own wording. A word shows on every card that mentions it. Write one up properly and it becomes a guide your team can browse before service.": "Las palabras de tu menú, con tus propias palabras. Una palabra aparece en cada ficha que la menciona. Escríbela completa y se vuelve una guía que tu equipo puede leer antes del servicio.",
+  // ── Side work board ──
+  "Side work · Tonight": "Side work · Esta noche", "No jobs yet": "Sin tareas todavía", "Drop here": "Suelta aquí", "Drag a name here": "Arrastra un nombre aquí",
+  "Loading tonight…": "Cargando esta noche…", "Drag a name onto a job. On a phone: tap the name, then the job.": "Arrastra un nombre a una tarea. En el móvil: toca el nombre y luego la tarea.",
+  "© closes: whoever comes in last. A name can go on several jobs.": "© cierra quien entra último. Un nombre puede ir a varias tareas.",
+  "No servers on the published schedule for this service.": "No hay meseros en el horario publicado para este servicio.", "No S.A.s on the published schedule for this service.": "No hay S.A. en el horario publicado para este servicio.",
+  "Nothing set up for this yet (Setup).": "Todavía no hay nada aquí (Setup).", "Sent. Everyone sees their side work on their phone.": "Enviado. Cada persona ve su sidework en su teléfono.",
+  "Server during the shift": "Meseros durante el turno", "What servers keep an eye on in service.": "Lo que los meseros vigilan durante el servicio.",
+  "S.A. during the shift": "S.A. durante el turno", "What S.A.s keep up in service.": "Lo que los S.A. mantienen durante el servicio.",
+  "During-the-shift side work needs database update 052.": "El sidework durante el turno necesita la actualización 052 de la base de datos.",
   // ── Landing: AI tutor, side work, manager assistant ──
   "AI tutor": "Tutor con IA", "that knows your menu": "que conoce tu menú", "Manager assistant": "Asistente para managers",
   "One app for what your team needs to know and what your managers need to run: the menu, allergens, an AI tutor, the schedule, side work, pre-shift and the end-of-shift report, with an assistant that knows your restaurant.": "Una app para lo que tu equipo necesita saber y lo que tus managers necesitan llevar: el menú, los alérgenos, un tutor con IA, el horario, el sidework, el pre-shift y el reporte de cierre, con un asistente que conoce tu restaurante.",
@@ -823,6 +832,13 @@ const lower = (text: string) => (translateCore(text) ?? text).toLowerCase();
 
 // Sentences with a name or a number inside: the automatic quiz's questions, and a few counters.
 const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/^(\d+) of (\d+) jobs named · (Servers|S\.A\.s)$/, m => `${m[1]} de ${m[2]} tareas con nombre · ${m[3] === "Servers" ? "Meseros" : "S.A."}`],
+  [/^Sent (\d{1,2}:\d\d ?[AP]M) · changes go out as you make them$/, m => `Enviado ${m[1]} · los cambios salen al momento`],
+  [/^(.+) is picked: tap or drop on a job\.$/, m => `${m[1]} seleccionado: toca o suelta en una tarea.`],
+  [/^(Servers|S\.A\.s) tonight · (\d+)$/, m => `${m[1] === "Servers" ? "Meseros" : "S.A."} esta noche · ${m[2]}`],
+  [/^(\d+) jobs?$/, m => `${m[1]} ${m[1] === "1" ? "tarea" : "tareas"}`],
+  [/^Give (.+) to (.+)$/, m => `Dar ${m[1]} a ${m[2]}`],
+  [/^(\d+) jobs? (?:has|have) no time of the shift yet, so (?:it isn't|they aren't) on the board \(Setup\)$/, m => `${m[1]} ${m[1] === "1" ? "tarea no tiene" : "tareas no tienen"} momento del turno, así que no ${m[1] === "1" ? "está" : "están"} en el tablero (Setup)`],
   [/^Assigned to (\d+) (?:person|people)$/, m => `Asignado a ${m[1]} ${m[1] === "1" ? "persona" : "personas"}`],
   [/^(\d+) cards? to review$/, m => `${m[1]} ${m[1] === "1" ? "ficha" : "fichas"} por repasar`],
   [/^(\d+) cards?, about (\d+) minutes\. I ask, correct you and remember what you miss for next time\.$/, m => `${m[1]} ${m[1] === "1" ? "ficha" : "fichas"}, unos ${m[2]} minutos. Te pregunto, te corrijo y recuerdo lo que fallas para la próxima vez.`],
