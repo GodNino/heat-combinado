@@ -23,7 +23,7 @@ type Section = {n: number; name: string; tables: string[]; server: Person | null
 const POSTS = ["Hot runner", "Cold runner"];
 const isPost = (s: Section) => s.n === 0;
 // Half the width and half the height of each shape.
-const dims = (shape: Table["shape"]): [number, number] => shape === "c" ? [11, 11] : shape === "r" ? [20, 20] : shape === "w" ? [40, 22] : [24, 24];
+const dims = (shape: Table["shape"]): [number, number] => shape === "c" ? [15, 15] : shape === "r" ? [26, 26] : shape === "w" ? [50, 28] : [30, 30];
 const EMPTY_MAP: FloorLayout = {width: 1000, height: 640, walls: [], labels: [], tables: []};
 
 // One table on the map: its shape and its number.
@@ -33,30 +33,29 @@ function TableMark({t}: {t: Table}) {
     {t.label && <text x={t.x} y={t.y}>{t.label}</text>}</>;
 }
 
-// Where a section's tag goes: the free place nearest the middle of its tables, so it covers no table and no other tag.
-function placeTag(layout: FloorLayout, ts: Table[], w: number, taken: [number, number, number, number][]): [number, number] {
+// Where a section's tag goes: the place nearest the middle of its tables that covers no table number, no
+// section badge and no other tag (it may cover the edge of a table).
+function placeTag(layout: FloorLayout, ts: Table[], w: number, taken: [number, number, number, number][], others: Table[] = []): [number, number] {
   const cx = ts.reduce((a, t) => a + t.x, 0) / ts.length, cy = ts.reduce((a, t) => a + t.y, 0) / ts.length;
-  const boxes: [number, number, number, number][] = [...layout.tables.map(t => { const [hw, hh] = dims(t.shape); return [t.x - hw - 4, t.y - hh - 4, t.x + hw + 4, t.y + hh + 4] as [number, number, number, number]; }), ...taken];
-  const free = (x: number, y: number) => x - w / 2 >= 0 && x + w / 2 <= layout.width && y - 19 >= 0 && y + 19 <= layout.height
-    && boxes.every(([a, b, c, d]) => x + w / 2 < a || x - w / 2 > c || y + 19 < b || y - 19 > d);
+  const boxes: [number, number, number, number][] = [...layout.tables.flatMap(t => {
+    const [hw, hh] = dims(t.shape), c = t.shape === "r" || t.shape === "c" ? 0.7 : 1, bx = t.x + hw * c, by = t.y - hh * c;
+    const number: [number, number, number, number] = t.shape === "c" ? [t.x - hw, t.y - hh, t.x + hw, t.y + hh] : [t.x - 16, t.y - 10, t.x + 16, t.y + 10];
+    return [number, [bx - 11, by - 11, bx + 11, by + 11] as [number, number, number, number]];
+  }), ...taken];
+  const free = (x: number, y: number) => x - w / 2 >= 0 && x + w / 2 <= layout.width && y - 13 >= 0 && y + 13 <= layout.height
+    && boxes.every(([a, b, c, d]) => x + w / 2 < a || x - w / 2 > c || y + 13 < b || y - 13 > d);
+  // ...and closer to one of its own tables than to any other table, so it reads as theirs.
+  const near = (x: number, y: number, list: Table[]) => Math.min(...list.map(t => (t.x - x) ** 2 + (t.y - y) ** 2));
+  const ours = (x: number, y: number) => !others.length || near(x, y, ts) < near(x, y, others);
   let best: [number, number] = [cx, cy], bestD = Infinity;
   for (let dx = -200; dx <= 200; dx += 10) for (let dy = -160; dy <= 160; dy += 10) {
     const d = dx * dx + dy * dy;
-    if (d < bestD && free(cx + dx, cy + dy)) { bestD = d; best = [cx + dx, cy + dy]; }
+    if (d < bestD && free(cx + dx, cy + dy) && ours(cx + dx, cy + dy)) { bestD = d; best = [cx + dx, cy + dy]; }
   }
   return best;
 }
 const clock = (iso: string) => new Date(iso).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"});
 const dayBefore = (day: string, days: number) => { const d = new Date(`${day}T12:00:00`); d.setDate(d.getDate() - days); return localDate(d); };
-
-function hull(points: [number, number][]) {
-  const pts = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  const cross = (o: number[], a: number[], b: number[]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-  const lower: [number, number][] = [], upper: [number, number][] = [];
-  for (const p of pts) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
-  for (const p of [...pts].reverse()) { while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
-  return lower.slice(0, -1).concat(upper.slice(0, -1));
-}
 
 // Where a section's tables are, in words: their numbers, then the counters by name.
 function whereOf(layout: FloorLayout, ids: string[]) {
@@ -190,15 +189,15 @@ export function FloorSections({restaurantId, day, service, people}: {restaurantI
   if (!layout) return <><Notice text={error} error />{!error && <div className="swb-card"><p className="muted text-sm">This restaurant has no floor map yet. Place your tables once, then you draw tonight&apos;s sections on it here.</p>
     <div><button type="button" className="btn secondary" onClick={() => setEditing(true)}>Create the floor map</button></div></div>}</>;
 
-  // Each section's outline and tag. The tag sits in the free spot nearest its tables.
+  // Each section's tag, in the free spot nearest its tables. (No outline: each table carries its section's number.)
   const placed: [number, number, number, number][] = [];
-  const tagWidth = (s: Section) => Math.max((s.server?.name ?? "Pick-up").length * 8 + 44, (s.sas.map(h => h.name).join(" · ") || "No S.A.").length * 7 + 20);
+  // The tag is one line, the section's number and its server; the S.A.s are in the list next to the map.
+  const tagWidth = (s: Section) => (s.server?.name ?? "Pick-up").length * 8 + 44;
   const shapes = onMap.map(s => ({s, ts: s.tables.map(id => layout.tables.find(t => t.id === id)).filter((t): t is Table => !!t)})).filter(x => x.ts.length).map(({s, ts}) => {
-    const pts = ts.flatMap(t => { const [w, h] = dims(t.shape); return [[t.x - w - 16, t.y - h - 16], [t.x + w + 16, t.y - h - 16], [t.x + w + 16, t.y + h + 16], [t.x - w - 16, t.y + h + 16]] as [number, number][]; });
-    const h = hull(pts);
-    const w = tagWidth(s), spot = placeTag(layout, ts, w, placed);
-    placed.push([spot[0] - w / 2 - 4, spot[1] - 23, spot[0] + w / 2 + 4, spot[1] + 23]);
-    return {s, d: h.length ? `M${h.map(p => p.join(" ")).join(" L")} Z` : "", spot};
+    const others = layout.tables.filter(t => !s.tables.includes(t.id));
+    const w = tagWidth(s), spot = placeTag(layout, ts, w, placed, others);
+    placed.push([spot[0] - w / 2 - 4, spot[1] - 17, spot[0] + w / 2 + 4, spot[1] + 17]);
+    return {s, spot};
   });
 
   return <><Notice text={error} error /><div className="swb-grid fs-grid">
@@ -208,22 +207,25 @@ export function FloorSections({restaurantId, day, service, people}: {restaurantI
         <svg viewBox={`0 0 ${layout.width} ${layout.height}`} role="img" aria-label="Floor map with tonight's sections">
           {layout.walls.map((d, i) => <path key={i} className="fs-wall" d={d} />)}
           {layout.labels.map((l, i) => <text key={i} className="fs-area" x={l.x} y={l.y}>{l.text}</text>)}
-          {shapes.map(({s, d}) => d && <path key={s.n} className={`fs-hull${selected === String(s.n) && !drawing.size ? " sel" : ""}`} d={d} onClick={() => { if (!drawing.size) setSelected(String(s.n)); }} />)}
           {layout.tables.map(t => {
-            const cls = drawing.has(t.id) ? " drawing" : sectionOf(t.id) ? " in" : "";
+            const own = sectionOf(t.id);
+            const cls = drawing.has(t.id) ? " drawing" : own ? (selected === String(own.n) ? " in sel" : " in") : "";
             return <g key={t.id} className={`fs-table${cls}`} role="button" tabIndex={0} aria-label={`Table ${t.label || t.group || t.id}`} aria-pressed={drawing.has(t.id)}
               onClick={() => tapTable(t.id)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tapTable(t.id); } }}>
               <TableMark t={t} />
+              {/* Which section the table is in: a small number on its corner. */}
+              {own && !drawing.has(t.id) && (() => { const [w, h] = dims(t.shape); const c = t.shape === "r" || t.shape === "c" ? 0.7 : 1;
+                return <g className="fs-badge" data-no-translate><circle cx={t.x + w * c} cy={t.y - h * c} r={10} /><text x={t.x + w * c} y={t.y - h * c}>{own.n}</text></g>; })()}
             </g>;
           })}
           {shapes.map(({s, spot: [x, y]}) => {
             const name = s.server?.name ?? "Pick-up", helpers = s.sas.map(h => h.name).join(" · ") || "No S.A.";
             const w = tagWidth(s);
             return <g key={`tag-${s.n}`} className="fs-tag" onClick={() => { if (!drawing.size) setSelected(String(s.n)); }} data-no-translate>
-              <rect x={x - w / 2} y={y - 19} width={w} height={38} rx={10} />
-              <circle cx={x - w / 2 + 16} cy={y - 6} r={10} /><text className="fs-tag-n" x={x - w / 2 + 16} y={y - 6}>{s.n}</text>
-              <text className="fs-tag-name" x={x - w / 2 + 32} y={y - 6}>{name}</text>
-              <text className="fs-tag-sa" x={x - w / 2 + 10} y={y + 10}>{helpers}</text>
+              <title>{helpers}</title>
+              <rect x={x - w / 2} y={y - 13} width={w} height={26} rx={13} />
+              <circle cx={x - w / 2 + 13} cy={y} r={9} /><text className="fs-tag-n" x={x - w / 2 + 13} y={y}>{s.n}</text>
+              <text className="fs-tag-name" x={x - w / 2 + 28} y={y}>{name}</text>
             </g>;
           })}
         </svg>
@@ -290,7 +292,11 @@ function MapEditor({start, onCancel, onSave}: {start: FloorLayout; onCancel: () 
   const [picked, setPicked] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const svg = useRef<SVGSVGElement>(null);
-  const drag = useRef<{id: string; dx: number; dy: number} | null>(null);
+  // A press on a table: a tap opens it to edit; holding and moving drags it.
+  const drag = useRef<{id: string; dx: number; dy: number; sx: number; sy: number; moved: boolean} | null>(null);
+  const numberInput = useRef<HTMLInputElement>(null);
+  const [focusNumber, setFocusNumber] = useState(0);
+  useEffect(() => { if (focusNumber) { numberInput.current?.focus(); numberInput.current?.select(); } }, [focusNumber]);
   const table = map.tables.find(t => t.id === picked) ?? null;
   const snap = (v: number) => Math.round(v / 5) * 5;
 
@@ -304,14 +310,19 @@ function MapEditor({start, onCancel, onSave}: {start: FloorLayout; onCancel: () 
 
   function startDrag(e: ReactPointerEvent, t: Table) {
     e.preventDefault();
-    setPicked(t.id);
     const p = toMap(e);
-    drag.current = {id: t.id, dx: p.x - t.x, dy: p.y - t.y};
-    svg.current?.setPointerCapture(e.pointerId);
+    drag.current = {id: t.id, dx: p.x - t.x, dy: p.y - t.y, sx: e.clientX, sy: e.clientY, moved: false};
   }
   function moveDrag(e: ReactPointerEvent) {
     const d = drag.current;
     if (!d) return;
+    // Only a real move (more than a few pixels) starts dragging; a tap stays a tap.
+    if (!d.moved) {
+      if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) return;
+      d.moved = true;
+      setPicked(d.id);
+      svg.current?.setPointerCapture(e.pointerId);
+    }
     const p = toMap(e), t = map.tables.find(x => x.id === d.id);
     if (!t) return;
     const [w, h] = dims(t.shape);
@@ -342,16 +353,16 @@ function MapEditor({start, onCancel, onSave}: {start: FloorLayout; onCancel: () 
       <div className="swb-card-head"><p className="section-chip">Edit map</p><span className="muted text-xs">{`${map.tables.length} ${map.tables.length === 1 ? "table" : "tables"}`}</span></div>
       <div className="fs-scroll">
         <svg ref={svg} className="fs-edit" viewBox={`0 0 ${map.width} ${map.height}`} role="img" aria-label="Floor map, editing"
-          onPointerMove={moveDrag} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}
-          onClick={e => { if (e.target === svg.current) setPicked(null); }}>
+          onPointerMove={moveDrag} onPointerCancel={() => { drag.current = null; }}
+          onPointerUp={() => { const d = drag.current; drag.current = null; if (d && !d.moved) { setPicked(d.id); setFocusNumber(n => n + 1); } }}>
           <defs><pattern id="fs-dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" className="fs-dot" /></pattern></defs>
-          <rect className="fs-grid-bg" x="0" y="0" width={map.width} height={map.height} fill="url(#fs-dots)" onClick={() => setPicked(null)} />
+          <rect className="fs-grid-bg" x="0" y="0" width={map.width} height={map.height} fill="url(#fs-dots)" onPointerDown={() => setPicked(null)} />
           {map.tables.map(t => <g key={t.id} className={`fs-table fs-move${picked === t.id ? " picked" : ""}`} role="button" tabIndex={0} aria-label={`Table ${t.label || t.group || t.id}`} aria-pressed={picked === t.id}
             onPointerDown={e => startDrag(e, t)}
             onKeyDown={e => {
               const step = e.shiftKey ? 20 : 5, moves: Record<string, [number, number]> = {ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step]};
               if (moves[e.key]) { e.preventDefault(); change(t.id, {x: t.x + moves[e.key][0], y: t.y + moves[e.key][1]}); }
-              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPicked(t.id); }
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPicked(t.id); setFocusNumber(n => n + 1); }
             }}>
             <TableMark t={t} />
           </g>)}
@@ -373,7 +384,7 @@ function MapEditor({start, onCancel, onSave}: {start: FloorLayout; onCancel: () 
           {table && <button type="button" className="icon-chip" aria-label="Delete table" title="Delete table" onClick={() => removeTable(table.id)}><Trash2 size={14} /></button>}</div>
         {!table ? <p className="muted text-sm">Tap a table on the map to change it, or add a new one.</p> : <>
           <label className="fs-people"><span className="fs-plabel">Number</span>
-            <input className="fs-input" value={table.label} maxLength={8} inputMode="text" onChange={e => change(table.id, {label: e.target.value})} placeholder="Leave empty for a counter seat" /></label>
+            <input ref={numberInput} className="fs-input" value={table.label} maxLength={8} inputMode="text" onChange={e => change(table.id, {label: e.target.value})} placeholder="Leave empty for a counter seat" /></label>
           <div className="fs-people"><span className="fs-plabel">Shape</span>
             <div className="fs-chips">
               {([["r", "Round"], ["s", "Square"], ["w", "Long"], ["c", "Seat"]] as [Table["shape"], string][]).map(([shape, name]) =>

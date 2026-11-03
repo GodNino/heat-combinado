@@ -3414,3 +3414,13 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .fs-input { width:100%; height:44px; padding:0 16px; border:1px solid var(--c-line-5); border-radius:999px; background:var(--c-surface); color:var(--c-text); font-size:16px; }
 :root:root:root:root:root:root:root .fs-input:focus { outline:2px solid var(--c-text); outline-offset:1px; }
 :root:root:root:root:root:root:root .fs-actions .btn { display:inline-flex; align-items:center; gap:6px; }
+
+/* Sections map, easier to read: bigger table numbers, no outline around a section (each table carries its
+   section's number on a small corner badge), and the picked section's tables turn dark. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .fs-table text { font-size:13px; }
+:root:root:root:root:root:root:root .fs-table.in.sel rect, :root:root:root:root:root:root:root .fs-table.in.sel circle { fill:var(--c-text); }
+:root:root:root:root:root:root:root .fs-table.in.sel > text { fill:var(--c-bg); }
+:root:root:root:root:root:root:root .fs-table.in .fs-badge circle { fill:var(--c-text); stroke:var(--c-surface); stroke-width:2; }
+:root:root:root:root:root:root:root .fs-table.in .fs-badge text { font-size:11px; font-weight:700; fill:var(--c-bg); }
+:root:root:root:root:root:root:root .fs-table.in.sel .fs-badge circle { fill:var(--lime); stroke:var(--c-text); }
+:root:root:root:root:root:root:root .fs-table.in.sel .fs-badge text { fill:var(--c-on-heat); }
