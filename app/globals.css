@@ -3424,3 +3424,9 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .fs-table.in .fs-badge text { font-size:11px; font-weight:700; fill:var(--c-bg); }
 :root:root:root:root:root:root:root .fs-table.in.sel .fs-badge circle { fill:var(--lime); stroke:var(--c-text); }
 :root:root:root:root:root:root:root .fs-table.in.sel .fs-badge text { fill:var(--c-on-heat); }
+
+/* Sections map: the bar and the host stand, drawn for reference (they are never in a section), with their
+   name in small caps. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .fs-table .fs-fixture rect { fill:var(--c-surface-hover); stroke:var(--c-muted); stroke-width:1.5; }
+:root:root:root:root:root:root:root .fs-table .fs-fixture text { font-size:11px; letter-spacing:.08em; fill:var(--c-muted); }
+:root:root:root:root:root:root:root .fs-map .fs-table:has(.fs-fixture) { cursor:default; }

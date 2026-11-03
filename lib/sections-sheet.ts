@@ -7,7 +7,8 @@
 // (where each name goes is the same spot as on screen); this file only lays it out.
 import { Pdf, Sheet, measure, wrap, type SheetHeader } from "./pdf.ts";
 
-export type SectionsSheetTable = {label: string; x: number; y: number; round: boolean; hw: number; hh: number; section: number | null};
+// fixture: the bar or the host stand, drawn for reference with its name.
+export type SectionsSheetTable = {label: string; x: number; y: number; round: boolean; hw: number; hh: number; section: number | null; fixture?: boolean};
 export type SectionsSheetInput = {
   /** "Tuesday, November 3 · Dinner". */
   title: string;
@@ -50,6 +51,13 @@ export function plainSectionsSheet(input: SectionsSheetInput, header: SheetHeade
   const X = (x: number) => left + (x - minX) * scale, Y = (y: number) => top + 4 + (y - minY) * scale;
 
   for (const t of input.tables) {
+    if (t.fixture) {
+      pdf.fill(X(t.x - t.hw), Y(t.y - t.hh), 2 * t.hw * scale, 2 * t.hh * scale, 0.93);
+      pdf.stroke(X(t.x - t.hw), Y(t.y - t.hh), 2 * t.hw * scale, 2 * t.hh * scale, 0.35, 1);
+      const size = 7, name = t.label.toUpperCase();
+      if (t.hw >= t.hh || measure(name, "bold", size) < 2 * t.hw * scale) pdf.text(name, X(t.x) - measure(name, "bold", size) / 2, Y(t.y) + 2.5, "bold", size, 0.35, 0.6);
+      continue;
+    }
     const shade = t.section ? SHADE : 1;
     if (t.round) pdf.circle(X(t.x), Y(t.y), t.hw * scale, shade, LINE, 1.2);
     else { pdf.fill(X(t.x - t.hw), Y(t.y - t.hh), 2 * t.hw * scale, 2 * t.hh * scale, shade); pdf.stroke(X(t.x - t.hw), Y(t.y - t.hh), 2 * t.hw * scale, 2 * t.hh * scale, LINE, 1.2); }
