@@ -302,6 +302,18 @@ export class Pdf {
       `${strokeInk(gray)} ${n2(lineWidth)} w ${n2(x)} ${n2(this.height - y - h)} ${n2(w)} ${n2(h)} re S 0 G\n`;
   }
 
+  /** A circle, filled and/or outlined (four Bezier arcs). Pass null to skip the fill or the line. */
+  circle(cx: number, cy: number, r: number, fill: Ink | null, line: Ink | null = null, lineWidth = 0.7): void {
+    const k = 0.5523 * r, y = this.height - cy;
+    const path = `${n2(cx + r)} ${n2(y)} m ` +
+      `${n2(cx + r)} ${n2(y + k)} ${n2(cx + k)} ${n2(y + r)} ${n2(cx)} ${n2(y + r)} c ` +
+      `${n2(cx - k)} ${n2(y + r)} ${n2(cx - r)} ${n2(y + k)} ${n2(cx - r)} ${n2(y)} c ` +
+      `${n2(cx - r)} ${n2(y - k)} ${n2(cx - k)} ${n2(y - r)} ${n2(cx)} ${n2(y - r)} c ` +
+      `${n2(cx + k)} ${n2(y - r)} ${n2(cx + r)} ${n2(y - k)} ${n2(cx + r)} ${n2(y)} c `;
+    const paint = fill !== null && line !== null ? "B" : fill !== null ? "f" : "S";
+    this.current += `${fill !== null ? `${fillInk(fill)} ` : ""}${line !== null ? `${strokeInk(line)} ${n2(lineWidth)} w ` : ""}${path}${paint} 0 g 0 G\n`;
+  }
+
   image(jpeg: Jpeg, x: number, y: number, w: number, h: number): void {
     let index = this.images.indexOf(jpeg);
     if (index < 0) { this.images.push(jpeg); index = this.images.length - 1; }

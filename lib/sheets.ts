@@ -22,6 +22,7 @@ import { contentTypeOf, CONTENT_LABELS } from "./categories.ts";
 import { plainScheduleSheet, type ScheduleSheetInput } from "./schedule-sheet.ts";
 import { plainShiftReportSheet, type ShiftReportSheetInput } from "./plain-sheets.ts";
 import { plainLaborSheet, type LaborSheetInput } from "./labor-sheet.ts";
+import { plainSectionsSheet, type SectionsSheetInput } from "./sections-sheet.ts";
 
 /* ---------------------------------------------------------------- shared --- */
 
@@ -239,5 +240,14 @@ export function laborSheet(input: LaborSheetInput, context: SheetContext): Print
   return {
     filename: `${slug(context.restaurant)}-labor${input.person ? `-${slug(input.person)}` : ""}-${input.start}${input.end === input.start ? "" : `-to-${input.end}`}.pdf`,
     bytes: plainLaborSheet(input, header(context, "Labor")),
+  };
+}
+
+/* -------------------------------------------------------------- sections --- */
+
+export function sectionsSheet(input: SectionsSheetInput, context: SheetContext): PrintedSheet {
+  return {
+    filename: `${slug(context.restaurant)}-sections-${input.day}-${slug(input.service)}.pdf`,
+    bytes: plainSectionsSheet(input, header(context, "Sections")),
   };
 }
