@@ -721,6 +721,22 @@ const PHRASES: Record<string, string> = {
   "Confirm all guest allergies and preparation with the kitchen. Notes marked with ! indicate cross-contamination (CC).": "Confirma todas las alergias del cliente y la preparación con cocina. Las notas con ! indican contaminación cruzada (CC).",
   "No guides yet. Open a word under Words, add the full write-up, and it appears here for your team to browse.": "Todavía no hay guías. Abre una palabra en Palabras, escribe la versión completa y aparece aquí para tu equipo.",
   "The words your menu uses, in your own wording. A word shows on every card that mentions it. Write one up properly and it becomes a guide your team can browse before service.": "Las palabras de tu menú, con tus propias palabras. Una palabra aparece en cada ficha que la menciona. Escríbela completa y se vuelve una guía que tu equipo puede leer antes del servicio.",
+  // ── Assistant ──
+  "Assistant": "Asistente", "Schedule and hours": "Horario y horas", "Team study": "Progreso del equipo",
+  "Who's working today and who closes?": "¿Quién trabaja hoy y quién cierra?", "Who's close to overtime this week?": "¿Quién se acerca a horas extra esta semana?",
+  "Any time-off requests or shift changes waiting?": "¿Hay días libres o cambios de turno pendientes?", "Who's struggling with allergens?": "¿Quién falla en alérgenos?",
+  "Who hasn't studied lately?": "¿Quién no ha estudiado últimamente?", "Give study to whoever needs it": "Asigna estudio a quien lo necesite",
+  "Sum up this week's shift reports": "Resume los reportes de turno de esta semana", "What problems keep coming up?": "¿Qué problemas se repiten?",
+  "Looking at the schedule…": "Mirando el horario…", "Looking at the team's study…": "Mirando el progreso del equipo…", "Reading the shift reports…": "Leyendo los reportes de turno…",
+  "Looking at the menu…": "Mirando el menú…", "Preparing a proposal…": "Preparando una propuesta…", "Working on it…": "Trabajando en ello…",
+  "Ask about the schedule, hours, the team's study and the shift reports. It only sees what your access lets you see, and it changes nothing until you confirm.": "Pregunta por el horario, las horas, el progreso del equipo y los reportes de turno. Solo ve lo que tus permisos te dejan ver y no cambia nada hasta que confirmes.",
+  "The assistant isn’t switched on yet. The app’s owner needs to add the key (ANTHROPIC_API_KEY) in Vercel.": "El asistente todavía no está activado. El dueño de la app tiene que agregar la clave (ANTHROPIC_API_KEY) en Vercel.",
+  "Proposal · Give study": "Propuesta · Asignar estudio", "What": "Qué", "They see": "Qué verán", "It appears on their Home to study.": "Les aparece en su inicio para estudiar.",
+  "Confirm": "Confirmar", "Assigning…": "Asignando…", "Nothing changes until you confirm.": "No cambio nada hasta que confirmes.", "Cancelled. Nothing was changed.": "Cancelado. No se cambió nada.",
+  "Your question": "Tu pregunta", "Ask anything about your restaurant": "Pregunta lo que quieras sobre tu restaurante",
+  "Couldn't reach the assistant. Check your connection and try again.": "No se pudo conectar con el asistente. Revisa tu conexión e inténtalo de nuevo.",
+  "The assistant is busy. Try again in a minute.": "El asistente está ocupado. Inténtalo de nuevo en un minuto.", "The assistant didn't answer. Try again.": "El asistente no respondió. Inténtalo de nuevo.",
+  "The assistant stopped partway. Try again.": "El asistente se detuvo a mitad de la respuesta. Inténtalo de nuevo.", "The assistant is for managers.": "El asistente es para managers.",
   // ── Tutor ──
   "Tutor": "Tutor", "New conversation": "Nueva conversación", "Practice with the tutor": "Practicar con el tutor",
   "Play a guest": "Haz de cliente", "Send": "Enviar",
@@ -770,6 +786,7 @@ const lower = (text: string) => (translateCore(text) ?? text).toLowerCase();
 
 // Sentences with a name or a number inside: the automatic quiz's questions, and a few counters.
 const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/^Assigned to (\d+) (?:person|people)$/, m => `Asignado a ${m[1]} ${m[1] === "1" ? "persona" : "personas"}`],
   [/^(\d+) cards? to review$/, m => `${m[1]} ${m[1] === "1" ? "ficha" : "fichas"} por repasar`],
   [/^(\d+) cards?, about (\d+) minutes\. I ask, correct you and remember what you miss for next time\.$/, m => `${m[1]} ${m[1] === "1" ? "ficha" : "fichas"}, unos ${m[2]} minutos. Te pregunto, te corrijo y recuerdo lo que fallas para la próxima vez.`],
   [/^(\d+) of (\d+) practised$/, m => `${m[1]} de ${m[2]} practicadas`],

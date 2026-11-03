@@ -3226,3 +3226,17 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .who-off::after { content:""; position:absolute; inset:-10px; }
 :root:root:root:root:root:root:root .who-none { font-size:12px; color:var(--c-muted); }
 :root:root:root:root:root:root:root .who-add { width:auto; max-width:none; height:30px; min-height:30px; padding:0 12px; font-size:12px; font-weight:600; border:1px solid var(--c-text); border-radius:999px; background:var(--c-surface); color:var(--c-text); }
+
+/* Assistant (app/assistant.tsx): starters grouped by area, the conversation, and the proposal card a
+   manager confirms. Reuses the Tutor's rows and bubbles; spacing 14/16/20 only.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .assistant-home { display:flex; flex-direction:column; gap:20px; }
+:root:root:root:root:root:root:root .assistant-turn { display:flex; flex-direction:column; gap:10px; }
+:root:root:root:root:root:root:root .assistant-turn.user { align-items:flex-end; }
+:root:root:root:root:root:root:root .assistant-turn.assistant { align-items:flex-start; }
+:root:root:root:root:root:root:root .assistant-proposal { max-width:92%; padding:16px; border:1px solid var(--c-text); border-radius:12px; background:var(--c-surface); display:flex; flex-direction:column; gap:10px; }
+:root:root:root:root:root:root:root .assistant-proposal dl { display:grid; grid-template-columns:80px minmax(0, 1fr); gap:6px 10px; margin:0; font-size:13px; }
+:root:root:root:root:root:root:root .assistant-proposal dt { color:var(--c-muted); }
+:root:root:root:root:root:root:root .assistant-proposal dd { margin:0; font-weight:600; }
+:root:root:root:root:root:root:root .assistant-proposal-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+:root:root:root:root:root:root:root .assistant-proposal-done { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:var(--c-pass); }
