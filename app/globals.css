@@ -3430,3 +3430,13 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .fs-table .fs-fixture rect { fill:var(--c-surface-hover); stroke:var(--c-muted); stroke-width:1.5; }
 :root:root:root:root:root:root:root .fs-table .fs-fixture text { font-size:11px; letter-spacing:.08em; fill:var(--c-muted); }
 :root:root:root:root:root:root:root .fs-map .fs-table:has(.fs-fixture) { cursor:default; }
+
+/* A phone turned sideways (wide but short) gets the phone's menu: the side menu folds away behind the menu
+   button, so the screen goes to the page, and opens over it when tapped. Tablets and computers keep the side
+   menu. To undo, revert the commit that added this block. */
+@media (orientation: landscape) and (max-height: 520px) and (min-width: 768px) {
+  :root:root:root:root:root:root:root .workspace-shell { grid-template-columns:minmax(0,1fr); }
+  :root:root:root:root:root:root:root .nav-toggle { display:inline-flex; }
+  :root:root:root:root:root:root:root .mobile-drawer { position:fixed; left:0; right:auto; width:min(360px, 85vw); top:var(--header-h, 64px); bottom:0; height:auto; z-index:25; overflow-y:auto; overscroll-behavior:contain; border-right:1px solid var(--c-line-5); box-shadow:0 18px 40px rgb(0 0 0 / .35); }
+  :root:root:root:root:root:root:root .mobile-drawer.hidden { display:none; }
+}

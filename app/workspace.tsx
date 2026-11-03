@@ -2022,7 +2022,7 @@ function Workspace({
       <header className="app-header border-b border-line bg-surface">
         <div className="mx-auto flex max-w-[1920px] items-center justify-between gap-3 px-4 py-3 md:px-9">
           <div className="flex items-center gap-3">
-            <button className="rounded-lg p-2 hover:bg-raised md:hidden" aria-label="Toggle navigation" aria-expanded={navOpen} aria-controls="workspace-navigation" onClick={event => {const header = event.currentTarget.closest("header"); if (header) document.documentElement.style.setProperty("--header-h", `${Math.round(header.getBoundingClientRect().bottom)}px`); setNavOpen(!navOpen);}}><Menu size={22} /></button>
+            <button className="nav-toggle rounded-lg p-2 hover:bg-raised md:hidden" aria-label="Toggle navigation" aria-expanded={navOpen} aria-controls="workspace-navigation" onClick={event => {const header = event.currentTarget.closest("header"); if (header) document.documentElement.style.setProperty("--header-h", `${Math.round(header.getBoundingClientRect().bottom)}px`); setNavOpen(!navOpen);}}><Menu size={22} /></button>
             {restaurant && !isManager ? <div className="flex items-center gap-3"><button type="button" className="header-home" aria-label="Go to Home" onClick={() => navigate("home")}><HeatIcon /></button><div><p className="text-sm font-semibold">{learnerName}</p><p className="muted text-xs uppercase tracking-widest">{restaurant.name}</p></div></div> : <button type="button" className="header-home" aria-label="Go to Home" onClick={() => navigate("home")}><Brand /></button>}
           </div>
           <div className="flex items-center gap-2">
@@ -2138,7 +2138,7 @@ function Workspace({
       </div> : isOwner && restaurant?.trial_ends_at && <div className="preview-bar" role="note">
         <span>{trialLabel(restaurant.trial_ends_at)}</span>
       </div>}
-      <div className="mx-auto grid max-w-[1920px] md:grid-cols-[225px_1fr]">
+      <div className="workspace-shell mx-auto grid max-w-[1920px] md:grid-cols-[225px_1fr]">
         <aside id="workspace-navigation" ref={attachSideNav} className={`mobile-drawer ${navOpen ? "block" : "hidden"} border-b border-line bg-surface p-5 md:sticky md:top-0 md:block md:h-screen md:self-start md:overflow-y-auto md:border-r md:border-b-0 md:p-6`}>
           <p className="eyebrow muted mb-3">Workspace</p>
           {restaurants.length > 0 && (
