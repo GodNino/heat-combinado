@@ -1,8 +1,8 @@
 "use client";
 // Tonight: the manager gives out tonight's side work by hand. Two tabs, Servers and S.A.s; in each, the
 // people on the published schedule for that service sit on the left and the side work on the right,
-// in three columns: opening, during the shift and closing. Drag a name onto a job (computer), or tap
-// the name and then the job (phone). Nothing is handed out on its own.
+// in three columns: opening, during the shift and closing. Tap a name, then a job, and it's theirs;
+// the same on a computer and a phone. Nothing is handed out on its own.
 //
 // Until it's sent, the plan is only on this screen. Sending gives every job to its people, the same
 // assignments side work has always used (checklist_assignments, one row per person on a job), so each
@@ -45,9 +45,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  // The name tapped (or being dragged), waiting for a job; and the job it is over.
+  // The name tapped, waiting for a job.
   const [picked, setPicked] = useState<string | null>(null);
-  const [over, setOver] = useState<string | null>(null);
   const drafted = useRef(0);
 
   const explain = (e: unknown) => {
@@ -164,7 +163,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
     <div className="sw-head">
       <div className="min-w-0">
         <p className="sw-eyebrow">Side work · Tonight</p>
-        <p className="tonight-title"><span data-no-translate>{longDay(day)}</span> · <span>{service}</span></p>
+        {/* The date is formatted in the browser's language, so it waits for the first load (no server mismatch). */}
+        {!loading && <p className="tonight-title"><span data-no-translate>{longDay(day)}</span> · <span>{service}</span></p>}
       </div>
       <div className="sw-head-actions">
         <span className="muted text-sm">{isSent && sentAt ? `Sent ${clock(sentAt)} · changes go out as you make them` : `${named} of ${cards.length} jobs named · ${teamLabel}`}</span>
@@ -183,7 +183,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
         <div className="category-tabs" role="group" aria-label="Team">
           {TEAMS.map(([role, label]) => <button key={role} type="button" aria-pressed={team === role} onClick={() => {setTeam(role); setPicked(null);}}>{label}</button>)}
         </div>
-        <p className="muted text-sm">{picked ? `${nameOf(picked)} is picked: tap or drop on a job.` : "Drag a name onto a job. On a phone: tap the name, then the job."}</p>
+        <p className="muted text-sm">{picked ? `${nameOf(picked)} is selected: tap a job.` : team === "server" ? "Tap a server, then a job." : "Tap an S.A., then a job."}</p>
       </div>
 
       <div className="sw-grid">
@@ -191,12 +191,10 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
           <div className="sw-people-head"><b>{`${teamLabel} tonight · ${mine.length}`}</b><span className="muted text-xs">From the published schedule</span></div>
           {mine.length ? mine.map(p => {
             const theirs = jobsOf(p.user_id);
-            return <button key={p.user_id} type="button" draggable className="sw-person" aria-pressed={picked === p.user_id}
+            return <button key={p.user_id} type="button" className="sw-person" aria-pressed={picked === p.user_id}
               onClick={() => setPicked(x => x === p.user_id ? null : p.user_id)}
-              onDragStart={e => { e.dataTransfer.setData("text/plain", p.user_id); e.dataTransfer.effectAllowed = "move"; setPicked(p.user_id); }}
-              onDragEnd={() => setOver(null)}>
+              >
               <span className="sw-person-line">
-                <span className="sw-grip" aria-hidden="true"><i /><i /><i /></span>
                 <b data-no-translate>{p.name || "Team member"}</b>
                 <span className="sw-time">{`${clock(p.starts_at)}${closing.has(p.user_id) ? " ©" : ""}`}</span>
                 <span className={`sw-count${theirs.length ? "" : " none"}`}>{theirs.length === 1 ? "1 job" : `${theirs.length} jobs`}</span>
@@ -214,17 +212,16 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
               <p className="section-chip">{label}</p>
               {column.length ? column.map(card => {
                 const who = onCard(card);
-                return <div key={card.key} className={`sw-job${picked ? " ready" : ""}${over === card.key ? " over" : ""}${who.length ? "" : " empty"}`}
-                  onDragOver={e => { e.preventDefault(); setOver(card.key); }}
-                  onDragLeave={() => setOver(o => o === card.key ? null : o)}
-                  onDrop={e => { e.preventDefault(); setOver(null); const id = e.dataTransfer.getData("text/plain") || picked; if (id) void giveTo(card, id); }}>
-                  <button type="button" className="sw-job-title" onClick={() => { if (picked) void giveTo(card, picked); }} aria-label={picked ? `Give ${card.title} to ${nameOf(picked)}` : card.title}>
+                // The whole card takes the tap; its title is the button for keyboards, and the x stays its own.
+                return <div key={card.key} className={`sw-job${picked ? " ready" : ""}${who.length ? "" : " empty"}`}
+                  onClick={e => { if (picked && !(e.target as HTMLElement).closest(".sw-on button")) void giveTo(card, picked); }}>
+                  <button type="button" className="sw-job-title" aria-label={picked ? `Give ${card.title} to ${nameOf(picked)}` : card.title}>
                     <b data-no-translate>{card.title}</b>
                   </button>
                   <div className="sw-job-who">
                     {who.map(l => <span key={l.key} className="sw-on"><span data-no-translate>{nameOf(l.user_id)}</span>
                       {!l.started && <button type="button" aria-label={`Take ${nameOf(l.user_id)} off ${card.title}`} onClick={() => void takeOff(l)}><X size={12} aria-hidden="true" /></button>}</span>)}
-                    {!who.length && <span className="sw-drop">{picked ? "Drop here" : "Drag a name here"}</span>}
+                    {!who.length && <span className="sw-drop">{picked ? "Tap to give it here" : "Nobody yet"}</span>}
                   </div>
                 </div>;
               }) : <p className="muted text-xs">Nothing set up for this yet (Setup).</p>}

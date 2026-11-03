@@ -722,8 +722,8 @@ const PHRASES: Record<string, string> = {
   "No guides yet. Open a word under Words, add the full write-up, and it appears here for your team to browse.": "Todavía no hay guías. Abre una palabra en Palabras, escribe la versión completa y aparece aquí para tu equipo.",
   "The words your menu uses, in your own wording. A word shows on every card that mentions it. Write one up properly and it becomes a guide your team can browse before service.": "Las palabras de tu menú, con tus propias palabras. Una palabra aparece en cada ficha que la menciona. Escríbela completa y se vuelve una guía que tu equipo puede leer antes del servicio.",
   // ── Side work board ──
-  "Side work · Tonight": "Side work · Esta noche", "No jobs yet": "Sin tareas todavía", "Drop here": "Suelta aquí", "Drag a name here": "Arrastra un nombre aquí",
-  "Loading tonight…": "Cargando esta noche…", "Drag a name onto a job. On a phone: tap the name, then the job.": "Arrastra un nombre a una tarea. En el móvil: toca el nombre y luego la tarea.",
+  "Side work · Tonight": "Side work · Esta noche", "No jobs yet": "Sin tareas todavía", "Tap to give it here": "Toca para asignarla aquí",
+  "Loading tonight…": "Cargando esta noche…", "Tap a server, then a job.": "Toca un mesero y luego una tarea.", "Tap an S.A., then a job.": "Toca un S.A. y luego una tarea.",
   "© closes: whoever comes in last. A name can go on several jobs.": "© cierra quien entra último. Un nombre puede ir a varias tareas.",
   "No servers on the published schedule for this service.": "No hay meseros en el horario publicado para este servicio.", "No S.A.s on the published schedule for this service.": "No hay S.A. en el horario publicado para este servicio.",
   "Nothing set up for this yet (Setup).": "Todavía no hay nada aquí (Setup).", "Sent. Everyone sees their side work on their phone.": "Enviado. Cada persona ve su sidework en su teléfono.",
@@ -834,7 +834,7 @@ const lower = (text: string) => (translateCore(text) ?? text).toLowerCase();
 const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^(\d+) of (\d+) jobs named · (Servers|S\.A\.s)$/, m => `${m[1]} de ${m[2]} tareas con nombre · ${m[3] === "Servers" ? "Meseros" : "S.A."}`],
   [/^Sent (\d{1,2}:\d\d ?[AP]M) · changes go out as you make them$/, m => `Enviado ${m[1]} · los cambios salen al momento`],
-  [/^(.+) is picked: tap or drop on a job\.$/, m => `${m[1]} seleccionado: toca o suelta en una tarea.`],
+  [/^(.+) is selected: tap a job\.$/, m => `${m[1]} seleccionado: toca una tarea.`],
   [/^(Servers|S\.A\.s) tonight · (\d+)$/, m => `${m[1] === "Servers" ? "Meseros" : "S.A."} esta noche · ${m[2]}`],
   [/^(\d+) jobs?$/, m => `${m[1]} ${m[1] === "1" ? "tarea" : "tareas"}`],
   [/^Give (.+) to (.+)$/, m => `Dar ${m[1]} a ${m[2]}`],
