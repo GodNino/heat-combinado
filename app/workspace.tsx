@@ -1769,7 +1769,7 @@ function Workspace({
     const canSchedule = can("team") || can("schedule_foh") || can("schedule_boh");
     return <div className="today">
       {/* A new restaurant's steps to get going; gone once done or hidden. */}
-      {(isOwner || can("team")) && !itemsLoading && <GettingStarted key={`start-${rid}`} restaurantId={rid} menuCount={items.length}
+      {(isOwner || can("team")) && !employeeView && !itemsLoading && <GettingStarted key={`start-${rid}`} restaurantId={rid} menuCount={items.length}
         onGo={place => place === "library" ? navigate("library", "All", "food") : navigate(place)} />}
       {(can("preshift") || can("team") || canSchedule) && <TodayFigures key={`figures-${rid}`} restaurantId={rid} canSchedule={canSchedule} />}
       {(can("team") || can("preshift") || can("library") || canSchedule) && <ManagerAttention key={`attention-${rid}`} restaurantId={rid} canTeam={can("team")} canSchedule={canSchedule} canReports={can("preshift") || can("team")} onOpen={openAttention} />}
@@ -2220,7 +2220,8 @@ function Workspace({
               <button className={`nav-item ${view === "locations" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "locations" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("locations")}><Store size={19} />Locations</button>
             </nav>
           </>}
-          {!user.is_anonymous && restaurants.some((r) => r.owner_id === user.id) && (
+          {/* Owners only, and never while previewing as a server: a server can't create a restaurant. */}
+          {!user.is_anonymous && !employeeView && restaurants.some((r) => r.owner_id === user.id) && (
             <button
               onClick={() => {
                 setCreating(true);
@@ -2236,7 +2237,7 @@ function Workspace({
           )}
           {manages && <div className="mt-6">
             <p className="eyebrow muted mb-2">Point of view</p>
-            <button type="button" className={`nav-item ${employeeView ? "active" : ""}`} aria-pressed={employeeView} onClick={() => {setEmployeeView(!employeeView); setNavOpen(false);}}>
+            <button type="button" className={`nav-item ${employeeView ? "active" : ""}`} aria-pressed={employeeView} onClick={() => {setEmployeeView(!employeeView); setCreating(false); setNavOpen(false);}}>
               <BookOpen size={19} />{employeeView ? "Back to your view" : "Preview as a server"}
             </button>
           </div>}
