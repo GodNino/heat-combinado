@@ -37,7 +37,7 @@ const SECTIONS: Array<{key: string; title: string; hint: string; phase: Phase; r
 // Inside a section, when and whose are already said: only who does it and on which days.
 const whoText = (row: Job) => row.days?.length ? row.days.map(d => WEEKDAYS[d]).join(" ") : "Every day";
 
-export function Checklists({restaurantId, canManage}: {restaurantId: string; canManage: boolean}) {
+export function Checklists({restaurantId, canManage, onOpenSchedule}: {restaurantId: string; canManage: boolean; onOpenSchedule?: () => void}) {
   const [tab, setTab] = useState<Tab>("tonight");
   // Setup's running side work lists, and the one open in its editor (a list, or "new").
   const [lists, setLists] = useState<SideworkList[]>([]);
@@ -165,7 +165,7 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
       {TABS.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} style={{fontWeight: 700, border: "1.5px solid var(--edge)"}} onClick={() => {setTab(key); setError(""); setMessage("");}}>{label}</button>)}
     </div>}
     <div><Notice text={error} error /><Notice text={message} /></div>
-    {tab === "tonight" && <Tonight restaurantId={restaurantId} />}
+    {tab === "tonight" && <Tonight restaurantId={restaurantId} onOpenSchedule={onOpenSchedule} />}
     {tab === "today" && <Today restaurantId={restaurantId} jobs={rows} onOpenSaved={() => setTab("setup")} onSavedJobsChanged={() => void load()} onDeep={setDeep} />}
     {tab === "history" && <History restaurantId={restaurantId} />}
     {tab === "setup" && editingList && <SideworkLists restaurantId={restaurantId} lists={lists} initial={editingList} onBack={() => {setEditingList(null); void load();}} />}

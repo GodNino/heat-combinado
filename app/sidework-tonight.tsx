@@ -32,7 +32,7 @@ const TEAMS: [Role, string][] = [["server", "Servers"], ["sa", "S.A.s"]];
 const longDay = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(currentLang() === "es" ? "es" : undefined, {weekday: "long", month: "long", day: "numeric"});
 const clock = (iso: string) => new Date(iso).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"});
 
-export function Tonight({restaurantId}: {restaurantId: string}) {
+export function Tonight({restaurantId, onOpenSchedule}: {restaurantId: string; onOpenSchedule?: () => void}) {
   const [day, setDay] = useState(localDate);
   const [service, setService] = useState<string>(defaultService);
   const [team, setTeam] = useState<Role>("server");
@@ -213,7 +213,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
         {view === "sidework" && <p className="muted text-sm">{picked ? `${nameOf(picked)} is selected: tap a job.` : team === "server" ? "Tap a server, then a job." : "Tap an S.A., then a job."}</p>}
       </div>
 
-      {view === "sections" ? <FloorSections restaurantId={restaurantId} day={day} service={service} people={people} roles={roles} /> : <>
+      {view === "sections" ? <FloorSections restaurantId={restaurantId} day={day} service={service} people={people} roles={roles} onOpenSchedule={onOpenSchedule} /> : <>
       <div className="swb-grid">
         <section className="swb-card swb-people" aria-label={`${teamLabel} tonight`}>
           <div className="swb-card-head"><b>{`${teamLabel} tonight`}</b><span className="swb-count">{mine.length}</span></div>
@@ -230,7 +230,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
               <span className="swb-tag">{theirs.length}</span>
             </button>;
           })}</div> : <><p className="muted text-sm">{team === "server" ? "No servers on the published schedule for this service." : "No S.A.s on the published schedule for this service."}</p>
-            <p className="muted text-xs">Which positions count as servers and S.A.s is set in Schedule, Settings.</p></>}
+            <p className="muted text-xs">Which positions count as servers and S.A.s is set in Schedule, Settings.</p>
+            {onOpenSchedule && <div><button type="button" className="btn secondary" onClick={onOpenSchedule}>Open the schedule</button></div>}</>}
           <p className="swb-legend">© closes: whoever comes in last. A name can go on several jobs.</p>
         </section>
 
