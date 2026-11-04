@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Notice } from "./ui";
-import { closers, roleOf, type OnShift } from "@/lib/sidework-plan";
+import { closers, roleOf, type OnShift, type SideRoles } from "@/lib/sidework-plan";
 import { localDate, type FloorRow } from "./floor-plan";
 import { DownloadSheet } from "./sheet-download";
 import { notify } from "./notifications";
@@ -122,7 +122,7 @@ function fromRows(rows: FloorRow[]): Section[] {
   return sections;
 }
 
-export function FloorSections({restaurantId, day, service, people}: {restaurantId: string; day: string; service: string; people: OnShift[]}) {
+export function FloorSections({restaurantId, day, service, people, roles = {}}: {restaurantId: string; day: string; service: string; people: OnShift[]; roles?: SideRoles}) {
   const [layout, setLayout] = useState<FloorLayout | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [drawing, setDrawing] = useState<Set<string>>(new Set());
@@ -160,8 +160,8 @@ export function FloorSections({restaurantId, day, service, people}: {restaurantI
   }, [restaurantId, day, service]);
   useEffect(() => { void load(); }, [load]);
 
-  const servers = useMemo(() => people.filter(p => roleOf(p.shift_position) === "server").sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at) || a.name.localeCompare(b.name)), [people]);
-  const sas = useMemo(() => people.filter(p => roleOf(p.shift_position) === "sa").sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at) || a.name.localeCompare(b.name)), [people]);
+  const servers = useMemo(() => people.filter(p => roleOf(p.shift_position, roles) === "server").sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at) || a.name.localeCompare(b.name)), [people]);
+  const sas = useMemo(() => people.filter(p => roleOf(p.shift_position, roles) === "sa").sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at) || a.name.localeCompare(b.name)), [people, roles]);
   const closing = useMemo(() => new Set([...closers(servers), ...closers(sas)]), [servers, sas]);
 
   async function save(next: Section[]) {
@@ -363,7 +363,7 @@ export function FloorSections({restaurantId, day, service, people}: {restaurantI
                   <span data-no-translate>{p.name || "Team member"}{closing.has(p.user_id) ? " ©" : ""}</span><small>{other ? String(other.n) : clock(p.starts_at)}</small></button>; })}
               <button type="button" className="fs-chip" aria-pressed={!current.server} onClick={() => void setServer(current, null)}>Pick-up</button>
             </div>
-            {!servers.length && <p className="muted text-xs">No servers on the published schedule for this service.</p>}
+            {!servers.length && <p className="muted text-xs">No servers on the published schedule for this service. Which positions count as servers is set in Schedule, Settings.</p>}
           </div>}
           <div className="fs-people">
             <span className="fs-plabel">{isPost(current) ? "S.A." : "S.A. (one can cover two sections)"}</span>

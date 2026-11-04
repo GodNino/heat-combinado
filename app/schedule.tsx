@@ -13,6 +13,7 @@ import {
   changeWindowOpen, canSchedule, isKitchen, KITCHEN_POSITIONS, type ScheduleAccess, type ScheduleSettings, type Shift, type ShiftChange, type ShiftKind, type ShiftPreset, type TimeOff, type Unavailability, type Warning,
 } from "@/lib/schedule";
 import { scheduleSheet } from "@/lib/sheets";
+import { roleOf } from "@/lib/sidework-plan";
 import type { PushEvent } from "@/lib/push-messages";
 import { notify } from "./notifications";
 import { DownloadSheet } from "./sheet-download";
@@ -738,11 +739,14 @@ function SettingsSheet({restaurantId, settings, positions, missing, onClose, onS
       ...(Object.keys(form.shift_kind_hours).length || Object.keys(settings.shift_kind_hours).length ? {shift_kind_hours: form.shift_kind_hours} : {}),
       time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
       kitchen_positions: form.kitchen_positions,
+      // Only sent once chosen, so the rest of the settings still save before database update 060.
+      ...(form.server_positions || settings.server_positions ? {server_positions: form.server_positions} : {}),
+      ...(form.sa_positions || settings.sa_positions ? {sa_positions: form.sa_positions} : {}),
     };
     setBusy(true); setError("");
     const result = await supabase!.from("schedule_settings").upsert(row);
     setBusy(false);
-    if (result.error) return setError(/shift_kind_hours/.test(result.error.message) ? "Shift types need database update 053." : /schedule_settings|PGRST205|42P01/.test(result.error.message) ? "Schedule settings need database update 044." : result.error.message);
+    if (result.error) return setError(/server_positions|sa_positions/.test(result.error.message) ? "Choosing servers and S.A.s needs database update 060." : /shift_kind_hours/.test(result.error.message) ? "Shift types need database update 053." : /schedule_settings|PGRST205|42P01/.test(result.error.message) ? "Schedule settings need database update 044." : result.error.message);
     onSaved(readSettings(row));
   }
   return <div className="sched-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -776,6 +780,23 @@ function SettingsSheet({restaurantId, settings, positions, missing, onClose, onS
           <p className="muted mb-2 text-xs">The head chef or sous chef builds these (Schedule: kitchen); everything else is front of house (Schedule: front of house). Team access builds both.</p>
           <div className="word-chips">{positions.map(name => { const on = isKitchen(name, form); return <button key={name} type="button" className="word-chip" aria-pressed={on}
             onClick={() => { const list = form.kitchen_positions ?? KITCHEN_POSITIONS; setForm({...form, kitchen_positions: on ? list.filter(k => k.trim().toLowerCase() !== name.trim().toLowerCase()) : [...list, name]}); }}>{name}</button>; })}</div>
+        </fieldset>
+
+        <fieldset className="mb-5">
+          <legend className="mb-1 block text-sm font-semibold">Servers and S.A.s</legend>
+          <p className="muted mb-2 text-xs">Who shows as a server and who as an S.A. on Side work and Sections. Pick your own positions; a position is one or the other.</p>
+          {([["server", "Servers", "server_positions"], ["sa", "S.A.s", "sa_positions"]] as const).map(([role, label, key]) => <div key={role} className="mb-3">
+            <p className="mb-1 text-xs font-semibold">{label}</p>
+            <div className="word-chips">{positions.filter(name => !isKitchen(name, form)).map(name => { const on = roleOf(name, form) === role; return <button key={name} type="button" className="word-chip" aria-pressed={on}
+              onClick={() => {
+                // Save both lists as they look now, so changing one never silently changes the other.
+                const current = (r: "server" | "sa") => positions.filter(p => roleOf(p, form) === r);
+                const other = role === "server" ? "sa" : "server", otherKey = role === "server" ? "sa_positions" : "server_positions";
+                const mine = on ? current(role).filter(p => p.trim().toLowerCase() !== name.trim().toLowerCase()) : [...current(role), name];
+                const theirs = current(other).filter(p => on || p.trim().toLowerCase() !== name.trim().toLowerCase());
+                setForm({...form, [key]: mine, [otherKey]: theirs});
+              }}>{name}</button>; })}</div>
+          </div>)}
         </fieldset>
 
         <fieldset className="mb-5">

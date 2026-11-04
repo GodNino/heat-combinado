@@ -19,7 +19,16 @@ export type PastJob = {job_id: string; user_id: string; day: string};
 
 export const isServer = (position: string) => /^\s*server\s*$/i.test(position);
 export const isHelper = (position: string) => /assistant|^\s*s\.?\s*a\.?\s*$|runner|busser/i.test(position);
-export const roleOf = (position: string): Role | null => isServer(position) ? "server" : isHelper(position) ? "sa" : null;
+// Which positions are servers and S.A.s here (schedule_settings, 060). A list the restaurant saved wins;
+// without one (null), the usual names above decide.
+export type SideRoles = {server_positions?: string[] | null; sa_positions?: string[] | null};
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+export const roleOf = (position: string, roles: SideRoles = {}): Role | null => {
+  const server = roles.server_positions ? roles.server_positions.some(p => sameName(p, position)) : isServer(position);
+  if (server) return "server";
+  const sa = roles.sa_positions ? roles.sa_positions.some(p => sameName(p, position)) : isHelper(position);
+  return sa ? "sa" : null;
+};
 
 // Lunch is anything starting before 4pm; the rest is dinner.
 export const serviceOf = (startsAt: string) => new Date(startsAt).getHours() < 16 ? "Lunch" : "Dinner";
@@ -60,7 +69,7 @@ export function closers(people: OnShift[]) {
   return people.filter(p => Date.parse(p.starts_at) === last).map(p => p.user_id);
 }
 
-export function planJobs(jobs: RuledJob[], people: OnShift[], day: string, history: PastJob[] = []): PlannedJob[] {
+export function planJobs(jobs: RuledJob[], people: OnShift[], day: string, history: PastJob[] = [], roles: SideRoles = {}): PlannedJob[] {
   const weekday = weekdayOf(day);
   const shift = dayNumber(day);
   // The last day each person did each job, before today.
@@ -72,7 +81,7 @@ export function planJobs(jobs: RuledJob[], people: OnShift[], day: string, histo
   }
   const planned: PlannedJob[] = [];
   for (const role of ["server", "sa"] as Role[]) {
-    const team = people.filter(p => roleOf(p.shift_position) === role).sort((a, b) => a.name.localeCompare(b.name) || a.user_id.localeCompare(b.user_id));
+    const team = people.filter(p => roleOf(p.shift_position, roles) === role).sort((a, b) => a.name.localeCompare(b.name) || a.user_id.localeCompare(b.user_id));
     const closing = closers(team);
     const mine = jobs.filter(j => j.phase && j.role === role && (!j.days.length || j.days.includes(weekday))).sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
     // "One person" jobs are matched all at once: nobody gets a second before everyone has one,

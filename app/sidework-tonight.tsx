@@ -13,7 +13,7 @@ import { X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Notice } from "./ui";
 import { defaultService, localDate, mainList, type SideworkList, type Working } from "./floor-plan";
-import { SERVICES, closers, peopleIn, roleOf, weekdayOf, type Phase, type Role, type RuledJob } from "@/lib/sidework-plan";
+import { SERVICES, closers, peopleIn, roleOf, weekdayOf, type Phase, type Role, type RuledJob, type SideRoles } from "@/lib/sidework-plan";
 import { DayPill } from "./day-pill";
 import { currentLang } from "./language";
 import { FloorSections } from "./floor-sections";
@@ -39,6 +39,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   const [jobs, setJobs] = useState<RuledJob[]>([]);
   // The running side work tasks from Setup, shown under the servers' "During the shift".
   const [running, setRunning] = useState<string[]>([]);
+  // Which positions are servers and S.A.s here (Schedule > Settings, 060).
+  const [roles, setRoles] = useState<SideRoles>({});
   const [shiftId, setShiftId] = useState<string | null>(null);
   const [sentAt, setSentAt] = useState<string | null>(null);
   const [sent, setSent] = useState<Sent[]>([]);
@@ -63,6 +65,9 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
     if (!supabase) return;
     setLoading(true); setError(""); setPicked(null);
     try {
+      // Read on its own: before database update 060 the columns aren't there, and the usual names apply.
+      void supabase.from("schedule_settings").select("server_positions, sa_positions").eq("restaurant_id", restaurantId).maybeSingle()
+        .then(({data, error}) => setRoles(error || !data ? {} : data as SideRoles));
       const [people, savedJobs, shift, lists] = await Promise.all([
         supabase.rpc("floor_plan_people", {rid: restaurantId, day}),
         supabase.from("checklist_jobs").select(JOB_COLUMNS).eq("restaurant_id", restaurantId).eq("archived", false),
@@ -92,10 +97,10 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   useEffect(() => { void load(); }, [load]);
 
   const people = useMemo(() => peopleIn(service, working), [working, service]);
-  const mine = people.filter(p => roleOf(p.shift_position) === team).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at) || a.name.localeCompare(b.name));
+  const mine = people.filter(p => roleOf(p.shift_position, roles) === team).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at) || a.name.localeCompare(b.name));
   const closing = useMemo(() => new Set(closers(mine)), [mine]);
   const nameOf = (id: string) => working.find(p => p.user_id === id)?.name || "Team member";
-  const roleOfPerson = (id: string) => roleOf(working.find(p => p.user_id === id)?.shift_position ?? "");
+  const roleOfPerson = (id: string) => roleOf(working.find(p => p.user_id === id)?.shift_position ?? "", roles);
   const isSent = sent.length > 0;
   const lines: Line[] = isSent
     ? sent.filter(s => s.user_id).map(s => ({key: s.id, title: s.title, user_id: s.user_id!, phase: s.phase, jobId: s.job_id, started: !!s.done_at || s.steps_done.length > 0}))
@@ -205,7 +210,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
         {view === "sidework" && <p className="muted text-sm">{picked ? `${nameOf(picked)} is selected: tap a job.` : team === "server" ? "Tap a server, then a job." : "Tap an S.A., then a job."}</p>}
       </div>
 
-      {view === "sections" ? <FloorSections restaurantId={restaurantId} day={day} service={service} people={people} /> : <>
+      {view === "sections" ? <FloorSections restaurantId={restaurantId} day={day} service={service} people={people} roles={roles} /> : <>
       <div className="swb-grid">
         <section className="swb-card swb-people" aria-label={`${teamLabel} tonight`}>
           <div className="swb-card-head"><b>{`${teamLabel} tonight`}</b><span className="swb-count">{mine.length}</span></div>
@@ -221,7 +226,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
               </span>
               <span className="swb-tag">{theirs.length}</span>
             </button>;
-          })}</div> : <p className="muted text-sm">{team === "server" ? "No servers on the published schedule for this service." : "No S.A.s on the published schedule for this service."}</p>}
+          })}</div> : <><p className="muted text-sm">{team === "server" ? "No servers on the published schedule for this service." : "No S.A.s on the published schedule for this service."}</p>
+            <p className="muted text-xs">Which positions count as servers and S.A.s is set in Schedule, Settings.</p></>}
           <p className="swb-legend">© closes: whoever comes in last. A name can go on several jobs.</p>
         </section>
 
