@@ -17,6 +17,7 @@ import { SERVICES, closers, peopleIn, roleOf, weekdayOf, type Phase, type Role, 
 import { DayPill } from "./day-pill";
 import { currentLang } from "./language";
 import { FloorSections } from "./floor-sections";
+import { notify } from "./notifications";
 
 type Sent = {id: string; title: string; user_id: string | null; phase: Phase; done_at: string | null; job_id: string | null; steps_done: number[]};
 // One person on one job: saved (key is its row id) or only on this screen (key starts with "draft-").
@@ -170,7 +171,9 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
       }
       const floorPeople = people.map(p => ({shift_id: id, restaurant_id: restaurantId, user_id: p.user_id}));
       if (floorPeople.length) await supabase.from("checklist_floor").upsert(floorPeople, {onConflict: "shift_id,user_id", ignoreDuplicates: true});
-      setMessage("Sent. Everyone sees their side work on their phone.");
+      // Everyone given a job gets a notification on their phone (062).
+      if (id) notify("sidework_posted", id);
+      setMessage("Sent. Everyone sees their side work on their phone and gets a notification. Sections are sent from Sections.");
       await load();
     } catch (e) { setError(explain(e)); }
     finally { setBusy(false); }
