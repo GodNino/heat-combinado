@@ -195,12 +195,15 @@ export type ScheduleSettings = {
   team_sees_all: boolean;
   /** The positions that count as kitchen (back of house) here, or null for the usual ones (048). */
   kitchen_positions: string[] | null;
+  /** The positions that count as servers and as S.A.s on Side work and Sections, or null for the usual ones (060). */
+  server_positions: string[] | null;
+  sa_positions: string[] | null;
   /** Releases, offers and swaps close this many hours before the shift (045). */
   change_cutoff_hours: number;
 };
 // What a restaurant without saved settings gets: the schedule as it always was.
 export const DEFAULT_SETTINGS: ScheduleSettings = {
-  week_start: 1, position_colors: {}, overtime_weekly: OVERTIME_HOURS, overtime_daily: null, shift_presets: [], shift_kind_hours: {}, team_sees_all: true, change_cutoff_hours: 24, kitchen_positions: null,
+  week_start: 1, position_colors: {}, overtime_weekly: OVERTIME_HOURS, overtime_daily: null, shift_presets: [], shift_kind_hours: {}, team_sees_all: true, change_cutoff_hours: 24, kitchen_positions: null, server_positions: null, sa_positions: null,
 };
 // Whatever the database row holds, read safely: anything missing or malformed falls back to the default.
 export function readSettings(row: Partial<Record<keyof ScheduleSettings, unknown>> | null | undefined): ScheduleSettings {
@@ -220,6 +223,8 @@ export function readSettings(row: Partial<Record<keyof ScheduleSettings, unknown
     shift_kind_hours: kindHours,
     team_sees_all: row.team_sees_all !== false,
     kitchen_positions: Array.isArray(row.kitchen_positions) ? (row.kitchen_positions as unknown[]).filter((p): p is string => typeof p === "string") : null,
+    server_positions: Array.isArray(row.server_positions) ? (row.server_positions as unknown[]).filter((p): p is string => typeof p === "string") : null,
+    sa_positions: Array.isArray(row.sa_positions) ? (row.sa_positions as unknown[]).filter((p): p is string => typeof p === "string") : null,
     change_cutoff_hours: Number.isInteger(Number(row.change_cutoff_hours)) && Number(row.change_cutoff_hours) >= 0 ? Number(row.change_cutoff_hours) : 24,
   };
 }
