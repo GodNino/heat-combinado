@@ -149,7 +149,7 @@ export function Checklists({restaurantId, canManage, onOpenSchedule}: {restauran
 
   // Everyone else sees their own job and the floor, nothing to set up.
   if (!canManage) return <section className="mx-auto max-w-3xl">
-    <ScreenHeader eyebrow="Know the floor" title="Side work" info="Your job for this shift, and how the rest of the floor is doing." />
+    <ScreenHeader eyebrow="Know the floor" title="Side work" info="Your section, your jobs for this shift, and how the rest of the floor is doing. Home shows the short version." />
     <MyShiftCard restaurantId={restaurantId} />
     <MyShift restaurantId={restaurantId} />
   </section>;
