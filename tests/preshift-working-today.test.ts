@@ -47,7 +47,9 @@ test("pre-shift goes to whoever has a published shift today", async () => {
     assert.deepEqual(working, [uid(3)], "only today's published shift counts");
     // The Pre-shift chip is enough to post with an audience now, not only the owner.
     await db.query("select public.shift_team_options($1)", [rid]);
-    const note = (await db.query<{id: string}>("select public.save_preshift_board($1, current_date, 'VIP at 8', '{}', '[]') as id", [rid])).rows[0].id;
+    // The board's day is the restaurant's day (056), not the database's UTC current_date: between
+    // 8pm and midnight in Miami (7pm in winter) UTC is already tomorrow.
+    const note = (await db.query<{id: string}>(`select public.save_preshift_board($1, ${today}, 'VIP at 8', '{}', '[]') as id`, [rid])).rows[0].id;
     await db.query("select public.set_shift_recipients($1, $2)", [note, working]);
     assert.equal((await db.query("select * from public.shift_recipients($1)", [note])).rows.length, 1);
 
