@@ -125,10 +125,12 @@ function AllergyView({items, loading, refresh, shift, restaurantName, memory, on
       inlineAction
       eyebrow="Guest allergy check"
       title="Allergy"
-      info="Choose food, cocktails or wine & sake, then select all of the guest’s allergies. This checks recorded notes only — always confirm with the kitchen before offering."
+      info="Choose food, cocktails or wine & sake, then select all of the guest’s allergies."
       action={<>{!!allergies.length && <DownloadSheet label="Download this allergy sheet" build={async () => allergySheet({allergies, items: menuItems}, {restaurant: restaurantName})} />}<button type="button" className="icon-chip" aria-label="Refresh allergen information" title="Refresh" onClick={() => void refresh()} disabled={loading}><RotateCcw size={15} /></button></>}
     />
     <div className="library-switch mb-4" aria-label="Content type">{CONTENT_TYPES.map(type => <button key={type} type="button" aria-pressed={contentType === type} onClick={() => {if (type !== contentType) {setContentType(type);setSelectedAllergies([]);setResultFilter("all");}}}>{labelFor(type).name}</button>)}</div>
+    {/* A safety warning is never hidden behind the (i): it stays on screen. */}
+    <p className="allergy-confirm mb-4" role="note">This checks what the cards record, nothing more. Always confirm with the kitchen before offering.</p>
     {loading ? <p role="status" className="muted py-8">Loading allergen information…</p> : <>
       <fieldset className="panel allergy-picker p-5"><legend className="font-semibold">Allergens and dietary flags in this menu</legend><p className="muted mb-4 text-sm">Select as many as needed. Tap a selected allergy again to remove it.</p><div className="allergy-choices">{options.map(option => <button key={option} type="button" aria-pressed={allergies.includes(option)} className={`allergy-choice ${allergies.includes(option) ? "selected" : ""}`} onClick={() => {setSelectedAllergies(current => current.includes(option) ? current.filter(value => value !== option) : [...current, option]);setResultFilter("all");}}>{option}</button>)}</div>{allergies.length > 0 && <button type="button" className="btn secondary mt-4" onClick={() => {setSelectedAllergies([]);setResultFilter("all");}}>Clear selections ({allergies.length})</button>}{!options.length && <p className="muted">No allergen information is available. Ask the manager to complete the menu records.</p>}</fieldset>
       {!allergies.length ? <p className="muted py-8">{`Choose one or more allergies above to see ${labelFor(contentType).item_many} results.`}</p> : <>

@@ -3467,3 +3467,7 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .notify-card .min-w-0 { display:grid; gap:6px; flex:1 1 260px; }
 :root:root:root:root:root:root:root .notify-card-actions { display:flex; flex-wrap:wrap; gap:6px; }
 :root:root:root:root:root:root:root .notify-card-actions .btn { display:inline-flex; align-items:center; gap:6px; }
+
+/* Allergy check: the "confirm with the kitchen" line stays on screen (a safety warning is never behind the (i)).
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .allergy-confirm { margin:0 0 14px; padding:12px 16px; border-radius:16px; background:var(--lime); color:var(--c-on-heat); font-size:13px; font-weight:600; }
