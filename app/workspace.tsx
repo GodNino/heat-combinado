@@ -20,6 +20,8 @@ import {
   RotateCcw,
   BarChart3,
   LayoutDashboard,
+  BadgeCheck,
+  ScrollText,
   CircleHelp,
   FileText,
   GraduationCap,
@@ -2177,12 +2179,21 @@ function Workspace({
               </select>
             </>
           )}
-          <nav aria-label="Main navigation" className="mt-6 space-y-2" data-tour="nav">
+          {/* The menu in three groups, in the order of a working day: what's on today, the team, then the menu and
+            training. A team member gets today's things first (Home, side work, their schedule). */}
+          <nav aria-label="Main navigation" className="nav-groups space-y-2" data-tour="nav">
+            <p className="nav-group">Today</p>
             {!isManager && <button className={`nav-item ${view === "home" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "home" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("home")}><HomeIcon size={19} />Home</button>}
             {isManager && <button className={`nav-item ${(view === "dashboard" || view === "home") && !adding && !editing && !creating ? "active" : ""}`} aria-current={(view === "dashboard" || view === "home") && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("dashboard")}><LayoutDashboard size={19} />Dashboard</button>}
-            {(isOwner || access.length > 0) && !employeeView && <button className={`nav-item ${view === "assistant" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "assistant" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("assistant")}><Sparkles size={19} />Assistant</button>}
-            <button data-tour="nav-schedule" className={`nav-item ${view === "schedule" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "schedule" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("schedule")}><CalendarDays size={19} />Schedule</button>
+            {can("preshift") && <button className={`nav-item ${view === "preshift" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "preshift" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("preshift")}><ClipboardList size={19} />Pre-shift</button>}
+            <button className={`nav-item ${view === "checklists" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "checklists" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("checklists")}><ListChecks size={19} />Side work</button>
             {(can("preshift") || can("team")) && <button data-tour="nav-reports" className={`nav-item ${view === "reports" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "reports" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("reports")}><FileText size={19} />Shift report</button>}
+            {!isManager && <button data-tour="nav-schedule" className={`nav-item ${view === "schedule" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "schedule" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("schedule")}><CalendarDays size={19} />Schedule</button>}
+            {(isManager || (isOwner || access.length > 0) && !employeeView) && <p className="nav-group">Team</p>}
+            {isManager && <button data-tour="nav-schedule" className={`nav-item ${view === "schedule" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "schedule" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("schedule")}><CalendarDays size={19} />Schedule</button>}
+            {can("team") && <button className={`nav-item ${view === "team" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "team" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("team")}><Users size={19} />Team</button>}
+            {(isOwner || access.length > 0) && !employeeView && <button className={`nav-item ${view === "assistant" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "assistant" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("assistant")}><Sparkles size={19} />Assistant</button>}
+            <p className="nav-group">Menu &amp; training</p>
             <button className={`nav-item ${view === "library" || adding || editing ? "active" : ""}`} aria-expanded={libraryExpanded} aria-controls="library-options" onClick={() => setLibraryExpanded(expanded => !expanded)}><BookOpen size={19} /><span className="flex-1">Content library</span><span aria-hidden="true">{libraryExpanded ? "⌃" : "⌄"}</span></button>
             <div id="library-options" hidden={!libraryExpanded} className="ml-5 space-y-1 border-l border-line pl-3" aria-label="Libraries">
               <button className={`category-nav ${view === "library" && contentType === "food" ? "active" : ""}`} aria-pressed={view === "library" && contentType === "food"} onClick={() => navigate("library", "All", "food")}>Food</button>
@@ -2190,16 +2201,13 @@ function Workspace({
               <button className={`category-nav ${view === "library" && contentType === "wine" ? "active" : ""}`} aria-pressed={view === "library" && contentType === "wine"} onClick={() => navigate("library", "All", "wine")}>Wine &amp; Sake</button>
             </div>
             <button className={`nav-item ${view === "allergy" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "allergy" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("allergy")}><ShieldAlert size={19} />Allergy</button>
-            {can("preshift") && <button className={`nav-item ${view === "preshift" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "preshift" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("preshift")}><ClipboardList size={19} />Pre-shift</button>}
-            <button className={`nav-item ${view === "checklists" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "checklists" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("checklists")}><ListChecks size={19} />Side work</button>
-            {can("team") && <button className={`nav-item ${view === "team" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "team" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("team")}><Users size={19} />Team</button>}
             <button className={`nav-item ${view === "words" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "words" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("words")}><Languages size={19} />Words</button>
-            <button className={`nav-item ${view === "standards" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "standards" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("standards")}><ClipboardList size={19} />Standards</button>
+            <button className={`nav-item ${view === "standards" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "standards" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("standards")}><BadgeCheck size={19} />Standards</button>
           </nav>
-          {restaurant && <nav aria-label="Learning navigation" className="mt-2 space-y-2"><button className={`nav-item ${view==='progress'||view==='review'?'active':''}`} onClick={()=>navigate('progress')}><BarChart3 size={19}/>My progress</button><button className={`nav-item ${view === "tutor" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "tutor" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("tutor")}><GraduationCap size={19} />Tutor</button><button className={`nav-item ${view === "story" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "story" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("story")}><Store size={19} />Our story</button></nav>}
+          {restaurant && <nav aria-label="Learning navigation" className="space-y-2"><button className={`nav-item ${view === "story" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "story" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("story")}><ScrollText size={19} />Our story</button><button className={`nav-item ${view === "tutor" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "tutor" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("tutor")}><GraduationCap size={19} />Tutor</button><button className={`nav-item ${view==='progress'||view==='review'?'active':''}`} onClick={()=>navigate('progress')}><BarChart3 size={19}/>My progress</button></nav>}
           {can("library") && <>
-            <div className="mx-1.5 mt-4 h-px bg-line" />
-            <nav aria-label="Restaurant settings" className="mt-3 space-y-2">
+            <p className="nav-group">Settings</p>
+            <nav aria-label="Restaurant settings" className="space-y-2">
               <button className={`nav-item ${view === "library-settings" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "library-settings" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("library-settings")}><SlidersHorizontal size={19} />Library settings</button>
               <button className={`nav-item ${view === "locations" && !adding && !editing && !creating ? "active" : ""}`} aria-current={view === "locations" && !adding && !editing && !creating ? "page" : undefined} onClick={() => navigate("locations")}><Store size={19} />Locations</button>
             </nav>

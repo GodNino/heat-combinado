@@ -3471,3 +3471,8 @@ span.dash-name { text-decoration:none; }
 /* Allergy check: the "confirm with the kitchen" line stays on screen (a safety warning is never behind the (i)).
    To undo, revert the commit that added this block. */
 :root:root:root:root:root:root:root .allergy-confirm { margin:0 0 14px; padding:12px 16px; border-radius:16px; background:var(--lime); color:var(--c-on-heat); font-size:13px; font-weight:600; }
+
+/* Side menu in groups (Today, Team, Menu & training): a small label above each group, the same 11px
+   bold caps as section labels, in muted ink. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .nav-group { margin:20px 0 6px; padding:0 12px; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--c-muted); }
+:root:root:root:root:root:root:root .nav-groups > .nav-group:first-child { margin-top:14px; }
