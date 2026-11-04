@@ -67,7 +67,7 @@ export function Tonight({restaurantId, onOpenSchedule}: {restaurantId: string; o
     setLoading(true); setError(""); setPicked(null);
     try {
       // Read on its own: before database update 060 the columns aren't there, and the usual names apply.
-      void supabase.from("schedule_settings").select("server_positions, sa_positions").eq("restaurant_id", restaurantId).maybeSingle()
+      void supabase.from("schedule_settings").select("*").eq("restaurant_id", restaurantId).maybeSingle()
         .then(({data, error}) => setRoles(error || !data ? {} : data as SideRoles));
       const [people, savedJobs, shift, lists] = await Promise.all([
         supabase.rpc("floor_plan_people", {rid: restaurantId, day}),
@@ -97,7 +97,7 @@ export function Tonight({restaurantId, onOpenSchedule}: {restaurantId: string; o
   }, [restaurantId, day, service]);
   useEffect(() => { void load(); }, [load]);
 
-  const people = useMemo(() => peopleIn(service, working), [working, service]);
+  const people = useMemo(() => peopleIn(service, working, roles.dinner_starts ?? undefined), [working, service, roles.dinner_starts]);
   const mine = people.filter(p => roleOf(p.shift_position, roles) === team).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at) || a.name.localeCompare(b.name));
   const closing = useMemo(() => new Set(closers(mine)), [mine]);
   const nameOf = (id: string) => working.find(p => p.user_id === id)?.name || "Team member";

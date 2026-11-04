@@ -742,11 +742,12 @@ function SettingsSheet({restaurantId, settings, positions, missing, onClose, onS
       // Only sent once chosen, so the rest of the settings still save before database update 060.
       ...(form.server_positions || settings.server_positions ? {server_positions: form.server_positions} : {}),
       ...(form.sa_positions || settings.sa_positions ? {sa_positions: form.sa_positions} : {}),
+      ...(form.dinner_starts !== null || settings.dinner_starts !== null ? {dinner_starts: form.dinner_starts} : {}),
     };
     setBusy(true); setError("");
     const result = await supabase!.from("schedule_settings").upsert(row);
     setBusy(false);
-    if (result.error) return setError(/server_positions|sa_positions/.test(result.error.message) ? "Choosing servers and S.A.s needs database update 060." : /shift_kind_hours/.test(result.error.message) ? "Shift types need database update 053." : /schedule_settings|PGRST205|42P01/.test(result.error.message) ? "Schedule settings need database update 044." : result.error.message);
+    if (result.error) return setError(/server_positions|sa_positions/.test(result.error.message) ? "Choosing servers and S.A.s needs database update 060." : /dinner_starts/.test(result.error.message) ? "When dinner starts needs database update 063." : /shift_kind_hours/.test(result.error.message) ? "Shift types need database update 053." : /schedule_settings|PGRST205|42P01/.test(result.error.message) ? "Schedule settings need database update 044." : result.error.message);
     onSaved(readSettings(row));
   }
   return <div className="sched-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -798,6 +799,11 @@ function SettingsSheet({restaurantId, settings, positions, missing, onClose, onS
               }}>{name}</button>; })}</div>
           </div>)}
         </fieldset>
+
+        <Field label="Dinner starts at"><select id="settings-dinner" value={form.dinner_starts ?? 16} onChange={e => setForm({...form, dinner_starts: Number(e.target.value)})}>
+          {Array.from({length: 10}, (_, i) => i + 12).map(h => <option key={h} value={h}>{new Date(2026, 0, 1, h).toLocaleTimeString(undefined, {hour: "numeric"})}</option>)}
+        </select></Field>
+        <p className="muted -mt-2 mb-5 text-xs">Shifts that start before this are Lunch (or Brunch) on Side work and Sections; from this hour on, Dinner.</p>
 
         <fieldset className="mb-5">
           <legend className="mb-2 block text-sm font-semibold">Overtime</legend>

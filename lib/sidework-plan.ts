@@ -21,7 +21,7 @@ export const isServer = (position: string) => /^\s*server\s*$/i.test(position);
 export const isHelper = (position: string) => /assistant|^\s*s\.?\s*a\.?\s*$|runner|busser/i.test(position);
 // Which positions are servers and S.A.s here (schedule_settings, 060). A list the restaurant saved wins;
 // without one (null), the usual names above decide.
-export type SideRoles = {server_positions?: string[] | null; sa_positions?: string[] | null};
+export type SideRoles = {server_positions?: string[] | null; sa_positions?: string[] | null; dinner_starts?: number | null};
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 export const roleOf = (position: string, roles: SideRoles = {}): Role | null => {
   const server = roles.server_positions ? roles.server_positions.some(p => sameName(p, position)) : isServer(position);
@@ -31,7 +31,9 @@ export const roleOf = (position: string, roles: SideRoles = {}): Role | null => 
 };
 
 // Lunch is anything starting before 4pm; the rest is dinner.
-export const serviceOf = (startsAt: string) => new Date(startsAt).getHours() < 16 ? "Lunch" : "Dinner";
+// dinnerStarts is the restaurant's own hour (schedule_settings.dinner_starts, 063); 4pm unless set.
+export const DINNER_STARTS = 16;
+export const serviceOf = (startsAt: string, dinnerStarts = DINNER_STARTS) => new Date(startsAt).getHours() < dinnerStarts ? "Lunch" : "Dinner";
 // The services a manager can pick. Brunch is the daytime service too (normally Saturday and Sunday, but the manager
 // decides): it has the same people as Lunch, the day's shifts that start before 4pm, under its own name and its own
 // floor plan and side work.
@@ -42,7 +44,7 @@ export const BRUNCH_READY = true;
 export const SERVICES = BRUNCH_READY ? ALL_SERVICES : ALL_SERVICES.filter(s => s !== "Brunch");
 export const halfOf = (service: string) => service === "Dinner" ? "Dinner" : "Lunch";
 // Where the screen starts: Dinner from 4pm, otherwise Brunch on a Saturday or Sunday and Lunch on the other days.
-export const defaultServiceAt = (now = new Date(), brunch = BRUNCH_READY) => now.getHours() >= 16 ? "Dinner" : brunch && (now.getDay() === 0 || now.getDay() === 6) ? "Brunch" : "Lunch";
+export const defaultServiceAt = (now = new Date(), brunch = BRUNCH_READY, dinnerStarts = DINNER_STARTS) => now.getHours() >= dinnerStarts ? "Dinner" : brunch && (now.getDay() === 0 || now.getDay() === 6) ? "Brunch" : "Lunch";
 
 // A day number that goes up by one every calendar day, for the rotation.
 export function dayNumber(day: string) {
@@ -52,10 +54,10 @@ export function dayNumber(day: string) {
 export const weekdayOf = (day: string) => new Date(dayNumber(day) * 864e5).getUTCDay();
 
 // One entry per person (someone on two shifts in a service counts once, at their earliest start).
-export function peopleIn(service: string, onShift: OnShift[]) {
+export function peopleIn(service: string, onShift: OnShift[], dinnerStarts = DINNER_STARTS) {
   const seen = new Map<string, OnShift>();
   for (const p of onShift) {
-    if (serviceOf(p.starts_at) !== halfOf(service)) continue;
+    if (serviceOf(p.starts_at, dinnerStarts) !== halfOf(service)) continue;
     const had = seen.get(p.user_id);
     if (!had || Date.parse(p.starts_at) < Date.parse(had.starts_at)) seen.set(p.user_id, p);
   }
