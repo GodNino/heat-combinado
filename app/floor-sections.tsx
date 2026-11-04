@@ -7,12 +7,13 @@
 // The map is the restaurant's floor_maps row (058). Sections are saved, on every change, as the rows
 // of that service's floor plan (050), which My shift already shows to each server and S.A.
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Copy, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Notice } from "./ui";
 import { closers, roleOf, type OnShift, type SideRoles } from "@/lib/sidework-plan";
 import { localDate, type FloorRow } from "./floor-plan";
 import { DownloadSheet } from "./sheet-download";
+import { photoLinks, shrinkPhoto } from "./photos";
 import { notify } from "./notifications";
 import { sectionsSheet } from "@/lib/sheets";
 
@@ -20,7 +21,9 @@ import { sectionsSheet } from "@/lib/sheets";
 // floor that aren't tables, bar and host (the host stand), drawn for reference and never in a section.
 // turned stands a long shape on end.
 type Table = {id: string; label: string; x: number; y: number; shape: "r" | "s" | "w" | "c" | "bar" | "host"; group?: string; turned?: boolean};
-export type FloorLayout = {width: number; height: number; walls: string[]; labels: {x: number; y: number; text: string}[]; tables: Table[]; spots?: [number, number][]};
+// background: a photo of the restaurant's own floor plan (menu-photos/<restaurant>/floor/...), shown faintly
+// behind the tables in Edit map so the manager can place them over it, like tracing.
+export type FloorLayout = {width: number; height: number; walls: string[]; labels: {x: number; y: number; text: string}[]; tables: Table[]; spots?: [number, number][]; background?: string};
 type Person = {id: string; name: string};
 // A section on the map (n is its number) or a post without tables (n is 0, name says what it is).
 type Section = {n: number; name: string; tables: string[]; server: Person | null; sas: Person[]};
@@ -253,7 +256,7 @@ export function FloorSections({restaurantId, day, service, people, roles = {}}: 
   }
 
   if (loading) return <p className="muted py-6" role="status">Loading the floor map…</p>;
-  if (editing) return <><Notice text={error} error /><MapEditor start={layout ?? EMPTY_MAP} onCancel={() => setEditing(false)} onSave={saveMap} /></>;
+  if (editing) return <><Notice text={error} error /><MapEditor restaurantId={restaurantId} start={layout ?? EMPTY_MAP} onCancel={() => setEditing(false)} onSave={saveMap} /></>;
   if (!layout) return <><Notice text={error} error />{!error && <div className="swb-card"><p className="muted text-sm">This restaurant has no floor map yet. Place your tables once, then you draw tonight&apos;s sections on it here.</p>
     <div><button type="button" className="btn secondary" onClick={() => setEditing(true)}>Create the floor map</button></div></div>}</>;
 
@@ -382,10 +385,22 @@ export function FloorSections({restaurantId, day, service, people, roles = {}}: 
 
 // Edit map: drag tables to move them, add tables, and change a table's number, shape or area. Nothing is
 // saved until Save map; sections already drawn keep their tables (a deleted table just drops out of them).
-function MapEditor({start, onCancel, onSave}: {start: FloorLayout; onCancel: () => void; onSave: (layout: FloorLayout) => Promise<boolean>}) {
+function MapEditor({restaurantId, start, onCancel, onSave}: {restaurantId: string; start: FloorLayout; onCancel: () => void; onSave: (layout: FloorLayout) => Promise<boolean>}) {
   const [map, setMap] = useState<FloorLayout>(start);
   const [picked, setPicked] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
+  // The photo behind the map: its link, and the photos to delete once the map is saved (or cancelled).
+  const [photoUrl, setPhotoUrl] = useState("");
+  const uploaded = useRef<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    if (!map.background) { setPhotoUrl(""); return; }
+    void photoLinks([map.background]).then(links => { if (live) setPhotoUrl(links[map.background!] ?? ""); }).catch(() => {});
+    return () => { live = false; };
+  }, [map.background]);
+  // Adding a whole row at once: how many, the first number, the shape and which way the row runs.
+  const [row, setRow] = useState({count: 5, first: "", shape: "r" as Table["shape"], down: false});
   const svg = useRef<SVGSVGElement>(null);
   // A press on a table: a tap opens it to edit; holding and moving drags it.
   const drag = useRef<{id: string; dx: number; dy: number; sx: number; sy: number; moved: boolean} | null>(null);
@@ -423,10 +438,52 @@ function MapEditor({start, onCancel, onSave}: {start: FloorLayout; onCancel: () 
     const [w, h] = dimsOf(t);
     change(d.id, {x: Math.min(map.width - w, Math.max(w, snap(p.x - d.dx))), y: Math.min(map.height - h, Math.max(h, snap(p.y - d.dy)))});
   }
+  const nextNumber = () => { const numbers = map.tables.filter(t => !isFixture(t)).map(t => Number(t.label)).filter(n => Number.isFinite(n) && n > 0); return numbers.length ? Math.max(...numbers) + 1 : 1; };
+  const newId = (i = 0) => `t${Date.now().toString(36)}${i}`;
+  const fit = (shape: Table["shape"], x: number, y: number, turned?: boolean) => { const [w, h] = dimsOf({shape, turned}); return {x: snap(Math.min(map.width - w, Math.max(w, x))), y: snap(Math.min(map.height - h, Math.max(h, y)))}; };
+  // A copy of a table right next to it, with the next free number.
+  function duplicate(t: Table) {
+    const [w] = dimsOf(t), id = newId();
+    const label = isFixture(t) || !/^\d+$/.test(t.label) ? t.label : String(nextNumber());
+    setMap(m => ({...m, tables: [...m.tables, {...t, id, label, ...fit(t.shape, t.x + 2 * w + 20, t.y, t.turned)}]}));
+    setPicked(id);
+  }
+  // A row of tables, numbered one after another, spaced by their size, starting near the top left.
+  function addRow() {
+    const count = Math.max(1, Math.min(20, Math.round(row.count) || 1));
+    const first = Number(row.first) > 0 ? Math.round(Number(row.first)) : nextNumber();
+    const [w, h] = dims(row.shape), step = row.down ? 2 * h + 24 : 2 * w + 24;
+    const start = {x: w + 40, y: h + 40};
+    const made: Table[] = Array.from({length: count}, (_, i) => ({id: newId(i), label: row.shape === "c" ? "" : String(first + i), shape: row.shape,
+      ...fit(row.shape, start.x + (row.down ? 0 : i * step), start.y + (row.down ? i * step : 0))}));
+    setMap(m => ({...m, tables: [...m.tables, ...made]}));
+    setPicked(null);
+  }
+  async function addPhoto(file: File | undefined) {
+    if (!file || !supabase) return;
+    setProblem(""); setBusy(true);
+    try {
+      const shrunk = await shrinkPhoto(file);
+      const path = `${restaurantId}/floor/${crypto.randomUUID()}.${shrunk.type === "image/png" ? "png" : shrunk.type === "image/webp" ? "webp" : "jpg"}`;
+      const up = await supabase.storage.from("menu-photos").upload(path, shrunk, {contentType: shrunk.type, cacheControl: "31536000"});
+      if (up.error) throw up.error;
+      uploaded.current.push(path);
+      setMap(m => ({...m, background: path}));
+    } catch (e) {
+      const text = e instanceof Error ? e.message : String(e);
+      setProblem(/row-level|policy|403|Unauthorized/i.test(text) ? "The photo couldn't be saved: it needs database update 061." : "The photo couldn't be added. Try a JPG or PNG.");
+    } finally { setBusy(false); }
+  }
+  async function finish(saved: boolean, next?: FloorLayout) {
+    // Photos added in this edit and not kept, and the one replaced if the map was saved, are deleted.
+    const keep = saved ? next?.background : start.background;
+    const drop = [...uploaded.current, ...(saved && start.background ? [start.background] : [])].filter(p => p && p !== keep);
+    if (drop.length) await supabase?.storage.from("menu-photos").remove(drop);
+    uploaded.current = [];
+  }
   function addTable() {
-    const numbers = map.tables.filter(t => !isFixture(t)).map(t => Number(t.label)).filter(n => Number.isFinite(n) && n > 0);
-    const label = String(numbers.length ? Math.max(...numbers) + 1 : 1);
-    const id = `t${Date.now().toString(36)}`;
+    const label = String(nextNumber());
+    const id = newId();
     // A little apart from the last table added, so several new ones don't sit on top of each other.
     const offset = (map.tables.filter(t => t.id.startsWith("t")).length % 6) * 30;
     setMap(m => ({...m, tables: [...m.tables, {id, label, x: snap(m.width / 2 + offset), y: snap(m.height / 2 + offset), shape: "s"}]}));
@@ -439,7 +496,8 @@ function MapEditor({start, onCancel, onSave}: {start: FloorLayout; onCancel: () 
   async function save() {
     setBusy(true);
     const clean = {...map, tables: map.tables.map(t => ({...t, label: t.label.trim().slice(0, 8), group: t.group?.trim().slice(0, 30) || undefined}))};
-    await onSave(clean);
+    const ok = await onSave(clean);
+    if (ok) await finish(true, clean);
     setBusy(false);
   }
 
@@ -451,6 +509,7 @@ function MapEditor({start, onCancel, onSave}: {start: FloorLayout; onCancel: () 
           onPointerMove={moveDrag} onPointerCancel={() => { drag.current = null; }}
           onPointerUp={() => { const d = drag.current; drag.current = null; if (d && !d.moved) { setPicked(d.id); setFocusNumber(n => n + 1); } }}>
           <defs><pattern id="fs-dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" className="fs-dot" /></pattern></defs>
+          {photoUrl && <image className="fs-photo" href={photoUrl} x="0" y="0" width={map.width} height={map.height} preserveAspectRatio="xMidYMid meet" />}
           <rect className="fs-grid-bg" x="0" y="0" width={map.width} height={map.height} fill="url(#fs-dots)" onPointerDown={() => setPicked(null)} />
           {map.tables.map(t => <g key={t.id} className={`fs-table fs-move${picked === t.id ? " picked" : ""}`} role="button" tabIndex={0} aria-label={`Table ${t.label || t.group || t.id}`} aria-pressed={picked === t.id}
             onPointerDown={e => startDrag(e, t)}
@@ -467,7 +526,7 @@ function MapEditor({start, onCancel, onSave}: {start: FloorLayout; onCancel: () 
         <span className="muted text-xs">Drag a table to move it. Tap it to change its number or shape.</span>
         <span className="fs-actions">
           <button type="button" className="btn secondary" onClick={addTable}><Plus size={14} aria-hidden="true" />Add table</button>
-          <button type="button" className="btn secondary" disabled={busy} onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn secondary" disabled={busy} onClick={() => { void finish(false); onCancel(); }}>Cancel</button>
           <button type="button" className="btn" disabled={busy} onClick={() => void save()}>{busy ? "Saving…" : "Save map"}</button>
         </span>
       </div>
@@ -476,8 +535,38 @@ function MapEditor({start, onCancel, onSave}: {start: FloorLayout; onCancel: () 
     <div className="fs-side">
       <section className="swb-card" aria-label="Table">
         <div className="swb-card-head"><b>{table ? (isFixture(table) ? (table.shape === "bar" ? "Bar" : "Host stand") : table.label ? `Table ${table.label}` : "Seat") : "Pick a table"}</b>
-          {table && <button type="button" className="icon-chip" aria-label="Delete table" title="Delete table" onClick={() => removeTable(table.id)}><Trash2 size={14} /></button>}</div>
-        {!table ? <p className="muted text-sm">Tap a table on the map to change it, or add a new one.</p> : <>
+          {table && <span className="fs-actions">
+            <button type="button" className="icon-chip" aria-label="Duplicate" title="Duplicate" onClick={() => duplicate(table)}><Copy size={14} /></button>
+            <button type="button" className="icon-chip" aria-label="Delete table" title="Delete table" onClick={() => removeTable(table.id)}><Trash2 size={14} /></button></span>}</div>
+        {!table ? <>
+          <p className="muted text-sm">Tap a table on the map to change it, or add a new one.</p>
+          <div className="fs-people">
+            <span className="fs-plabel">Photo of your floor plan</span>
+            <p className="muted text-xs">Add a photo or a screenshot of your printed plan: it shows faintly behind the tables so you can place them on top, like tracing. Only you see it here.</p>
+            <div className="fs-chips">
+              <label className="btn secondary fs-file">{map.background ? "Change the photo" : "Add a photo"}<input type="file" accept="image/*" className="sr-only" disabled={busy} onChange={e => { void addPhoto(e.target.files?.[0]); e.target.value = ""; }} /></label>
+              {map.background && <button type="button" className="btn secondary" disabled={busy} onClick={() => setMap(m => ({...m, background: undefined}))}>Remove the photo</button>}
+            </div>
+            {problem && <p className="muted text-xs" role="alert">{problem}</p>}
+          </div>
+          <div className="fs-people">
+            <span className="fs-plabel">Add a row of tables</span>
+            <div className="fs-row-form">
+              <label><span className="fs-plabel">How many</span><input className="fs-input" type="number" min={1} max={20} value={row.count} onChange={e => setRow({...row, count: Number(e.target.value)})} /></label>
+              <label><span className="fs-plabel">First number</span><input className="fs-input" inputMode="numeric" value={row.first} placeholder={String(nextNumber())} onChange={e => setRow({...row, first: e.target.value.replace(/\D/g, "").slice(0, 4)})} /></label>
+            </div>
+            <div className="fs-chips">
+              {([["r", "Round"], ["s", "Square"], ["w", "Long"], ["c", "Seat"]] as [Table["shape"], string][]).map(([shape, name]) =>
+                <button key={shape} type="button" className="fs-chip" aria-pressed={row.shape === shape} onClick={() => setRow({...row, shape})}>{name}</button>)}
+            </div>
+            <div className="fs-chips">
+              <button type="button" className="fs-chip" aria-pressed={!row.down} onClick={() => setRow({...row, down: false})}>Across</button>
+              <button type="button" className="fs-chip" aria-pressed={row.down} onClick={() => setRow({...row, down: true})}>Down</button>
+            </div>
+            <div><button type="button" className="btn secondary" onClick={addRow}><Plus size={14} aria-hidden="true" />Add the row</button></div>
+            <p className="muted text-xs">The row starts at the top left: drag each table into place.</p>
+          </div>
+        </> : <>
           <label className="fs-people"><span className="fs-plabel">{isFixture(table) ? "Name on the map" : "Number"}</span>
             <input ref={numberInput} className="fs-input" value={table.label} maxLength={8} inputMode="text" onChange={e => change(table.id, {label: e.target.value})} placeholder="Leave empty for a counter seat" /></label>
           <div className="fs-people"><span className="fs-plabel">Shape</span>
