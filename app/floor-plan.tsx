@@ -248,7 +248,7 @@ export function SideworkLists({restaurantId, lists, onBack, initial}: {restauran
     <button type="button" className="btn secondary" onClick={open && lists.length && !initial ? () => setOpen(null) : onBack}><ArrowLeft size={16} />{initial ? "Setup" : open && lists.length ? "Lists" : "Floor plan"}</button>
     <Notice text={error} error />
     {!open ? <div className="mt-4 space-y-2">
-      <p className="muted mb-3 text-sm">One list, most important first. Tonight gives the first one to each server on: with 5 servers, the top 5. Repeat a task to give it to two servers on a busy night.</p>
+      <p className="muted mb-3 text-sm">One list, most important first. Each task shows under During the shift on Tonight, where you give it to a server or an S.A.</p>
       {lists.map(l => <button key={l.id} type="button" className="panel flex w-full items-center gap-3 text-left" style={{padding: "10px 16px"}} onClick={() => start(l)}>
         <span className="min-w-0 flex-1"><span className="block font-semibold">{l.name}</span><span className="muted block text-xs">{l.tasks.join(" · ")}</span></span>
         <ChevronRight size={18} className="muted shrink-0" aria-hidden="true" />

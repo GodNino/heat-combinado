@@ -25,7 +25,7 @@ const BEFORE_AFTER = [
   ["86s shouted across the pass", "Tonight's 86 list on the phone of everyone working today"],
   ["The night's story leaves with the closing manager", "An end-of-shift report the owners can read, and a dashboard that remembers"],
   ["Training means reading the binder alone", "A tutor that quizzes, corrects and practises selling with every server"],
-  ["Side work on a whiteboard, the same names every night", "Side work built from the schedule, rotating so nobody gets yesterday's job"],
+  ["Side work on a whiteboard, the same names every night", "Side work and sections given out in a few taps, on everyone's phone"],
   ["Answers buried in texts, schedules and reports", "Ask the assistant: who's near overtime, who needs to study, what the reports say"],
 ];
 
@@ -147,8 +147,8 @@ export default function Landing() {
             points={["Drag shifts between days and people; copy last week", "Overtime, double-booking and time off flagged before you publish", "Releases and swaps reach only people who can cover them, and a manager always approves", "The floor manager builds front of house; the head chef builds the kitchen"]}
             visual={<ScheduleVisual />} />
 
-          <Scene eyebrow="Side work" title="Tonight's side work builds itself from the schedule"
-            points={["Sections, S.A.s and running side work for every server on tonight's schedule", "Opening and closing jobs handed out by their rules; whoever comes in last closes", "It rotates, so nobody gets yesterday's job", "Drag a name onto a job to change it; each person sees their own on their phone"]}
+          <Scene eyebrow="Side work" title="Tonight's side work and sections, in a few taps"
+            points={["Everyone on tonight's schedule, servers and S.A.s, next to the jobs", "Tap a name, then a job: opening, during the shift and closing", "Draw the sections on your own floor map and print it for the floor", "Send it and each person sees theirs on their phone"]}
             visual={<SideworkVisual />} />
 
           <Scene flip eyebrow="Pre-shift" title="Tonight's board, on the phone of everyone working tonight"
