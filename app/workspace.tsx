@@ -78,6 +78,7 @@ import { Tour, tourSeen, tourSteps } from "./tour";
 import { LastShiftNote, ShiftReports } from "./shift-report";
 import { LanguageSwitch, currentLang, setLang } from "./language";
 import { NotificationSwitch, notify } from "./notifications";
+import { GettingStarted } from "./getting-started";
 import { MyWeek, NextShift, Schedule, ShiftChangesWaiting, TodayRoster, type ScheduleTab } from "./schedule";
 import { FOH_POSITIONS, KITCHEN_POSITIONS, POSITIONS, positionRank } from "@/lib/schedule";
 import { ManagerAttention, type AttentionTarget } from "./home-cards";
@@ -1763,6 +1764,9 @@ function Workspace({
     const rid = restaurant.id;
     const canSchedule = can("team") || can("schedule_foh") || can("schedule_boh");
     return <div className="today">
+      {/* A new restaurant's steps to get going; gone once done or hidden. */}
+      {(isOwner || can("team")) && !itemsLoading && <GettingStarted key={`start-${rid}`} restaurantId={rid} menuCount={items.length}
+        onGo={place => place === "library" ? navigate("library", "All", "food") : navigate(place)} />}
       {(can("preshift") || can("team") || canSchedule) && <TodayFigures key={`figures-${rid}`} restaurantId={rid} canSchedule={canSchedule} />}
       {(can("team") || can("preshift") || can("library") || canSchedule) && <ManagerAttention key={`attention-${rid}`} restaurantId={rid} canTeam={can("team")} canSchedule={canSchedule} canReports={can("preshift") || can("team")} onOpen={openAttention} />}
       <TodayStatus key={`status-${rid}`} restaurantId={rid} canPreshift={can("preshift")} canReports={can("preshift") || can("team")} onPreshift={edit => {navigate("preshift"); setPreshiftEdit(edit);}} onSideWork={() => navigate("checklists")} onReport={openPastReports} />
