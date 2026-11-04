@@ -3492,3 +3492,8 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .gs-text small { font-size:12px; color:var(--c-muted); }
 :root:root:root:root:root:root:root .getting-started-steps li.done .gs-text b { color:var(--c-muted); font-weight:600; }
 :root:root:root:root:root:root:root .getting-started-steps .btn { display:inline-flex; align-items:center; gap:4px; }
+
+/* Allergy check: inside each result group, the dishes are divided by the menu's sections, in the menu's
+   order, each under its bold section label. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .allergy-section + .allergy-section { margin-top:20px; }
+:root:root:root:root:root:root:root .allergy-section-name { margin:0 0 14px; font-size:13px; font-weight:700; color:var(--c-text); }

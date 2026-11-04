@@ -141,12 +141,16 @@ function AllergyView({items, loading, refresh, shift, restaurantName, memory, on
         <label htmlFor="allergy-result-filter">Show results</label><select className="mb-7" id="allergy-result-filter" value={resultFilter} onChange={e => setResultFilter(e.target.value)}><option value="all">All results</option>{groups.map(g => <option key={g.status} value={g.status}>{g.title} ({results.filter(r=>r.status===g.status).length})</option>)}</select>
         {groups.filter(g => resultFilter === "all" || resultFilter === g.status).map(group => <section className="mb-9" key={group.status} aria-label={group.title}>
           <InfoRow info={group.detail} className="mb-4"><h3 className="text-lg font-semibold" style={{color:group.color}}>{group.title} ({results.filter(r=>r.status===group.status).length})</h3></InfoRow>
-          <div className="menu-list grid items-start gap-2">{results.filter(r=>r.status===group.status).map(({item,reasons}) => <button type="button" key={item.id} className={`panel compact-menu-row allergy-row is-${group.status} w-full text-left`} onClick={() => onOpen(item)}>
+          {/* Divided by the menu's own sections, in the menu's order, so a server finds the dish where it sits on the menu. */}
+          {[...new Set(results.filter(r=>r.status===group.status).map(r => categoryOf(r.item)))].map(section => <div key={section} className="allergy-section">
+          <p className="allergy-section-name"><span data-no-translate>{section}</span><span className="muted">{` · ${results.filter(r=>r.status===group.status && categoryOf(r.item)===section).length}`}</span></p>
+          <div className="menu-list grid items-start gap-2">{results.filter(r=>r.status===group.status && categoryOf(r.item)===section).map(({item,reasons}) => <button type="button" key={item.id} className={`panel compact-menu-row allergy-row is-${group.status} w-full text-left`} onClick={() => onOpen(item)}>
             {item.photo_url ? <img src={item.photo_url} alt="" loading="lazy" decoding="async" className="h-12 w-12 shrink-0 rounded-lg object-cover"/> : <BookOpen size={24} className="muted shrink-0"/>}
             <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.name}</span><ShiftFlag entry={shift[item.id]} /><span className="muted mt-1 block text-xs uppercase tracking-wider">{categoryOf(item)}{summaryFor(item, cardRows) && ` · ${summaryFor(item, cardRows)}`}</span></span>
             <span className="menu-side"><span className="menu-badges" aria-label="Recorded allergen notes">{badgeCodes(item.allergens).slice(0,3).map((badge,index)=><span key={index} className={`menu-badge ${badge.cc?'cc':''}`} title={badge.text} aria-label={badge.text}>{badge.code}</span>)}{badgeCodes(item.allergens).length>3&&<span className="muted text-xs">+{badgeCodes(item.allergens).length-3}</span>}{!item.allergens.length&&<span className="menu-badge unknown" title="Allergen information not yet provided" aria-label="Allergen information not yet provided">?</span>}</span><span className={`allergy-mark is-${group.status}`} role="img" aria-label={group.title} title={group.title}>{group.mark}</span></span>
             {group.status !== "no-match" && !!reasons.length && <span className="allergy-reason">{reasons.map((reason,i) => <span key={i} className="block">{expandCrossContamination(reason)}</span>)}</span>}
           </button>)}</div>
+          </div>)}
           {!results.some(r=>r.status===group.status) && <p className="muted text-sm">No items in this group.</p>}
         </section>)}
       </>}
