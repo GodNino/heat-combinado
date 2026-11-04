@@ -3460,3 +3460,10 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .fs-row-form { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px; }
 :root:root:root:root:root:root:root .fs-row-form label { display:grid; gap:6px; min-width:0; }
 :root:root:root:root:root:root:root .fs-file { display:inline-flex; align-items:center; cursor:pointer; }
+
+/* Home: the card asking a team member to turn on notifications (only while they are off on this phone).
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .notify-card { display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between; padding:16px; }
+:root:root:root:root:root:root:root .notify-card .min-w-0 { display:grid; gap:6px; flex:1 1 260px; }
+:root:root:root:root:root:root:root .notify-card-actions { display:flex; flex-wrap:wrap; gap:6px; }
+:root:root:root:root:root:root:root .notify-card-actions .btn { display:inline-flex; align-items:center; gap:6px; }
