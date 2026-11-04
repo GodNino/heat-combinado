@@ -125,7 +125,7 @@ function fromRows(rows: FloorRow[]): Section[] {
   return sections;
 }
 
-export function FloorSections({restaurantId, day, service, people, roles = {}}: {restaurantId: string; day: string; service: string; people: OnShift[]; roles?: SideRoles}) {
+export function FloorSections({restaurantId, day, service, people, roles = {}, onOpenSchedule}: {restaurantId: string; day: string; service: string; people: OnShift[]; roles?: SideRoles; onOpenSchedule?: () => void}) {
   const [layout, setLayout] = useState<FloorLayout | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [drawing, setDrawing] = useState<Set<string>>(new Set());
@@ -366,7 +366,8 @@ export function FloorSections({restaurantId, day, service, people, roles = {}}: 
                   <span data-no-translate>{p.name || "Team member"}{closing.has(p.user_id) ? " ©" : ""}</span><small>{other ? String(other.n) : clock(p.starts_at)}</small></button>; })}
               <button type="button" className="fs-chip" aria-pressed={!current.server} onClick={() => void setServer(current, null)}>Pick-up</button>
             </div>
-            {!servers.length && <p className="muted text-xs">No servers on the published schedule for this service. Which positions count as servers is set in Schedule, Settings.</p>}
+            {!servers.length && <><p className="muted text-xs">No servers on the published schedule for this service. Which positions count as servers is set in Schedule, Settings.</p>
+              {onOpenSchedule && <div><button type="button" className="btn secondary" onClick={onOpenSchedule}>Open the schedule</button></div>}</>}
           </div>}
           <div className="fs-people">
             <span className="fs-plabel">{isPost(current) ? "S.A." : "S.A. (one can cover two sections)"}</span>

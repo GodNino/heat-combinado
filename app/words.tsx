@@ -185,7 +185,7 @@ export function WordsManager({restaurantId, restaurantName, custom, onChanged, c
   return <section className="mx-auto max-w-3xl">
     <ScreenHeader
       eyebrow={canEdit ? "Manager workspace" : "Know your menu"}
-      title={side === "guides" ? "Guides" : "Words"}
+      title={side === "guides" ? "Guides" : "Glossary"}
       info={canEdit
         ? "The words your menu uses, in your own wording. A word shows on every card that mentions it. Write one up properly and it becomes a guide your team can browse before service."
         : "The words and ingredients your menu uses, in your kitchen’s own wording. Tap a word to see what it means. Guides are the ones written up in full, with the story behind them."}

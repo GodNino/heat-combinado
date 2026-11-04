@@ -17,6 +17,7 @@ import { SERVICES, closers, peopleIn, roleOf, weekdayOf, type Phase, type Role, 
 import { DayPill } from "./day-pill";
 import { currentLang } from "./language";
 import { FloorSections } from "./floor-sections";
+import { notify } from "./notifications";
 
 type Sent = {id: string; title: string; user_id: string | null; phase: Phase; done_at: string | null; job_id: string | null; steps_done: number[]};
 // One person on one job: saved (key is its row id) or only on this screen (key starts with "draft-").
@@ -31,7 +32,7 @@ const TEAMS: [Role, string][] = [["server", "Servers"], ["sa", "S.A.s"]];
 const longDay = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(currentLang() === "es" ? "es" : undefined, {weekday: "long", month: "long", day: "numeric"});
 const clock = (iso: string) => new Date(iso).toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"});
 
-export function Tonight({restaurantId}: {restaurantId: string}) {
+export function Tonight({restaurantId, onOpenSchedule}: {restaurantId: string; onOpenSchedule?: () => void}) {
   const [day, setDay] = useState(localDate);
   const [service, setService] = useState<string>(defaultService);
   const [team, setTeam] = useState<Role>("server");
@@ -66,7 +67,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
     setLoading(true); setError(""); setPicked(null);
     try {
       // Read on its own: before database update 060 the columns aren't there, and the usual names apply.
-      void supabase.from("schedule_settings").select("server_positions, sa_positions").eq("restaurant_id", restaurantId).maybeSingle()
+      void supabase.from("schedule_settings").select("*").eq("restaurant_id", restaurantId).maybeSingle()
         .then(({data, error}) => setRoles(error || !data ? {} : data as SideRoles));
       const [people, savedJobs, shift, lists] = await Promise.all([
         supabase.rpc("floor_plan_people", {rid: restaurantId, day}),
@@ -96,7 +97,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
   }, [restaurantId, day, service]);
   useEffect(() => { void load(); }, [load]);
 
-  const people = useMemo(() => peopleIn(service, working), [working, service]);
+  const people = useMemo(() => peopleIn(service, working, roles.dinner_starts ?? undefined), [working, service, roles.dinner_starts]);
   const mine = people.filter(p => roleOf(p.shift_position, roles) === team).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at) || a.name.localeCompare(b.name));
   const closing = useMemo(() => new Set(closers(mine)), [mine]);
   const nameOf = (id: string) => working.find(p => p.user_id === id)?.name || "Team member";
@@ -170,7 +171,9 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
       }
       const floorPeople = people.map(p => ({shift_id: id, restaurant_id: restaurantId, user_id: p.user_id}));
       if (floorPeople.length) await supabase.from("checklist_floor").upsert(floorPeople, {onConflict: "shift_id,user_id", ignoreDuplicates: true});
-      setMessage("Sent. Everyone sees their side work on their phone.");
+      // Everyone given a job gets a notification on their phone (062).
+      if (id) notify("sidework_posted", id);
+      setMessage("Sent. Everyone sees their side work on their phone and gets a notification. Sections are sent from Sections.");
       await load();
     } catch (e) { setError(explain(e)); }
     finally { setBusy(false); }
@@ -210,7 +213,7 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
         {view === "sidework" && <p className="muted text-sm">{picked ? `${nameOf(picked)} is selected: tap a job.` : team === "server" ? "Tap a server, then a job." : "Tap an S.A., then a job."}</p>}
       </div>
 
-      {view === "sections" ? <FloorSections restaurantId={restaurantId} day={day} service={service} people={people} roles={roles} /> : <>
+      {view === "sections" ? <FloorSections restaurantId={restaurantId} day={day} service={service} people={people} roles={roles} onOpenSchedule={onOpenSchedule} /> : <>
       <div className="swb-grid">
         <section className="swb-card swb-people" aria-label={`${teamLabel} tonight`}>
           <div className="swb-card-head"><b>{`${teamLabel} tonight`}</b><span className="swb-count">{mine.length}</span></div>
@@ -227,7 +230,8 @@ export function Tonight({restaurantId}: {restaurantId: string}) {
               <span className="swb-tag">{theirs.length}</span>
             </button>;
           })}</div> : <><p className="muted text-sm">{team === "server" ? "No servers on the published schedule for this service." : "No S.A.s on the published schedule for this service."}</p>
-            <p className="muted text-xs">Which positions count as servers and S.A.s is set in Schedule, Settings.</p></>}
+            <p className="muted text-xs">Which positions count as servers and S.A.s is set in Schedule, Settings.</p>
+            {onOpenSchedule && <div><button type="button" className="btn secondary" onClick={onOpenSchedule}>Open the schedule</button></div>}</>}
           <p className="swb-legend">© closes: whoever comes in last. A name can go on several jobs.</p>
         </section>
 

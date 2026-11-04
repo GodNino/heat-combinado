@@ -35,9 +35,9 @@ const SECTIONS: Array<{key: string; title: string; hint: string; phase: Phase; r
   {key: "sa-closing", title: "S.A. closing", hint: "After service, for S.A.s.", phase: "closing", role: "sa"},
 ];
 // Inside a section, when and whose are already said: only who does it and on which days.
-const whoText = (row: Job) => [row.who === "all" ? "Everyone" : row.who === "closer" ? "The closer" : "One person, rotating", row.days?.length ? row.days.map(d => WEEKDAYS[d]).join(" ") : "Every day"].join(" · ");
+const whoText = (row: Job) => row.days?.length ? row.days.map(d => WEEKDAYS[d]).join(" ") : "Every day";
 
-export function Checklists({restaurantId, canManage}: {restaurantId: string; canManage: boolean}) {
+export function Checklists({restaurantId, canManage, onOpenSchedule}: {restaurantId: string; canManage: boolean; onOpenSchedule?: () => void}) {
   const [tab, setTab] = useState<Tab>("tonight");
   // Setup's running side work lists, and the one open in its editor (a list, or "new").
   const [lists, setLists] = useState<SideworkList[]>([]);
@@ -126,15 +126,12 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
           <Field label="Name"><input id="job-name" maxLength={80} value={draft.name} onChange={e => setDraft({...draft, name: e.target.value})} placeholder="Silverware" required /></Field>
           <StepsEditor steps={draft.steps} onChange={steps => setDraft({...draft, steps})} idPrefix="job-step" />
           <fieldset className="job-rules">
-            <legend>Hand it out on its own</legend>
+            <legend>Where it shows on Tonight</legend>
             <Field label="When"><select id="job-phase" value={draft.phase} onChange={e => setDraft({...draft, phase: e.target.value as Phase | ""})}>
-              <option value="">Not automatic (I give it by hand)</option><option value="opening">Opening</option><option value="during">During the shift</option><option value="closing">Closing</option>
+              <option value="">Not on the board (I give it for a day)</option><option value="opening">Opening</option><option value="during">During the shift</option><option value="closing">Closing</option>
             </select></Field>
             {draft.phase && <>
               <Field label="For"><select id="job-role" value={draft.role} onChange={e => setDraft({...draft, role: e.target.value as Role})}><option value="server">Servers</option><option value="sa">S.A.s</option></select></Field>
-              <Field label="Who does it"><select id="job-who" value={draft.who} onChange={e => setDraft({...draft, who: e.target.value as Who})}>
-                <option value="one">One person, rotating every day</option><option value="all">Everyone</option><option value="closer">The closer (whoever comes in last)</option>
-              </select></Field>
               <div className="field"><label id="job-days-label">Days</label>
                 <div className="word-chips" role="group" aria-labelledby="job-days-label">{WEEKDAYS.map((d, i) => <button key={d} type="button" className="word-chip" aria-pressed={draft.days.includes(i)} onClick={() => setDraft({...draft, days: draft.days.includes(i) ? draft.days.filter(x => x !== i) : [...draft.days, i].sort()})}>{d}</button>)}</div>
                 <p className="muted mt-1 text-xs">{draft.days.length ? "Only on the days marked." : "Every day. Mark days to limit it."}</p>
@@ -152,7 +149,7 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
 
   // Everyone else sees their own job and the floor, nothing to set up.
   if (!canManage) return <section className="mx-auto max-w-3xl">
-    <ScreenHeader eyebrow="Know the floor" title="Side work" info="Your job for this shift, and how the rest of the floor is doing." />
+    <ScreenHeader eyebrow="Know the floor" title="Side work" info="Your section, your jobs for this shift, and how the rest of the floor is doing. Home shows the short version." />
     <MyShiftCard restaurantId={restaurantId} />
     <MyShift restaurantId={restaurantId} />
   </section>;
@@ -168,12 +165,12 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
       {TABS.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} style={{fontWeight: 700, border: "1.5px solid var(--edge)"}} onClick={() => {setTab(key); setError(""); setMessage("");}}>{label}</button>)}
     </div>}
     <div><Notice text={error} error /><Notice text={message} /></div>
-    {tab === "tonight" && <Tonight restaurantId={restaurantId} />}
+    {tab === "tonight" && <Tonight restaurantId={restaurantId} onOpenSchedule={onOpenSchedule} />}
     {tab === "today" && <Today restaurantId={restaurantId} jobs={rows} onOpenSaved={() => setTab("setup")} onSavedJobsChanged={() => void load()} onDeep={setDeep} />}
     {tab === "history" && <History restaurantId={restaurantId} />}
     {tab === "setup" && editingList && <SideworkLists restaurantId={restaurantId} lists={lists} initial={editingList} onBack={() => {setEditingList(null); void load();}} />}
     {tab === "setup" && !editingList && (loading ? <p className="muted py-6" role="status">Loading jobs…</p> : <div className="mt-4">
-      <p className="muted mb-4 text-sm">Set up once. Every day Tonight hands these out to whoever is on the schedule.</p>
+      <p className="muted mb-4 text-sm">Set up the jobs once. Every night, on Tonight, you tap a name and then a job to give it out.</p>
       {/* One section per kind of side work, in the order of a shift, each with its own Add. */}
       {SECTIONS.map(section => {
         const group = sorted.filter(row => row.phase === section.phase && row.role === section.role);
@@ -194,7 +191,7 @@ export function Checklists({restaurantId, canManage}: {restaurantId: string; can
         const main = mainList(lists);
         return <section className="setup-section" aria-labelledby="setup-running">
           <div className="setup-section-head">
-            <div><h3 id="setup-running">Running side work</h3><p className="muted text-xs">What servers keep an eye on during service. Most important first: with 5 servers tonight uses the first 5, and it rotates who gets which every day.</p></div>
+            <div><h3 id="setup-running">Running side work</h3><p className="muted text-xs">What servers and S.A.s keep an eye on during service, most important first. Each task shows under During the shift on Tonight, where you give it out.</p></div>
             <span className="setup-count">{main?.tasks.length ?? 0}</span>
           </div>
           {main ? <ol className="running-list">{main.tasks.map((task, i) => <li key={i}><b>{i + 1}</b>{task}</li>)}</ol> : <p className="muted text-xs">Nothing here yet.</p>}

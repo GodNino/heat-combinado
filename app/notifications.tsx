@@ -32,7 +32,10 @@ async function currentSubscription() {
   return registration ? registration.pushManager.getSubscription() : null;
 }
 
-export function NotificationSwitch() {
+// variant "card": a short card for the top of a team member's Home, shown only while notifications are off
+// on this device (or need the iPhone Home Screen first), with "Not now" to hide it on this device.
+const CARD_HIDDEN_KEY = "heat-notify-card-hidden";
+export function NotificationSwitch({variant = "menu"}: {variant?: "menu" | "card"} = {}) {
   const lang = useLang();
   const [state, setState] = useState<State>("loading");
   const [busy, setBusy] = useState(false);
@@ -87,7 +90,23 @@ export function NotificationSwitch() {
     }
   }
 
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => { try { setHidden(localStorage.getItem(CARD_HIDDEN_KEY) === "1"); } catch { /* storage unavailable */ } }, []);
   if (state === "loading" || state === "unsupported") return null;
+  if (variant === "card") {
+    if (hidden || state === "on" || state === "blocked") return null;
+    return <section className="panel notify-card mb-4" aria-label="Notifications">
+      <div className="min-w-0">
+        <b>Know when your schedule, section and side work are out</b>
+        <p className="muted text-sm">{state === "install" ? "On iPhone, tap Share, then Add to Home Screen. Open HEAT from there and turn on notifications." : "Turn on notifications on this phone and HEAT tells you as soon as your manager posts them."}</p>
+        {error && <p role="alert" className="muted text-xs">{error}</p>}
+      </div>
+      <div className="notify-card-actions">
+        {state === "off" && <button type="button" className="btn secondary" disabled={busy} onClick={() => void turnOn()}><Bell size={14} aria-hidden="true" />Turn on notifications</button>}
+        <button type="button" className="btn secondary" onClick={() => { setHidden(true); try { localStorage.setItem(CARD_HIDDEN_KEY, "1"); } catch { /* storage unavailable */ } }}>Not now</button>
+      </div>
+    </section>;
+  }
   return <div className="mt-6">
     <p className="eyebrow muted mb-2">Notifications</p>
     {state === "install" ? <p className="muted text-xs">On iPhone, tap Share, then Add to Home Screen. Open HEAT from there to turn on notifications.</p>

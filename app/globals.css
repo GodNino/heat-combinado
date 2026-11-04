@@ -3460,3 +3460,35 @@ span.dash-name { text-decoration:none; }
 :root:root:root:root:root:root:root .fs-row-form { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px; }
 :root:root:root:root:root:root:root .fs-row-form label { display:grid; gap:6px; min-width:0; }
 :root:root:root:root:root:root:root .fs-file { display:inline-flex; align-items:center; cursor:pointer; }
+
+/* Home: the card asking a team member to turn on notifications (only while they are off on this phone).
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .notify-card { display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between; padding:16px; }
+:root:root:root:root:root:root:root .notify-card .min-w-0 { display:grid; gap:6px; flex:1 1 260px; }
+:root:root:root:root:root:root:root .notify-card-actions { display:flex; flex-wrap:wrap; gap:6px; }
+:root:root:root:root:root:root:root .notify-card-actions .btn { display:inline-flex; align-items:center; gap:6px; }
+
+/* Allergy check: the "confirm with the kitchen" line stays on screen (a safety warning is never behind the (i)).
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .allergy-confirm { margin:0 0 14px; padding:12px 16px; border-radius:16px; background:var(--lime); color:var(--c-on-heat); font-size:13px; font-weight:600; }
+
+/* Side menu in groups (Today, Team, Menu & training): a small label above each group, the same 11px
+   bold caps as section labels, in muted ink. To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .nav-group { margin:20px 0 6px; padding:0 12px; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--c-muted); }
+:root:root:root:root:root:root:root .nav-groups > .nav-group:first-child { margin-top:14px; }
+
+/* Dashboard: Getting started, a new restaurant's six steps, each with a button to where it's done.
+   To undo, revert the commit that added this block. */
+:root:root:root:root:root:root:root .getting-started { display:grid; gap:14px; padding:16px; }
+:root:root:root:root:root:root:root .getting-started-head { display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between; }
+:root:root:root:root:root:root:root .getting-started-head > div { display:flex; flex-wrap:wrap; gap:14px; align-items:center; }
+:root:root:root:root:root:root:root .getting-started-head .section-chip { margin:0; }
+:root:root:root:root:root:root:root .getting-started-steps { display:grid; margin:0 -16px -16px; padding:0; list-style:none; }
+:root:root:root:root:root:root:root .getting-started-steps li { display:flex; flex-wrap:wrap; gap:14px; align-items:center; padding:14px 16px; border-top:1px solid var(--c-line-5); }
+:root:root:root:root:root:root:root .gs-mark { display:grid; place-items:center; width:28px; height:28px; flex:none; border:1.5px solid var(--c-text); border-radius:50%; font-size:12px; font-weight:700; }
+:root:root:root:root:root:root:root .getting-started-steps li.done .gs-mark { background:var(--c-text); color:var(--c-bg); }
+:root:root:root:root:root:root:root .getting-started-steps li.next .gs-mark { background:var(--lime); border-color:var(--c-text); color:var(--c-on-heat); }
+:root:root:root:root:root:root:root .gs-text { display:grid; gap:4px; flex:1 1 240px; min-width:0; font-size:13px; }
+:root:root:root:root:root:root:root .gs-text small { font-size:12px; color:var(--c-muted); }
+:root:root:root:root:root:root:root .getting-started-steps li.done .gs-text b { color:var(--c-muted); font-weight:600; }
+:root:root:root:root:root:root:root .getting-started-steps .btn { display:inline-flex; align-items:center; gap:4px; }
